@@ -5,3 +5,4 @@ export * from "./Badge.js";
 export * from "./Modal.js";
 export * from "./Drawer.js";
 export * from "./Icon.js";
+export * from "./LoadingScreen.js";

@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "a2order",
   "version": "1.0.0",
   "private": true,
@@ -11,6 +11,7 @@
     "dev": "npm run dev --workspaces",
     "dev:server": "npm run dev --workspace=apps/server",
     "dev:client": "npm run dev --workspace=apps/client",
+    "dev:cms": "npm run dev --workspace=apps/cms",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
   },
@@ -21,7 +22,8 @@
     "pwa",
     "vietqr",
     "realtime",
-    "kds"
+    "kds",
+    "cms"
   ],
   "author": "A2Order Team",
   "license": "UNLICENSED"

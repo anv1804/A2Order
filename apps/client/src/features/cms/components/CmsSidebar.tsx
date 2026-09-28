@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import {
   LayoutGrid,
   ClipboardList,
@@ -37,7 +37,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none min-h-screen">
+    <aside className="w-64 h-full bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none overflow-y-auto">
       <div>
         {/* Logo Donezo style */}
         <div className="flex items-center gap-2.5 px-2 mb-8">
@@ -123,7 +123,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       </div>
 
       {/* Bottom Card: "Download our Mobile App" phong cách Donezo */}
-      <div className="p-4 rounded-3xl bg-brand-950 text-white relative overflow-hidden shadow-elevated">
+      <div className="p-4 rounded-3xl bg-brand-950 text-white relative overflow-hidden shadow-elevated mt-6 shrink-0">
         <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-brand-800/30 blur-xl" />
         <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center mb-3">
           <Smartphone className="w-4 h-4 text-brand-400" />

@@ -1,0 +1,204 @@
+import React from "react";
+import { Icon } from "@/components/ui";
+import { IconName } from "@/types";
+import { CmsSidebarProps, CmsSidebarMenuItem as MenuItem, CmsSidebarMenuGroup as MenuGroup } from "@/types/cms.types";
+
+export const CmsSidebar: React.FC<CmsSidebarProps> = ({
+  activeMenu,
+  onSelectMenu,
+  onLogout,
+  currentRole,
+  onChangeRole,
+  enabledModules = [],
+}) => {
+  // Nhóm Menu chuẩn nghiệp vụ F&B dành cho Chủ Quán
+  const storeOwnerGroups: MenuGroup[] = [
+    {
+      title: "VẬN HÀNH & BÁN HÀNG",
+      items: [
+        { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
+        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table", badge: "12+" },
+        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck", badge: "3" },
+      ],
+    },
+    {
+      title: "THỰC ĐƠN & KHO HÀNG",
+      items: [
+        { id: "menu", label: "Thực Đơn & Món Ăn", icon: "menu" },
+        { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart", badge: "Mới" },
+      ],
+    },
+    {
+      title: "TÀI CHÍNH & BÁO CÁO",
+      items: [
+        { id: "analytics", label: "Báo Cáo Doanh Thu", icon: "trending" },
+      ],
+    },
+    {
+      title: "HỆ THỐNG & NHÂN SỰ",
+      items: [
+        { id: "team", label: "Nhân Sự & Quyền", icon: "users" },
+        {
+          id: "landing_page",
+          label: "Landing Page & Web",
+          icon: "globe",
+          badge: "SEO",
+          requiredModule: "MODULE_LANDING_PAGE" as any,
+        },
+        { id: "settings", label: "Cài Đặt Hệ Thống & Gói Cước", icon: "settings" },
+      ],
+    },
+  ];
+
+  // Lọc chỉ hiện các chức năng quán đã đăng ký mua
+  const filteredStoreOwnerGroups: MenuGroup[] = storeOwnerGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (!item.requiredModule) return true;
+        return enabledModules.includes(item.requiredModule);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  // Nhóm Menu dành cho Super Admin Nền Tảng
+  const superAdminGroups: MenuGroup[] = [
+    {
+      title: "GIÁM SÁT HẠ TẦNG",
+      items: [
+        { id: "telemetry", label: "Hạ Tầng & Ping", icon: "activity", badge: "12ms" },
+        { id: "audit_logs", label: "Kiểm Toán Hệ Thống", icon: "shield" },
+      ],
+    },
+    {
+      title: "ĐỐI TÁC & BẢNG GIÁ",
+      items: [
+        { id: "tenants", label: "Danh Sách Quán Thuê", icon: "building" },
+        { id: "pricing_config", label: "Bảng Giá & Voucher", icon: "tag" },
+        { id: "license_manager", label: "Cấp License Key", icon: "key" },
+        { id: "software_invoices", label: "Hóa Đơn Thu Tiền", icon: "fileText" },
+      ],
+    },
+  ];
+
+  const currentGroups = currentRole === "SUPER_ADMIN" ? superAdminGroups : filteredStoreOwnerGroups;
+
+  return (
+    <aside className="w-64 h-full bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none overflow-y-auto">
+      <div>
+        {/* Logo Donezo style */}
+        <div className="flex items-center gap-2.5 px-2 mb-6">
+          <img
+            src="/logo-symbol.jpg"
+            alt="A2Order Logo"
+            className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10"
+          />
+          <div>
+            <span className="font-black text-xl tracking-tight text-ink-primary">A2Order</span>
+            <span className="block text-[10px] font-extrabold text-brand-700 tracking-wider">
+              {currentRole === "SUPER_ADMIN" ? "SUPER ADMIN" : "STORE CMS"}
+            </span>
+          </div>
+        </div>
+
+        {/* Role Switcher Pill */}
+        <div className="mb-6 p-1 bg-surface-canvas rounded-2xl border border-surface-border flex text-[11px] font-bold">
+          <button
+            onClick={() => {
+              onChangeRole("STORE_OWNER");
+              onSelectMenu("dashboard");
+            }}
+            className={`flex-1 py-1.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
+              currentRole === "STORE_OWNER"
+                ? "bg-white text-brand-900 shadow-sm"
+                : "text-ink-muted hover:text-ink-primary"
+            }`}
+          >
+            <Icon name="store" className="w-3.5 h-3.5" />
+            <span>Chủ Quán</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onChangeRole("SUPER_ADMIN");
+              onSelectMenu("telemetry");
+            }}
+            className={`flex-1 py-1.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
+              currentRole === "SUPER_ADMIN"
+                ? "bg-brand-900 text-white shadow-sm"
+                : "text-ink-muted hover:text-ink-primary"
+            }`}
+          >
+            <Icon name="shield" className="w-3.5 h-3.5" />
+            <span>Admin</span>
+          </button>
+        </div>
+
+        {/* Structured Menu Groups */}
+        <div className="space-y-5">
+          {currentGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-subtle px-3 mb-1.5 block">
+                {group.title}
+              </span>
+              {group.items.map((item) => {
+                const isActive = activeMenu === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectMenu(item.id)}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                      isActive
+                        ? "bg-brand-50 text-brand-900 shadow-sm"
+                        : "text-ink-muted hover:bg-surface-canvas hover:text-ink-primary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon
+                        name={item.icon}
+                        className={`w-4 h-4 ${isActive ? "text-brand-900" : "text-ink-subtle"}`}
+                      />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-extrabold rounded-md bg-brand-900 text-white">
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+
+          {/* Logout Action */}
+          <div className="pt-2 border-t border-surface-border">
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-ink-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
+            >
+              <Icon name="logout" className="w-4 h-4 text-ink-subtle" />
+              <span>Đăng Xuất</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Card: Bảo mật hoặc License Status */}
+      <div className="p-4 rounded-3xl bg-brand-950 text-white relative overflow-hidden shadow-elevated mt-6 shrink-0">
+        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-brand-800/30 blur-xl" />
+        <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center mb-2.5">
+          <Icon name="shield" className="w-4 h-4 text-emerald-400" />
+        </div>
+        <h4 className="text-xs font-extrabold leading-snug">
+          {currentRole === "SUPER_ADMIN" ? "Zero-Knowledge Mode" : "Bản Quyền PRO 2026"}
+        </h4>
+        <p className="text-[10px] text-brand-200/80 mt-1 mb-2">
+          {currentRole === "SUPER_ADMIN"
+            ? "Dữ liệu doanh thu của các quán được bảo mật tuyệt đối."
+            : "Còn 28 ngày thuê • Tự động gia hạn qua VietQR."}
+        </p>
+      </div>
+    </aside>
+  );
+};

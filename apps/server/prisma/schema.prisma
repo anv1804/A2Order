@@ -18,6 +18,7 @@ model Store {
   bankBin       String?   // Mã ngân hàng Napas
   bankOwnerName String?   // Tên chủ tài khoản
   status        String    @default("ACTIVE") // ACTIVE, TRIAL, SUSPENDED
+  configVersion String    @default("v1.0.0") // Quản lý phiên bản snapshot cấu hình quán
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -29,6 +30,9 @@ model Store {
   orderSessions OrderSession[]
   bills         Bill[]
   auditLogs     AuditLog[]
+  license       StoreLicense?
+  landingPage   StoreLandingPage?
+  telemetries   StoreTelemetry[]
 }
 
 // 2. NHÂN VIÊN & PHÂN QUYỀN RBAC
@@ -188,4 +192,82 @@ model AuditLog {
   staff     Staff?   @relation(fields: [staffId], references: [id])
 
   @@index([storeId])
+}
+
+// 12. GÓI BẢN QUYỀN & THỜI HẠN THUÊ PHẦN MỀM
+model StoreLicense {
+  id              String            @id @default(uuid())
+  storeId         String            @unique
+  licenseKey      String            @unique // vd: A2-PRO-2026-X89F2A
+  planType        String            @default("PRO") // TRIAL, BASIC, PRO, ENTERPRISE
+  enabledModules  String            @default("CORE_POS,MODULE_KDS,MODULE_ACCOUNTING,MODULE_QR_ORDER,MODULE_ADVANCED_ANALYTICS") // Danh sách module kích hoạt, phân tách bằng dấu phẩy
+  status          String            @default("ACTIVE") // ACTIVE, EXPIRING_SOON, EXPIRED, SUSPENDED
+  startDate       DateTime          @default(now())
+  endDate         DateTime          // Ngày hết hạn thuê phần mềm
+  maxTables       Int               @default(30)
+  maxStaff        Int               @default(20)
+  autoRenew       Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  invoices        SoftwareInvoice[]
+}
+
+// 13. HÓA ĐƠN THUÊ PHẦN MỀM GIỮA CHỦ QUÁN VÀ A2ORDER PLATFORM
+model SoftwareInvoice {
+  id              String            @id @default(uuid())
+  storeLicenseId  String
+  invoiceCode     String            @unique // vd: INV-2026-0012
+  amount          Int               // Số tiền thuê (VND)
+  durationMonths  Int               // Thời gian thuê (1, 6, 12 tháng)
+  periodStart     DateTime
+  periodEnd       DateTime
+  status          String            @default("PENDING") // PENDING, PAID, CANCELLED
+  paymentMethod   String            @default("VIETQR")
+  transactionRef  String?
+  paidAt          DateTime?
+  pdfUrl          String?
+  createdAt       DateTime          @default(now())
+
+  license         StoreLicense      @relation(fields: [storeLicenseId], references: [id], onDelete: Cascade)
+}
+
+// 14. GIÁM SÁT HẠ TẦNG & TỐC ĐỘ ĐƯỜNG TRUYỀN (SUPER ADMIN TELEMETRY)
+model StoreTelemetry {
+  id              String            @id @default(uuid())
+  storeId         String
+  pingMs          Int               // Độ trễ WebSocket round-trip
+  activeSockets   Int               // Số thiết bị đang online tại quán
+  clientIp        String?
+  userAgent       String?
+  recordedAt      DateTime          @default(now())
+
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, recordedAt])
+}
+
+// 15. LANDING PAGE & WEBSITE THƯƠNG HIỆU RIÊNG CHO TỪNG QUÁN
+model StoreLandingPage {
+  id              String            @id @default(uuid())
+  storeId         String            @unique
+  customDomain    String?           @unique // vd: "phobonamdinh.vn"
+  slug            String            @unique // vd: "pho-bo-nam-dinh"
+  heroTitle       String            // vd: "Phở Bò Gia Truyền Nam Định"
+  heroSubtitle    String?           // vd: "Hương vị truyền thống 30 năm nước dùng đậm đà"
+  heroBannerUrl   String?
+  storyContent    String?           // Giới thiệu quán
+  openingHours    String?           @default("06:00 - 22:00")
+  hotline         String?
+  address         String?
+  googleMapsUrl   String?
+  facebookUrl     String?
+  zaloPhone       String?
+  isBookingOpen   Boolean           @default(true)
+  isPublished     Boolean           @default(true)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
 }

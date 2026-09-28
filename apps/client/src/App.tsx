@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { TableGrid } from "@/features/tables/components/TableGrid";
 import { TableStatus, OrderItemStatus } from "@a2order/shared";
@@ -6,9 +6,9 @@ import { KdsTicketCard } from "@/features/kds/components/KdsTicketCard";
 import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
 import { CartDrawer } from "@/features/ordering/components/CartDrawer";
 import { DynamicVietQrModal } from "@/features/billing/components/DynamicVietQrModal";
-import { PinPadModal } from "@/features/auth/components/PinPadModal";
+import { UnifiedAuthModal } from "@/features/auth/components/UnifiedAuthModal";
 import { GlobalFeedback } from "@/components/feedback";
-import { Panel, Button, Badge } from "@/components/ui";
+import { Panel, Button, Badge, LoadingScreen } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 import { useAntiSpamAction } from "@/hooks/useAntiSpamAction";
@@ -63,16 +63,27 @@ const MOCK_STAFF: StaffMember[] = [
 ];
 
 export const App: React.FC = () => {
+  // Trạng thái Loading ban đầu mượt mà, đồng bộ style Donezo
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
   // Chuyển đổi giữa Chế độ CMS Quản trị (mẫu Donezo) và Chế độ POS Vận hành
   const [viewMode, setViewMode] = useState<"cms" | "pos">("cms");
   const [activeTab, setActiveTab] = useState<"tables" | "kds" | "billing" | "menu" | "settings">("tables");
-  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedTable, setSelectedTable] = useState<TableItem | null>(null);
   const [cartItems, setCartItems] = useState<CartItem[]>([
     { id: "m1", name: "Phở Bò Tái Nạm", price: 65000, quantity: 2, notes: "Không hành" },
   ]);
+
+  useEffect(() => {
+    // Giả lập khởi tạo kết nối socket & tải cấu hình quán
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { execute: submitOrderWithAntiSpam } = useAntiSpamAction(
     "ORDER",
@@ -107,6 +118,10 @@ export const App: React.FC = () => {
     setIsCartOpen(false);
   };
 
+  if (isLoading) {
+    return <LoadingScreen message="Đang kết nối hệ thống A2Order..." subMessage="Chuẩn bị dữ liệu sơ đồ bàn và menu thời gian thực" />;
+  }
+
   return (
     <>
       <GlobalFeedback />
@@ -140,9 +155,9 @@ export const App: React.FC = () => {
         </button>
       </div>
 
-      {/* CHẾ ĐỘ 1: BẢN CMS QUẢN TRỊ (DONEZO STYLE 1:1) */}
+      {/* CHẾ ĐỘ 1: BẢN CMS QUẢN TRỊ (DONEZO STYLE 1:1 CỐ ĐỊNH SIDEBAR & HEADER) */}
       {viewMode === "cms" ? (
-        <CmsLayout onLogout={() => setIsPinModalOpen(true)}>
+        <CmsLayout onLogout={() => setIsAuthModalOpen(true)}>
           <CmsDashboard />
         </CmsLayout>
       ) : (
@@ -153,7 +168,10 @@ export const App: React.FC = () => {
           userRole="Phục vụ"
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          onLogout={() => setIsPinModalOpen(true)}
+          onLogout={() => setIsAuthModalOpen(true)}
+          configVersion="v1.0.3"
+          hasNewVersionNotice={false}
+          onSyncNewVersion={() => toast.success("Đã đồng bộ thực đơn và sơ đồ bàn mới nhất từ máy chủ!")}
         >
           {activeTab === "tables" && (
             <div className="space-y-5">
@@ -346,17 +364,24 @@ export const App: React.FC = () => {
             onPrintBill={() => toast.info("Đang gửi lệnh in hóa đơn nhiệt...")}
           />
 
-          <PinPadModal
-            isOpen={isPinModalOpen}
-            staffList={MOCK_STAFF}
-            onPinSubmit={(staffId, pin) => {
-              toast.success(`Đăng nhập thành công với mã PIN: ${pin}`);
-              setIsPinModalOpen(false);
-            }}
-            onClose={() => setIsPinModalOpen(false)}
-          />
         </AppShell>
       )}
+
+      {/* Unified Auth Modal cho cả CMS (Chủ quán) và POS (Mã PIN nhân viên) */}
+      <UnifiedAuthModal
+        isOpen={isAuthModalOpen}
+        staffList={MOCK_STAFF}
+        onPinSubmit={(staffId, pin) => {
+          const staff = MOCK_STAFF.find((s) => s.id === staffId);
+          toast.success(`Nhân viên ${staff?.name || ""} vào ca thành công!`);
+          setIsAuthModalOpen(false);
+        }}
+        onAdminLogin={(email, pass) => {
+          toast.success(`Đăng nhập quản trị viên (${email}) thành công!`);
+          setIsAuthModalOpen(false);
+        }}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </>
   );
 };

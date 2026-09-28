@@ -1,10 +1,14 @@
-import Fastify from "fastify";
+﻿import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { initSocketServer } from "./core/websocket/socketServer.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { tableRoutes } from "./modules/table/table.routes.js";
 import { orderRoutes } from "./modules/order/order.routes.js";
 import { billingRoutes } from "./modules/billing/billing.routes.js";
+import { storeRoutes } from "./modules/store/store.routes.js";
+import { licenseRoutes } from "./modules/license/license.routes.js";
+import { landingRoutes } from "./modules/landing/landing.routes.js";
+import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
 
 const fastify = Fastify({
   logger: false,
@@ -19,6 +23,10 @@ async function main() {
   await fastify.register(tableRoutes, { prefix: "/api/tables" });
   await fastify.register(orderRoutes, { prefix: "/api/orders" });
   await fastify.register(billingRoutes, { prefix: "/api/billing" });
+  await fastify.register(storeRoutes, { prefix: "/api/stores" });
+  await fastify.register(licenseRoutes, { prefix: "/api/licenses" });
+  await fastify.register(landingRoutes, { prefix: "/api/landing" });
+  await fastify.register(analyticsRoutes, { prefix: "/api/analytics" });
 
   fastify.get("/health", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };

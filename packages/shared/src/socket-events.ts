@@ -1,10 +1,18 @@
-/**
+﻿/**
  * TÊN CÁC SỰ KIỆN WEBSOCKET REAL-TIME GIỮA CLIENT VÀ SERVER
  */
 export const SocketEvents = {
   // Kết nối & Phòng
   JOIN_STORE: "join_store",           // Client tham gia vào phòng của quán: room:store_${storeId}
   LEAVE_STORE: "leave_store",
+
+  // Cấu hình & Phiên bản (Cache isolation per store)
+  CONFIG_UPDATED: "store:config_updated", // Bắn khi chủ quán nhấn "Áp dụng thay đổi" (Publish)
+
+  // Hạ tầng & Giám sát (Super Admin Telemetry)
+  PING: "telemetry:ping",
+  PONG: "telemetry:pong",
+  TELEMETRY_STAT: "telemetry:stat",
 
   // Bàn & Sơ đồ bàn
   TABLE_STATUS_UPDATED: "table:status_updated",
