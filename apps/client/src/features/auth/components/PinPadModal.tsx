@@ -34,6 +34,11 @@ export const PinPadModal: React.FC<PinPadModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-slate-900 flex flex-col justify-between p-6 select-none">
       <div className="text-center pt-4">
+        <img
+          src="/logo-symbol.jpg"
+          alt="A2Order"
+          className="w-14 h-14 rounded-2xl mx-auto mb-3 shadow-xl object-cover ring-2 ring-emerald-500/20"
+        />
         <h2 className="text-2xl font-black text-white">A2Order Fast-PIN</h2>
         <p className="text-xs text-slate-400 mt-1">Đăng nhập vào ca làm việc trong 1 giây</p>
       </div>

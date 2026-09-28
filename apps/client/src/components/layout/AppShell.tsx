@@ -17,9 +17,11 @@ export const AppShell: React.FC<AppShellProps> = ({
       <header className="h-16 bg-white border-b border-surface-border px-5 flex items-center justify-between sticky top-0 z-40 shadow-card">
         {/* Logo & Store Name */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-brand-900 flex items-center justify-center text-white font-black text-base shadow-sm">
-            A2
-          </div>
+          <img
+            src="/logo-symbol.jpg"
+            alt="A2Order"
+            className="w-10 h-10 rounded-2xl object-cover shadow-sm ring-1 ring-black/5"
+          />
           <div>
             <h1 className="font-extrabold text-sm leading-tight truncate max-w-[160px] sm:max-w-xs text-ink-primary">
               {storeName}

@@ -41,11 +41,11 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       <div>
         {/* Logo Donezo style */}
         <div className="flex items-center gap-2.5 px-2 mb-8">
-          <div className="w-9 h-9 rounded-2xl bg-brand-900 text-white flex items-center justify-center font-black text-lg shadow-sm">
-            <div className="w-4 h-4 rounded-full border-2 border-white flex items-center justify-center">
-              <div className="w-1.5 h-1.5 bg-white rounded-full" />
-            </div>
-          </div>
+          <img
+            src="/logo-symbol.jpg"
+            alt="A2Order Logo"
+            className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10"
+          />
           <span className="font-black text-xl tracking-tight text-ink-primary">A2Order</span>
         </div>
 
