@@ -1,7 +1,7 @@
 import React from "react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { X } from "lucide-react";
+import { Icon } from "./Icon";
 import { ModalProps } from "@/types";
 
 export const Modal: React.FC<ModalProps> = ({
@@ -35,7 +35,7 @@ export const Modal: React.FC<ModalProps> = ({
           onClick={onClose}
           className="absolute right-4 top-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all"
         >
-          <X className="w-4 h-4" />
+          <Icon name="x" className="w-4 h-4" />
         </button>
 
         {title && (

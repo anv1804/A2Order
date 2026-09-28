@@ -57,7 +57,15 @@ export type IconName =
   | "calendarCheck"
   | "power"
   | "mail"
-  | "bell";
+  | "bell"
+  | "arrowUpRight"
+  | "chart"
+  | "loader"
+  | "send"
+  | "backspace"
+  | "alertCircle"
+  | "bars"
+  | "moreHorizontal";
 
 export interface IconProps {
   name: IconName;

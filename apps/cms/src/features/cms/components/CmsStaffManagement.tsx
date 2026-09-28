@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon } from "@/components/ui";
+import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
 import { StaffRole, StaffUser, PermissionItem } from "@/types/cms.types";
@@ -277,69 +277,75 @@ export const CmsStaffManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">
-              Quản Trị Nhân Sự & Phân Quyền (RBAC)
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
+              <span className="sm:hidden">Quản Trị Nhân Sự</span>
+              <span className="hidden sm:inline">Quản Trị Nhân Sự & Phân Quyền</span>
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px]">
-              Bảo Mật Két & Ca Làm
+            <Badge variant="success" className="font-extrabold text-[10px] whitespace-nowrap shrink-0">
+              <span className="sm:hidden">Bảo Mật Ca</span>
+              <span className="hidden sm:inline">Bảo Mật Két & Ca Làm</span>
             </Badge>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Phân bổ ca làm việc, cấp mã PIN 4 số đăng nhập POS/KDS siêu tốc và kiểm soát các quyền nhạy cảm (hủy món, giảm giá bill).
+          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
+            Phân bổ ca làm việc, mã PIN đăng nhập POS/KDS và phân quyền hạn.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-full gap-2 text-xs bg-brand-900 text-white shadow-sm"
+            className="rounded-full gap-2 text-xs bg-brand-900 text-white shadow-sm whitespace-nowrap shrink-0"
             onClick={handleOpenAddModal}
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>+ Thêm Nhân Viên Mới</span>
+            <span className="sm:hidden">+ Thêm Nhân Viên</span>
+            <span className="hidden sm:inline">+ Thêm Nhân Viên Mới</span>
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-surface-border pb-2">
+      <div className="flex items-center gap-1.5 sm:gap-2 border-b border-surface-border pb-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveTab("STAFF_LIST")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "STAFF_LIST"
               ? "bg-brand-900 text-white shadow-sm"
               : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
           }`}
         >
           <Icon name="users" className="w-4 h-4" />
-          <span>Danh Sách Nhân Viên ({staffList.length})</span>
+          <span className="sm:hidden">Nhân Viên ({staffList.length})</span>
+          <span className="hidden sm:inline">Danh Sách Nhân Viên ({staffList.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("RBAC_MATRIX")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "RBAC_MATRIX"
               ? "bg-brand-900 text-white shadow-sm"
               : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
           }`}
         >
           <Icon name="shield" className="w-4 h-4" />
-          <span>Ma Trận Phân Quyền Chi Tiết</span>
+          <span className="sm:hidden">Phân Quyền</span>
+          <span className="hidden sm:inline">Ma Trận Phân Quyền Chi Tiết</span>
         </button>
 
         <button
           onClick={() => setActiveTab("SCHEDULE")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "SCHEDULE"
               ? "bg-brand-900 text-white shadow-sm"
               : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
           }`}
         >
           <Icon name="calendar" className="w-4 h-4" />
-          <span>Lịch Làm Việc Tuần</span>
+          <span className="sm:hidden">Lịch Ca</span>
+          <span className="hidden sm:inline">Lịch Làm Việc Tuần</span>
         </button>
       </div>
 
@@ -550,8 +556,9 @@ export const CmsStaffManagement: React.FC = () => {
 
       {/* Modal Thêm Nhân Viên Mới */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-md rounded-3xl shadow-elevated p-6 space-y-4 border border-surface-border animate-scaleUp">
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-elevated p-6 space-y-4 border border-surface-border animate-scaleUp">
             <div className="flex items-center justify-between border-b border-surface-border pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
@@ -687,8 +694,9 @@ export const CmsStaffManagement: React.FC = () => {
                 </Button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
       {/* TAB 3: Lịch Làm Việc Tuần */}
       {activeTab === "SCHEDULE" && (() => {

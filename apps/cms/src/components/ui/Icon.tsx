@@ -65,6 +65,10 @@ import {
   Send,
   Delete,
   AlertCircle,
+  Menu as MenuBars,
+  MoreHorizontal,
+  ChevronLeft,
+  ArrowLeft,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -135,6 +139,10 @@ const iconMap: Record<IconName, LucideIcon> = {
   send: Send,
   backspace: Delete,
   alertCircle: AlertCircle,
+  bars: MenuBars,
+  moreHorizontal: MoreHorizontal,
+  chevronLeft: ChevronLeft,
+  arrowLeft: ArrowLeft,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

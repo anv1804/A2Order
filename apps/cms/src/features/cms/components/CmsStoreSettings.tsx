@@ -66,38 +66,40 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-black text-ink-primary tracking-tight">
+          <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
             Cài Đặt Hệ Thống & Gói Cước
           </h2>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Quản lý tài khoản ngân hàng VietQR nhận tiền, thông tin in bill và gói bản quyền phần mềm đang thuê.
+          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
+            Quản lý tài khoản VietQR nhận tiền, thông tin in bill và gói bản quyền phần mềm.
           </p>
         </div>
 
         {/* Tab navigation buttons */}
-        <div className="flex items-center gap-1.5 p-1 bg-surface-muted rounded-2xl border border-surface-border">
+        <div className="flex items-center gap-1.5 p-1 bg-surface-muted rounded-2xl border border-surface-border overflow-x-auto no-scrollbar shrink-0 max-w-full">
           <button
             onClick={() => setActiveTab("store_info")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === "store_info"
                 ? "bg-white text-brand-900 shadow-sm"
                 : "text-ink-muted hover:text-ink-primary"
             }`}
           >
             <Icon name="store" className="w-3.5 h-3.5" />
-            <span>Thông Tin Quán & VietQR</span>
+            <span className="sm:hidden">Quán & VietQR</span>
+            <span className="hidden sm:inline">Thông Tin Quán & VietQR</span>
           </button>
 
           <button
             onClick={() => setActiveTab("modules_license")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === "modules_license"
                 ? "bg-white text-brand-900 shadow-sm"
                 : "text-ink-muted hover:text-ink-primary"
             }`}
           >
             <Icon name="key" className="w-3.5 h-3.5" />
-            <span>Gói Tính Năng & Bản Quyền</span>
+            <span className="sm:hidden">Bản Quyền</span>
+            <span className="hidden sm:inline">Gói Tính Năng & Bản Quyền</span>
           </button>
         </div>
       </div>

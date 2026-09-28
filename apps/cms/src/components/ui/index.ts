@@ -7,4 +7,5 @@ export * from "./Drawer.js";
 export * from "./Icon.js";
 export * from "./LoadingScreen.js";
 export * from "./Pagination.js";
+export * from "./Portal.js";
 

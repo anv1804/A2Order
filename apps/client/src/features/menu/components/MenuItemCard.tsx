@@ -1,7 +1,6 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
-import { Plus } from "lucide-react";
-import { Panel, Button } from "@/components/ui";
+import { Panel, Button, Icon } from "@/components/ui";
 import { MenuItemCardProps } from "@/types";
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({
@@ -53,7 +52,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
               disabled={!item.isAvailable}
               className="gap-1 text-xs rounded-full h-8 px-3.5"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Icon name="plus" className="w-3.5 h-3.5" size={14} />
               Thêm
             </Button>
           )}

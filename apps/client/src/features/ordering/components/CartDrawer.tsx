@@ -1,7 +1,6 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
-import { Trash2, Send } from "lucide-react";
-import { Button, Drawer } from "@/components/ui";
+import { Button, Drawer, Icon } from "@/components/ui";
 import { CartDrawerProps } from "@/types";
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -17,16 +16,16 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   const footer = (
     <div className="flex items-center justify-between gap-4">
       <div>
-        <span className="text-xs text-slate-500">Tạm tính:</span>
-        <div className="text-xl font-bold text-slate-900">{formatCurrency(totalAmount)}</div>
+        <span className="text-xs text-ink-muted">Tạm tính:</span>
+        <div className="text-xl font-black text-brand-950">{formatCurrency(totalAmount)}</div>
       </div>
       <Button
         size="lg"
         onClick={onSubmitOrder}
         disabled={items.length === 0}
-        className="flex-1 gap-2"
+        className="flex-1 gap-2 rounded-2xl bg-brand-900 hover:bg-brand-950 text-white font-black"
       >
-        <Send className="w-4 h-4" />
+        <Icon name="send" className="w-4 h-4 text-white" size={16} />
         GỬI BẾP
       </Button>
     </div>
@@ -42,24 +41,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     >
       <div className="space-y-3">
         {items.map((item) => (
-          <div key={item.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl">
+          <div key={item.id} className="flex items-center justify-between bg-surface-canvas p-3 rounded-2xl border border-surface-border">
             <div className="min-w-0 flex-1">
-              <h4 className="font-bold text-sm text-slate-800 truncate">{item.name}</h4>
-              <p className="text-xs font-semibold text-blue-600">{formatCurrency(item.price)}</p>
-              {item.notes && <p className="text-[11px] text-amber-600 italic">"{item.notes}"</p>}
+              <h4 className="font-extrabold text-sm text-ink-primary truncate">{item.name}</h4>
+              <p className="text-xs font-bold text-brand-800">{formatCurrency(item.price)}</p>
+              {item.notes && <p className="text-[11px] text-amber-700 italic">"{item.notes}"</p>}
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onUpdateQuantity(item.id, -1)}
-                className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 flex items-center justify-center font-bold active:scale-95"
+                className="w-8 h-8 rounded-xl bg-white border border-surface-border text-ink-primary flex items-center justify-center font-bold active:scale-95 shadow-sm"
               >
-                {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-rose-500" /> : "-"}
+                {item.quantity === 1 ? <Icon name="trash" className="w-3.5 h-3.5 text-rose-500" size={14} /> : "-"}
               </button>
-              <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
+              <span className="w-6 text-center font-black text-sm text-ink-primary">{item.quantity}</span>
               <button
                 onClick={() => onUpdateQuantity(item.id, 1)}
-                className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold active:scale-95"
+                className="w-8 h-8 rounded-xl bg-brand-900 text-white flex items-center justify-center font-bold active:scale-95 shadow-sm"
               >
                 +
               </button>

@@ -63,7 +63,11 @@ export type IconName =
   | "loader"
   | "send"
   | "backspace"
-  | "alertCircle";
+  | "alertCircle"
+  | "bars"
+  | "moreHorizontal"
+  | "chevronLeft"
+  | "arrowLeft";
 
 export interface IconProps {
   name: IconName;

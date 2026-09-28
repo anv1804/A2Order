@@ -10,3 +10,11 @@ export interface PinPadModalProps {
   onPinSubmit: (staffId: string, pin: string) => void;
   onClose?: () => void;
 }
+
+export interface UnifiedAuthModalProps {
+  isOpen: boolean;
+  staffList: StaffMember[];
+  onPinSubmit: (staffId: string, pin: string) => void;
+  onAdminLogin?: (email: string, pass: string) => void;
+  onClose: () => void;
+}

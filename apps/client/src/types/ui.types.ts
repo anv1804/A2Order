@@ -67,3 +67,23 @@ export interface AppShellProps {
   onLogout: () => void;
   children: React.ReactNode;
 }
+
+export interface LoadingScreenProps {
+  message?: string;
+  subMessage?: string;
+}
+
+export interface LoadingSpinnerProps {
+  size?: "sm" | "md" | "lg";
+  label?: string;
+}
+
+export interface PaginationProps {
+  currentPage: number;
+  totalItems: number;
+  pageSize: number;
+  totalPages?: number;
+  onPageChange: (page: number) => void;
+  className?: string;
+}
+

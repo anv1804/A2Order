@@ -1,16 +1,7 @@
-﻿import React, { useState } from "react";
-import { UserCheck, ShieldCheck, Mail, Lock, ArrowRight, Sparkles } from "lucide-react";
-import { StaffMember } from "@/types";
+import React, { useState } from "react";
+import { StaffMember, UnifiedAuthModalProps } from "@/types";
 import { NumericKeypad } from "@/components/shared/NumericKeypad";
-import { Button } from "@/components/ui/Button";
-
-interface UnifiedAuthModalProps {
-  isOpen: boolean;
-  staffList: StaffMember[];
-  onPinSubmit: (staffId: string, pin: string) => void;
-  onAdminLogin?: (email: string, pass: string) => void;
-  onClose: () => void;
-}
+import { Button, Icon } from "@/components/ui";
 
 export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   isOpen,
@@ -101,7 +92,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   : "text-brand-200 hover:text-white"
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5" />
+              <Icon name="shield" className="w-3.5 h-3.5" />
               <span>Chủ Quán / Quản Lý</span>
             </button>
 
@@ -115,7 +106,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   : "text-brand-200 hover:text-white"
               }`}
             >
-              <UserCheck className="w-3.5 h-3.5" />
+              <Icon name="userCheck" className="w-3.5 h-3.5" />
               <span>Mã PIN Ca Làm</span>
             </button>
           </div>
@@ -139,7 +130,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   Email Quản Trị
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
+                  <Icon name="mail" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
                   <input
                     type="email"
                     value={email}
@@ -161,7 +152,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   </a>
                 </div>
                 <div className="relative">
-                  <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
+                  <Icon name="lock" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
                   <input
                     type="password"
                     value={password}
@@ -181,7 +172,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                   disabled={isSubmitting}
                 >
                   <span>{isSubmitting ? "Đang xác thực..." : "Đăng Nhập CMS"}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <Icon name="arrowRight" className="w-4 h-4" />
                 </Button>
               </div>
 
@@ -267,7 +258,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
         {/* Footer actions */}
         <div className="p-3 bg-surface-canvas border-t border-surface-border flex items-center justify-between px-6">
           <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
-            <Sparkles className="w-3.5 h-3.5 text-brand-700" />
+            <Icon name="sparkles" className="w-3.5 h-3.5 text-brand-700" />
             <span>A2Order Fast-Login</span>
           </div>
           <button

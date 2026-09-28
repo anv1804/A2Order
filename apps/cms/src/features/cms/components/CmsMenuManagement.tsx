@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
+import { Panel, Button, Badge, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
 import { ModifierOption, FnbDishItem } from "@/types/cms.types";
@@ -338,25 +338,27 @@ export const CmsMenuManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">
-              Quản Lý Thực Đơn & Kỹ Thuật Menu (Menu Engineering)
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
+              <span className="sm:hidden">Quản Lý Thực Đơn</span>
+              <span className="hidden sm:inline">Quản Lý Thực Đơn & Kỹ Thuật Menu</span>
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px]">
-              Tối Ưu Lợi Nhuận F&B
+            <Badge variant="success" className="font-extrabold text-[10px] whitespace-nowrap shrink-0">
+              <span className="sm:hidden">Tối Ưu Lãi</span>
+              <span className="hidden sm:inline">Tối Ưu Lợi Nhuận F&B</span>
             </Badge>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Quản lý giá bán, giá vốn (COGS), tỷ lệ lãi gộp, phân luồng trạm chế biến và kiểm soát mở bán tức thì.
+          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
+            Quản lý giá bán, giá vốn (COGS), lãi gộp và phân luồng chế biến.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-full gap-2 text-xs bg-brand-900 text-white shadow-sm"
+            className="rounded-full gap-2 text-xs bg-brand-900 text-white shadow-sm whitespace-nowrap shrink-0"
             onClick={() => {
               setAddForm({
                 name: "",
@@ -378,53 +380,51 @@ export const CmsMenuManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs thanh công cụ: Danh mục + Trạng thái + Tìm kiếm */}
-      <div className="space-y-3 bg-white p-3.5 rounded-2xl border border-surface-border">
-        {/* Hàng 1: Danh mục & Tìm kiếm */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
-            <span className="text-ink-muted text-xs font-extrabold px-1">Danh mục:</span>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  setActiveCategory(cat);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl shrink-0 transition-all ${
-                  activeCategory === cat
-                    ? "bg-brand-900 text-white shadow-sm font-black"
-                    : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                {cat === "ALL" ? "Tất cả món" : cat}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Tìm nhanh tên món..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="h-8 pl-3.5 pr-4 rounded-xl bg-surface-canvas border border-surface-border text-xs font-semibold text-ink-primary focus:outline-none focus:border-brand-800 w-56 shadow-xs"
-            />
-          </div>
+      {/* Tabs thanh công cụ: Tìm kiếm + Danh mục + Trạng thái */}
+      <div className="space-y-2.5 bg-white p-3 sm:p-3.5 rounded-2xl border border-surface-border shadow-xs">
+        {/* Hàng 1: Tìm nhanh tên món */}
+        <div className="relative w-full">
+          <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
+          <input
+            type="text"
+            placeholder="Tìm nhanh tên món ăn, danh mục..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full h-9 pl-9 pr-3 rounded-xl bg-surface-canvas border border-surface-border text-xs font-semibold text-ink-primary focus:bg-white focus:outline-none focus:border-brand-800 shadow-2xs"
+          />
         </div>
 
-        {/* Hàng 2: Bộ lọc theo Trạng Thái Món */}
-        <div className="flex items-center gap-1.5 pt-2 border-t border-surface-border/60 text-xs font-bold overflow-x-auto">
-          <span className="text-ink-muted text-xs font-extrabold px-1">Trạng thái:</span>
+        {/* Hàng 2: Danh mục món cuộn ngang siêu mượt */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-0.5">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => {
+                setActiveCategory(cat);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl shrink-0 whitespace-nowrap transition-all ${
+                activeCategory === cat
+                  ? "bg-brand-900 text-white shadow-xs font-black"
+                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+              }`}
+            >
+              {cat === "ALL" ? "Tất cả món" : cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Hàng 3: Bộ lọc trạng thái món - Không bị bẻ chữ! */}
+        <div className="flex items-center gap-1.5 pt-2 border-t border-surface-border/60 text-xs font-bold overflow-x-auto no-scrollbar py-0.5">
           {[
             { id: "ALL", label: "Tất cả", count: dishes.length },
-            { id: "AVAILABLE", label: "Đang mở bán", count: dishes.filter((d) => d.isAvailable).length },
-            { id: "OUT_OF_STOCK", label: "Tạm hết hàng", count: dishes.filter((d) => !d.isAvailable).length },
-            { id: "BEST_SELLER", label: "Món bán chạy", count: dishes.filter((d) => d.isBestSeller).length },
+            { id: "AVAILABLE", label: "Đang bán", fullLabel: "Đang mở bán", count: dishes.filter((d) => d.isAvailable).length },
+            { id: "OUT_OF_STOCK", label: "Tạm hết", fullLabel: "Tạm hết hàng", count: dishes.filter((d) => !d.isAvailable).length },
+            { id: "BEST_SELLER", label: "Bán chạy", fullLabel: "Món bán chạy", count: dishes.filter((d) => d.isBestSeller).length },
           ].map((st) => (
             <button
               key={st.id}
@@ -433,16 +433,17 @@ export const CmsMenuManagement: React.FC = () => {
                 setStatusFilter(st.id as any);
                 setCurrentPage(1);
               }}
-              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                 statusFilter === st.id
-                  ? "bg-brand-100 text-brand-900 border border-brand-300 font-black shadow-xs"
-                  : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
+                  ? "bg-brand-900 text-white shadow-xs font-black"
+                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
               }`}
             >
-              <span>{st.label}</span>
+              <span className="sm:hidden">{st.label}</span>
+              <span className="hidden sm:inline">{st.fullLabel || st.label}</span>
               <span
-                className={`text-[10px] px-1.5 py-0.2 rounded-full ${
-                  statusFilter === st.id ? "bg-brand-900 text-white" : "bg-surface-muted text-ink-subtle"
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                  statusFilter === st.id ? "bg-white/20 text-white" : "bg-surface-muted text-ink-subtle"
                 }`}
               >
                 {st.count}
@@ -640,13 +641,14 @@ export const CmsMenuManagement: React.FC = () => {
 
       {/* Modal Thêm Món Mới */}
       {isAddModalOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddModalOpen(false);
-          }}
-        >
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-4 border border-surface-border animate-scaleUp max-h-[92vh] flex flex-col">
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsAddModalOpen(false);
+            }}
+          >
+            <div className="bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 space-y-4 border border-surface-border animate-scaleUp max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-surface-border pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
@@ -841,17 +843,19 @@ export const CmsMenuManagement: React.FC = () => {
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Modal Chỉnh Sửa Món Ăn */}
       {editingDish && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setEditingDish(null);
-          }}
-        >
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl p-6 space-y-4 border border-surface-border animate-scaleUp max-h-[92vh] flex flex-col">
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setEditingDish(null);
+            }}
+          >
+            <div className="bg-white w-full max-w-lg rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 space-y-4 border border-surface-border animate-scaleUp max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-surface-border pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
@@ -1105,62 +1109,65 @@ export const CmsMenuManagement: React.FC = () => {
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* Modal Cập Nhật Suất Còn Lại (Kiểm Soát Bán Ra) */}
       {stockEditDish && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-elevated p-5 space-y-4 border border-surface-border animate-scaleUp">
-            <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
-              <h3 className="text-sm font-black text-ink-primary">
-                Cập Nhật Suất Phục Vụ: {stockEditDish.name}
-              </h3>
-              <button
-                onClick={() => setStockEditDish(null)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
-              >
-                <Icon name="x" className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveStockCount} className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-ink-secondary mb-1">
-                  Số suất nguyên liệu còn lại có thể chế biến:
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={editStockCount}
-                  onChange={(e) => setEditStockCount(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-xl border border-surface-border text-sm font-black text-center text-brand-900 focus:border-brand-800 focus:outline-none"
-                />
-                <p className="text-[10px] text-ink-muted mt-1 text-center">
-                  Nếu nhập về 0, hệ thống sẽ tự động chuyển sang trạng thái Tạm Hết Hàng trên POS và mã QR
-                </p>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full text-xs"
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-2xl sm:rounded-3xl shadow-elevated p-4 sm:p-5 space-y-4 border border-surface-border animate-scaleUp">
+              <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
+                <h3 className="text-sm font-bold text-ink-primary">
+                  Cập Nhật Suất Phục Vụ: {stockEditDish.name}
+                </h3>
+                <button
                   onClick={() => setStockEditDish(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
                 >
-                  Hủy
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="rounded-full bg-brand-900 text-white text-xs px-4"
-                >
-                  Lưu Số Suất
-                </Button>
+                  <Icon name="x" className="w-3.5 h-3.5" />
+                </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSaveStockCount} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-ink-secondary mb-1">
+                    Số suất nguyên liệu còn lại có thể chế biến:
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editStockCount}
+                    onChange={(e) => setEditStockCount(Number(e.target.value))}
+                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-sm font-bold text-center text-brand-900 focus:border-brand-800 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-ink-muted mt-1 text-center">
+                    Nếu nhập về 0, hệ thống sẽ tự động chuyển sang trạng thái Tạm Hết Hàng trên POS và mã QR
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs"
+                    onClick={() => setStockEditDish(null)}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="rounded-xl bg-brand-900 text-white text-xs px-4 font-bold shadow-sm"
+                  >
+                    Lưu Số Suất
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import React from "react";
 import { OrderItemStatus } from "@a2order/shared";
-import { Check, Clock } from "lucide-react";
+import { Icon } from "@/components/ui";
 import { KdsTicketCardProps } from "@/types";
 
 export const KdsTicketCard: React.FC<KdsTicketCardProps> = ({
@@ -26,7 +26,7 @@ export const KdsTicketCard: React.FC<KdsTicketCardProps> = ({
           <span className="text-[11px] text-slate-400 font-semibold">Đợt #{ticket.batchNumber}</span>
         </div>
         <div className="flex items-center gap-1 font-bold text-sm">
-          <Clock className="w-4 h-4" />
+          <Icon name="clock" className="w-4 h-4 text-amber-400" size={16} />
           <span>{ticket.minutesAgo}'</span>
         </div>
       </div>
@@ -51,7 +51,7 @@ export const KdsTicketCard: React.FC<KdsTicketCardProps> = ({
                 <p className="text-xs text-rose-400 font-medium mt-0.5">⚠️ {item.notes}</p>
               )}
             </div>
-            {item.status === OrderItemStatus.DONE && <Check className="w-5 h-5 text-emerald-400" />}
+            {item.status === OrderItemStatus.DONE && <Icon name="check" className="w-5 h-5 text-emerald-400" size={20} />}
           </div>
         ))}
       </div>
@@ -61,7 +61,7 @@ export const KdsTicketCard: React.FC<KdsTicketCardProps> = ({
           onClick={() => onCompleteTicket(ticket.id)}
           className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-base flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/50"
         >
-          <Check className="w-5 h-5" />
+          <Icon name="check" className="w-5 h-5 text-white" size={20} />
           XONG VÉ NÀY
         </button>
       </div>

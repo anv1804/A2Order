@@ -12,7 +12,7 @@ export const TableGrid: React.FC<TableGridProps> = ({ tables, onTableClick }) =>
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5 sm:gap-3.5 py-1">
       {tables.map((table) => (
         <TableCard key={table.id} table={table} onClick={onTableClick} />
       ))}

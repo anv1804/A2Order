@@ -4,6 +4,7 @@ export interface TableItem {
   id: string;
   name: string;
   status: TableStatus;
+  zone?: string;
   zoneName?: string;
   occupiedMinutes?: number;
   totalAmount?: number;

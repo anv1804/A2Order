@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
+import { Panel, Button, Badge, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import {
   InventoryIngredient,
@@ -357,35 +357,37 @@ export const CmsInventoryManagement: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn">
       {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">
-              Quản Lý Kho & Nhập Hàng Đầu Vào
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
+              <span className="sm:hidden">Quản Lý Kho</span>
+              <span className="hidden sm:inline">Quản Lý Kho & Nhập Hàng</span>
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-100 text-brand-800 border border-brand-200">
-              F&B Inventory Engine
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-100 text-brand-800 border border-brand-200 whitespace-nowrap shrink-0">
+              Inventory Engine
             </span>
           </div>
-          <p className="text-xs text-ink-muted">
-            Kiểm soát nguyên vật liệu tươi sống, định mức an toàn tối thiểu, lập phiếu nhập kho NCC và trừ tồn tự động khi bán món.
+          <p className="text-xs text-ink-muted line-clamp-1 sm:line-clamp-none">
+            Kiểm soát nguyên vật liệu tươi sống, định mức an toàn và trừ tồn tự động khi bán món.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
             variant="outline"
-            className="rounded-full gap-2 text-xs border-surface-border text-ink-primary hover:bg-surface-muted"
+            className="rounded-full gap-1.5 text-xs border-surface-border text-ink-primary hover:bg-surface-muted whitespace-nowrap shrink-0"
             onClick={() => {
               setNewIngCode(`NL-${Math.floor(100 + Math.random() * 900)}`);
               setIsAddIngredientOpen(true);
             }}
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>Thêm Nguyên Liệu</span>
+            <span className="sm:hidden">+ Nguyên Liệu</span>
+            <span className="hidden sm:inline">Thêm Nguyên Liệu</span>
           </Button>
 
           <Button
@@ -841,12 +843,13 @@ export const CmsInventoryManagement: React.FC = () => {
 
       {/* MODAL 1: TẠO PHIẾU NHẬP KHO */}
       {isCreateReceiptOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsCreateReceiptOpen(false);
-          }}
-        >
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsCreateReceiptOpen(false);
+            }}
+          >
           <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-6 space-y-4 border border-surface-border animate-scaleUp max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-surface-border pb-3 shrink-0">
               <div>
@@ -996,16 +999,18 @@ export const CmsInventoryManagement: React.FC = () => {
             </form>
           </div>
         </div>
+      </Portal>
       )}
 
       {/* MODAL 2: THÊM NGUYÊN LIỆU MỚI */}
       {isAddIngredientOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsAddIngredientOpen(false);
-          }}
-        >
+        <Portal>
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setIsAddIngredientOpen(false);
+            }}
+          >
           <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 space-y-4 border border-surface-border animate-scaleUp">
             <div className="flex items-center justify-between border-b border-surface-border pb-3">
               <h3 className="text-base font-black text-ink-primary">Thêm Nguyên Liệu Mới Vào Kho</h3>
@@ -1154,6 +1159,7 @@ export const CmsInventoryManagement: React.FC = () => {
             </form>
           </div>
         </div>
+      </Portal>
       )}
     </div>
   );

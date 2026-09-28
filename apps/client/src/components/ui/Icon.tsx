@@ -59,6 +59,14 @@ import {
   Power,
   Mail,
   Bell,
+  ArrowUpRight,
+  BarChart3,
+  Loader2,
+  Send,
+  Delete,
+  AlertCircle,
+  Menu as MenuBars,
+  MoreHorizontal,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -123,6 +131,14 @@ const iconMap: Record<IconName, LucideIcon> = {
   power: Power,
   mail: Mail,
   bell: Bell,
+  arrowUpRight: ArrowUpRight,
+  chart: BarChart3,
+  loader: Loader2,
+  send: Send,
+  backspace: Delete,
+  alertCircle: AlertCircle,
+  bars: MenuBars,
+  moreHorizontal: MoreHorizontal,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Delete } from "lucide-react";
+import { Icon } from "@/components/ui";
 import { NumericKeypadProps } from "@/types";
 
 export const NumericKeypad: React.FC<NumericKeypadProps> = ({
@@ -20,7 +20,7 @@ export const NumericKeypad: React.FC<NumericKeypadProps> = ({
               onClick={onDeletePress}
               className="h-16 rounded-2xl bg-slate-200 active:bg-slate-300 flex items-center justify-center text-slate-700 active:scale-95 transition-all text-xl font-semibold"
             >
-              <Delete className="w-6 h-6" />
+              <Icon name="backspace" className="w-6 h-6" />
             </button>
           );
         }

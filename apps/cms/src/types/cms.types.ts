@@ -192,6 +192,7 @@ export interface CmsSidebarProps {
   currentRole: "STORE_OWNER" | "SUPER_ADMIN";
   onChangeRole: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
   enabledModules?: AppModule[];
+  onCloseMobileDrawer?: () => void;
 }
 
 export interface CmsTopNavProps {
@@ -199,6 +200,10 @@ export interface CmsTopNavProps {
   userEmail: string;
   avatarUrl?: string;
   onSearch?: (query: string) => void;
+  onToggleMobileMenu?: () => void;
+  canGoBack?: boolean;
+  onBack?: () => void;
+  activeMenuTitle?: string;
 }
 
 export interface CmsLayoutProps {
@@ -232,6 +237,7 @@ export interface CmsStoreSettingsProps {
 
 export interface CmsSuperAdminViewProps {
   subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config";
+  onTabChange?: (tab: string) => void;
 }
 
 export interface CmsDashboardProps {
@@ -403,4 +409,100 @@ export interface SystemAuditLogRecord {
   details: string;
   status: "SUCCESS" | "WARNING" | "FAILED";
 }
+
+// ================= CRM & KHÁCH HÀNG THÂN THIẾT =================
+export type CustomerMembershipTier = "MEMBER" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
+
+export interface CustomerRecord {
+  id: string;
+  code: string;
+  name: string;
+  phone: string;
+  email?: string;
+  tier: CustomerMembershipTier;
+  points: number;
+  totalSpent: number;
+  totalVisits: number;
+  favoriteDish?: string;
+  lastVisit: string;
+  createdAt: string;
+  notes?: string;
+}
+
+// ================= CHƯƠNG TRÌNH KHUYẾN MÃI & VOUCHER =================
+export type DiscountType = "PERCENTAGE" | "FIXED_AMOUNT";
+
+export interface PromotionVoucherRecord {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  discountType: DiscountType;
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount?: number;
+  startDate: string;
+  endDate: string;
+  usageLimit: number;
+  usedCount: number;
+  happyHourOnly?: boolean;
+  happyHourTimeRange?: string;
+  isActive: boolean;
+}
+
+// ================= THIẾT BỊ PHẦN CỨNG & MÁY IN =================
+export type PrinterType = "CASHIER_BILL" | "KITCHEN_TICKET" | "BAR_TICKET";
+export type PrinterInterface = "LAN_IP" | "USB" | "BLUETOOTH" | "WIFI";
+
+export interface PrinterConfigRecord {
+  id: string;
+  name: string;
+  type: PrinterType;
+  interfaceType: PrinterInterface;
+  ipAddress?: string;
+  port?: number;
+  paperWidth: "80mm" | "58mm";
+  autoCut: boolean;
+  openCashDrawer: boolean;
+  soundAlarm: boolean;
+  status: "CONNECTED" | "DISCONNECTED" | "WARNING";
+  lastPingMs?: number;
+}
+
+export interface ReceiptTemplateConfig {
+  storeName: string;
+  slogan: string;
+  address: string;
+  phone: string;
+  wifiName: string;
+  wifiPass: string;
+  showVietQr: boolean;
+  showLogo: boolean;
+  footerNote: string;
+}
+
+// ================= NHÂN VIÊN ORDER CẦM TAY (WAITER POS) =================
+export interface WaiterOrderItem {
+  dishId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  notes?: string;
+  selectedModifiers?: string[];
+  status?: "WAITING" | "COOKING" | "SERVED" | "OUT_OF_STOCK";
+  orderedAt?: string;
+}
+
+export interface WaiterTableOrder {
+  tableId: string;
+  tableName: string;
+  zoneName: string;
+  guestCount: number;
+  status: "EMPTY" | "OCCUPIED" | "WAITING_FOOD" | "SERVED" | "BILL_REQUESTED";
+  openedAt?: string;
+  items: WaiterOrderItem[];
+  totalAmount: number;
+  isSplit?: boolean;
+}
+
 

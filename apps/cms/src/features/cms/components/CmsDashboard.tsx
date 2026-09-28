@@ -60,39 +60,39 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
       ) : null}
 
       {/* 2. Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight">
               Tổng Quan Vận Hành Quán
             </h2>
-            <span className="px-2 py-0.5 rounded-md bg-surface-muted text-[11px] font-mono font-bold text-ink-muted border border-surface-border">
+            <span className="px-2 py-0.5 rounded-md bg-surface-muted text-xs font-mono font-bold text-ink-muted border border-surface-border shrink-0">
               Snapshot {currentVersion}
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1 shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
               Đang Mở Ca
             </span>
           </div>
-          <p className="text-xs text-ink-muted">
-            Theo dõi doanh số thời gian thực, bàn ăn đang phục vụ, cảnh báo nguyên liệu và nhịp vận hành ca làm việc.
+          <p className="text-xs text-ink-muted line-clamp-1 sm:line-clamp-none">
+            Theo dõi doanh số thời gian thực, bàn ăn đang phục vụ và nhịp vận hành ca.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
             variant="outline"
-            className="rounded-full gap-2 text-xs border-surface-border text-ink-primary hover:bg-surface-muted"
+            className="rounded-xl gap-1.5 text-xs border-surface-border text-ink-primary hover:bg-surface-muted flex-1 sm:flex-none whitespace-nowrap h-9"
             onClick={() => toast.info("Đang trích xuất báo cáo doanh thu ca làm việc ra file Excel...")}
           >
             <Icon name="download" className="w-3.5 h-3.5" />
-            <span>Xuất Báo Cáo Ca</span>
+            <span>Xuất Báo Cáo</span>
           </Button>
 
           <Button
             size="sm"
-            className="rounded-full gap-2 text-xs bg-brand-900 text-white hover:bg-brand-950 px-4 shadow-sm"
+            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white hover:bg-brand-950 px-3.5 shadow-sm flex-1 sm:flex-none whitespace-nowrap h-9"
             onClick={() => {
               if (onNavigateTab) {
                 onNavigateTab("menu");
@@ -103,29 +103,37 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
             }}
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>Cập Nhật Thực Đơn</span>
+            <span>Cập Nhật Menu</span>
           </Button>
         </div>
       </div>
 
-      {/* 3. 4 Thẻ Chỉ Số Cốt Lõi Ca Làm (Bento Grid) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 3. 4 Thẻ Chỉ Số Cốt Lõi Ca Làm (Bento Grid) - Tỉ lệ chuẩn 2 cột mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Doanh thu ca */}
-        <Panel variant="featured" padding="lg" className="flex flex-col justify-between min-h-[150px] relative overflow-hidden">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-brand-200">Doanh Thu Ca Hiện Tại</span>
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-              <Icon name="banknote" className="w-4 h-4" />
+        <Panel
+          variant="featured"
+          padding="sm"
+          className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] relative overflow-hidden cursor-pointer hover:border-brand-300 hover:shadow-md transition-all group rounded-2xl"
+          onClick={() => onNavigateTab?.("analytics")}
+        >
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-xs font-semibold text-brand-200 truncate">Doanh Thu Ca</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-white/20 transition-colors shrink-0">
+              <Icon name="banknote" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-black text-white tracking-tight">
-              4.850.000 đ
-            </h3>
-            <div className="flex items-center gap-2 mt-1.5 text-[11px] text-brand-200">
-              <span className="font-bold">32 đơn hoàn tất</span>
+            <div className="my-1 sm:my-1.5">
+              <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                4.850.000
+              </span>
+              <span className="text-xs text-brand-200 ml-1 font-normal">đ</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-brand-200 truncate font-medium">
+              <span className="truncate">32 đơn</span>
               <span>•</span>
-              <span className="font-semibold text-emerald-300">85% VietQR</span>
+              <span className="text-emerald-300">85% QR</span>
             </div>
           </div>
         </Panel>
@@ -133,44 +141,55 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
         {/* Tỷ lệ bàn */}
         <Panel
           variant="default"
-          padding="lg"
-          className="flex flex-col justify-between min-h-[150px] cursor-pointer hover:border-brand-500/40 hover:shadow-md transition-all group"
+          padding="sm"
+          className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] cursor-pointer hover:border-brand-500/40 hover:shadow-md transition-all group rounded-2xl"
           onClick={() => onNavigateTab?.("tables")}
         >
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Công Suất Phục Vụ Bàn</span>
-            <div className="w-8 h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted group-hover:bg-brand-100 group-hover:text-brand-900 transition-colors">
-              <Icon name="table" className="w-4 h-4" />
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-xs font-semibold text-ink-muted truncate">Công Suất Bàn</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted group-hover:bg-brand-100 group-hover:text-brand-900 transition-colors shrink-0">
+              <Icon name="table" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-black text-ink-primary tracking-tight">
-              8 <span className="text-lg text-ink-muted font-bold">/ 12 bàn</span>
-            </h3>
-            <div className="flex items-center gap-2 mt-1.5 text-[11px]">
-              <span className="font-extrabold text-amber-700">67% đang có khách</span>
+            <div className="my-1 sm:my-1.5">
+              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
+                8
+              </span>
+              <span className="text-xs text-ink-muted ml-1 font-normal">/ 12 bàn</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs truncate">
+              <span className="font-semibold text-amber-800">67% khách</span>
               <span>•</span>
-              <span className="text-rose-600 font-bold">2 bàn chờ tính tiền</span>
+              <span className="text-ink-secondary">2 bàn chờ</span>
             </div>
           </div>
         </Panel>
 
         {/* Bếp KDS */}
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[150px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Món Đang Nấu Tại Bếp</span>
-            <div className="w-8 h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted">
-              <Icon name="kitchen" className="w-4 h-4" />
+        <Panel
+          variant="default"
+          padding="sm"
+          className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] cursor-pointer hover:border-brand-500/40 hover:shadow-md transition-all group rounded-2xl"
+          onClick={() => onNavigateTab?.("kds")}
+        >
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-xs font-semibold text-ink-muted truncate">Món Bếp Đang Nấu</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted group-hover:bg-brand-100 group-hover:text-brand-900 transition-colors shrink-0">
+              <Icon name="kitchen" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-black text-ink-primary tracking-tight">
-              7 <span className="text-lg text-ink-muted font-bold">món</span>
-            </h3>
-            <div className="flex items-center gap-2 mt-1.5 text-[11px] text-ink-muted">
-              <span className="font-bold text-brand-900">SLA chờ TB: 8.5 phút</span>
+            <div className="my-1 sm:my-1.5">
+              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
+                7
+              </span>
+              <span className="text-xs text-ink-muted ml-1 font-normal">món</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-ink-muted truncate font-medium">
+              <span className="truncate">SLA: 8.5p</span>
               <span>•</span>
-              <span className="text-emerald-700 font-bold">Bếp ổn định</span>
+              <span className="text-emerald-700">Ổn định</span>
             </div>
           </div>
         </Panel>
@@ -178,24 +197,27 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
         {/* Cảnh báo kho & Món tạm hết */}
         <Panel
           variant="default"
-          padding="lg"
-          className="flex flex-col justify-between min-h-[150px] cursor-pointer hover:border-rose-400 hover:shadow-md transition-all group"
+          padding="sm"
+          className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] cursor-pointer hover:border-amber-400 hover:shadow-md transition-all group rounded-2xl"
           onClick={() => onNavigateTab?.("inventory")}
         >
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Cảnh Báo Kho & Tạm Hết Hàng</span>
-            <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 group-hover:scale-105 transition-transform">
-              <Icon name="alert" className="w-4 h-4" />
+          <div className="flex items-start justify-between gap-1">
+            <span className="text-xs font-semibold text-ink-muted truncate">Cảnh Báo Kho</span>
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-800 group-hover:scale-105 transition-transform shrink-0">
+              <Icon name="alert" className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
           <div>
-            <h3 className="text-3xl font-black text-rose-600 tracking-tight">
-              2 <span className="text-lg text-ink-muted font-bold">cảnh báo</span>
-            </h3>
-            <div className="flex items-center gap-2 mt-1.5 text-[11px] text-ink-muted">
-              <span className="font-bold text-rose-700">1 nguyên liệu sắp hết</span>
+            <div className="my-1 sm:my-1.5">
+              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">
+                2
+              </span>
+              <span className="text-xs text-ink-muted ml-1 font-normal">cảnh báo</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-ink-muted truncate font-medium">
+              <span className="text-amber-800 font-semibold">1 sắp hết</span>
               <span>•</span>
-              <span className="font-semibold text-ink-muted">1 món tạm ngưng</span>
+              <span className="text-ink-muted">1 ngưng</span>
             </div>
           </div>
         </Panel>
@@ -206,137 +228,148 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
         {/* Cột 1 & 2: Cảnh Báo Cần Xử Lý Ngay & Phân Trạm Bếp/Bar */}
         <div className="lg:col-span-2 space-y-6">
           {/* Cảnh báo việc cần xử lý ngay */}
-          <Panel variant="default" padding="lg" className="space-y-4">
-            <div className="flex items-center justify-between border-b border-surface-border pb-3">
+          <Panel variant="default" padding="lg" className="space-y-3.5 p-3.5 sm:p-5">
+            <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
               <div className="flex items-center gap-2">
                 <Icon name="bell" className="w-4 h-4 text-brand-900" />
-                <h3 className="font-black text-sm text-ink-primary">Cảnh Báo Vận Hành Cần Xử Lý Ngay</h3>
+                <h3 className="font-bold text-sm text-ink-primary">
+                  Cảnh Báo Vận Hành <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full ml-1">3</span>
+                </h3>
               </div>
-              <span className="text-[11px] text-ink-muted font-semibold">Tự động cập nhật thời gian thực</span>
+              <span className="hidden sm:inline text-xs text-ink-muted">Tự động cập nhật thời gian thực</span>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {/* Alert 1: Bàn gọi tính tiền */}
-              <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-rose-50/70 border border-rose-200/70 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center shrink-0">
                     <Icon name="cashier" className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h5 className="font-black text-xs text-rose-950">Bàn 202 gọi tính tiền (Chờ xác nhận VietQR)</h5>
-                    <p className="text-[11px] text-rose-800 mt-0.5">
-                      Hóa đơn: <strong>420.000 đ</strong> • Khách đã quét mã VietQR tại bàn cách đây 2 phút
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="font-bold text-xs text-ink-primary truncate">Bàn 202 gọi tính tiền</h5>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded shrink-0">VietQR</span>
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-0.5 truncate">
+                      Hóa đơn <strong>420.000đ</strong> • Quét 2 phút trước
                     </p>
                   </div>
                 </div>
                 <Button
                   size="sm"
-                  className="rounded-full bg-rose-700 hover:bg-rose-800 text-white text-xs px-3.5 shrink-0"
+                  className="rounded-xl bg-brand-900 hover:bg-brand-950 text-white text-xs px-3 h-8 shrink-0 font-bold shadow-xs whitespace-nowrap"
                   onClick={() => {
                     if (onNavigateTab) onNavigateTab("tables");
                     toast.success("Đã mở sơ đồ bàn đối soát thanh toán Bàn 202");
                   }}
                 >
-                  Xác Nhận Thu Tiền
+                  Thu Tiền
                 </Button>
               </div>
 
               {/* Alert 2: Nguyên liệu kho dưới mức tối thiểu */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-50/70 border border-amber-200/70 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
                     <Icon name="alert" className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h5 className="font-black text-xs text-amber-950">Kho nguyên liệu: Thịt Bò Phi Lê Tươi sắp hết!</h5>
-                    <p className="text-[11px] text-amber-800 mt-0.5">
-                      Tồn kho còn <strong>4.5 kg</strong> (Định mức an toàn tối thiểu là 5.0 kg)
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="font-bold text-xs text-ink-primary truncate">Thịt Bò Phi Lê sắp hết!</h5>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded shrink-0">Kho</span>
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-0.5 truncate">
+                      Tồn <strong>4.5kg</strong> • Ngưỡng an toàn 5.0kg
                     </p>
                   </div>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-full border-amber-300 text-amber-900 hover:bg-amber-100 text-xs px-3.5 shrink-0"
+                  className="rounded-xl border-amber-300 text-amber-900 bg-white hover:bg-amber-100 text-xs px-3 h-8 shrink-0 font-bold shadow-xs whitespace-nowrap"
                   onClick={() => {
                     if (onNavigateTab) onNavigateTab("inventory");
                     toast.info("Chuyển tới phân hệ Kho & Nhập Hàng để tạo phiếu nhập kho NCC");
                   }}
                 >
-                  Nhập Kho Ngay
+                  Nhập Kho
                 </Button>
               </div>
 
               {/* Alert 3: Khách đặt bàn sắp đến */}
-              <div className="p-3.5 rounded-2xl bg-brand-50/80 border border-brand-200 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-brand-100 text-brand-900 flex items-center justify-center shrink-0">
+              <div className="p-2.5 sm:p-3 rounded-2xl bg-brand-50/70 border border-brand-200/70 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-xl bg-brand-100 text-brand-900 flex items-center justify-center shrink-0">
                     <Icon name="calendarCheck" className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h5 className="font-black text-xs text-brand-950">Khách đặt bàn sắp đến trong 25 phút tới</h5>
-                    <p className="text-[11px] text-brand-800 mt-0.5">
-                      Anh Hoàng Tuấn • <strong>6 khách</strong> • Đã gán trước <strong>Bàn 04 VIP</strong> (Đã cọc 500k)
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h5 className="font-bold text-xs text-ink-primary truncate">Khách đặt sắp đến (25p)</h5>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 bg-brand-100 text-brand-900 rounded shrink-0">Đặt Bàn</span>
+                    </div>
+                    <p className="text-[11px] text-ink-muted mt-0.5 truncate">
+                      Anh Tuấn (6 khách) • Bàn 04 VIP (Cọc 500k)
                     </p>
                   </div>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-full border-brand-300 text-brand-900 hover:bg-brand-100 text-xs px-3.5 shrink-0"
+                  className="rounded-xl border-brand-300 text-brand-900 bg-white hover:bg-brand-100 text-xs px-3 h-8 shrink-0 font-bold shadow-xs whitespace-nowrap"
                   onClick={() => {
                     if (onNavigateTab) onNavigateTab("reservations");
                     toast.info("Chuyển tới Lịch Đặt Bàn để kiểm tra chỗ ngồi");
                   }}
                 >
-                  Xem Bàn Ăn
+                  Xem Bàn
                 </Button>
               </div>
             </div>
           </Panel>
 
           {/* Phân Luồng Trạm Chế Biến: Bếp vs Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Panel variant="default" padding="lg" className="space-y-3">
-              <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600" />
-                  <h4 className="font-black text-xs text-ink-primary uppercase tracking-wide">Trạm Bếp Nấu (Kitchen KDS)</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Panel variant="default" padding="lg" className="space-y-3 p-3.5 sm:p-5">
+              <div className="flex items-center justify-between border-b border-surface-border pb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                  <h4 className="font-bold text-xs text-ink-primary uppercase tracking-wide truncate">Trạm Bếp Nấu (KDS)</h4>
                 </div>
-                <span className="text-xs font-black text-brand-900">5 món chờ</span>
+                <span className="text-xs font-bold text-brand-900 shrink-0 ml-1">5 món chờ</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between border border-surface-border">
-                  <span className="font-bold text-ink-primary">Bàn 02: 2x Phở Bò Tái Nạm</span>
-                  <span className="text-[11px] font-bold text-amber-700">Đang nấu (4m)</span>
+                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between gap-2 border border-surface-border">
+                  <span className="font-semibold text-ink-primary truncate">Bàn 02: 2x Phở Bò Tái Nạm</span>
+                  <span className="text-[11px] font-bold text-amber-700 shrink-0">Nấu (4m)</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between border border-surface-border">
-                  <span className="font-bold text-ink-primary">Bàn 03: 1x Bún Chả Nướng Đặc Biệt</span>
-                  <span className="text-[11px] font-bold text-emerald-700">Đã xong (Chờ bưng)</span>
+                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between gap-2 border border-surface-border">
+                  <span className="font-semibold text-ink-primary truncate">Bàn 03: 1x Bún Chả Nướng</span>
+                  <span className="text-[11px] font-bold text-emerald-700 shrink-0">Chờ bưng</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between border border-surface-border">
-                  <span className="font-bold text-ink-primary">Bàn 201: 1x Lẩu Đuôi Bò Nồi Đất</span>
-                  <span className="text-[11px] font-bold text-ink-muted">Mới gửi (1m)</span>
+                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between gap-2 border border-surface-border">
+                  <span className="font-semibold text-ink-primary truncate">Bàn 201: 1x Lẩu Đuôi Bò</span>
+                  <span className="text-[11px] font-bold text-ink-muted shrink-0">Mới gửi (1m)</span>
                 </div>
               </div>
             </Panel>
 
-            <Panel variant="default" padding="lg" className="space-y-3">
-              <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                  <h4 className="font-black text-xs text-ink-primary uppercase tracking-wide">Trạm Pha Chế (Bar Station)</h4>
+            <Panel variant="default" padding="lg" className="space-y-3 p-3.5 sm:p-5">
+              <div className="flex items-center justify-between border-b border-surface-border pb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
+                  <h4 className="font-bold text-xs text-ink-primary uppercase tracking-wide truncate">Trạm Pha Chế (Bar)</h4>
                 </div>
-                <span className="text-xs font-black text-blue-900">2 món chờ</span>
+                <span className="text-xs font-bold text-blue-900 shrink-0 ml-1">2 món chờ</span>
               </div>
               <div className="space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between border border-surface-border">
-                  <span className="font-bold text-ink-primary">Bàn 01: 2x Cà Phê Muối Xứ Huế</span>
-                  <span className="text-[11px] font-bold text-emerald-700">Đã pha xong</span>
+                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between gap-2 border border-surface-border">
+                  <span className="font-semibold text-ink-primary truncate">Bàn 01: 2x Cà Phê Muối</span>
+                  <span className="text-[11px] font-bold text-emerald-700 shrink-0">Đã xong</span>
                 </div>
-                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between border border-surface-border">
-                  <span className="font-bold text-ink-primary">Bàn 203: 1x Trà Đào Cam Sả Ít Đá</span>
-                  <span className="text-[11px] font-bold text-blue-700">Đang lắc (2m)</span>
+                <div className="p-2.5 rounded-xl bg-surface-canvas flex items-center justify-between gap-2 border border-surface-border">
+                  <span className="font-semibold text-ink-primary truncate">Bàn 203: 1x Trà Đào Cam Sả</span>
+                  <span className="text-[11px] font-bold text-blue-700 shrink-0">Đang pha (2m)</span>
                 </div>
               </div>
             </Panel>
@@ -346,22 +379,22 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
         {/* Cột 3: Biểu Đồ Giờ Cao Điểm & Nhân Sự Đang Trong Ca */}
         <div className="space-y-6">
           {/* Biểu đồ giờ cao điểm nhà hàng */}
-          <Panel variant="default" padding="lg" className="space-y-4">
-            <div className="flex items-center justify-between border-b border-surface-border pb-3">
+          <Panel variant="default" padding="lg" className="space-y-3.5 p-3.5 sm:p-5">
+            <div className="flex items-center justify-between border-b border-surface-border pb-2.5">
               <div>
-                <h4 className="font-black text-xs text-ink-primary uppercase tracking-wide">Khung Giờ Cao Điểm (Rush Hours)</h4>
-                <p className="text-[11px] text-ink-muted">Mật độ đơn theo khung giờ trong ngày</p>
+                <h4 className="font-bold text-xs text-ink-primary uppercase tracking-wide">Giờ Cao Điểm (Rush Hours)</h4>
+                <p className="text-[11px] text-ink-muted">Mật độ đơn theo khung giờ</p>
               </div>
               <Icon name="clock" className="w-4 h-4 text-ink-subtle" />
             </div>
 
             <div className="space-y-2.5 pt-1">
               {[
-                { time: "06:30 - 08:30 (Ăn Sáng)", percent: 80, isPeak: true, label: "Đông nghẹt" },
-                { time: "08:30 - 11:30 (Cà Phê Sáng)", percent: 45, isPeak: false, label: "Ổn định" },
-                { time: "11:30 - 13:30 (Ăn Trưa Công Sở)", percent: 95, isPeak: true, label: "Đỉnh điểm ca trưa" },
-                { time: "13:30 - 17:30 (Nghỉ Giữa Ca)", percent: 25, isPeak: false, label: "Thấp điểm" },
-                { time: "17:30 - 21:00 (Ăn Tối & Nhậu)", percent: 85, isPeak: true, label: "Đông đúc" },
+                { time: "06:30 - 08:30 (Sáng)", percent: 80, isPeak: true, label: "Đông khách" },
+                { time: "08:30 - 11:30 (Cà phê)", percent: 45, isPeak: false, label: "Ổn định" },
+                { time: "11:30 - 13:30 (Trưa)", percent: 95, isPeak: true, label: "Đỉnh điểm" },
+                { time: "13:30 - 17:30 (Chiều)", percent: 25, isPeak: false, label: "Thấp điểm" },
+                { time: "17:30 - 21:00 (Tối)", percent: 85, isPeak: true, label: "Đông đúc" },
               ].map((slot, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between text-[11px] font-bold">
@@ -446,8 +479,11 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full rounded-xl text-xs font-bold text-ink-primary"
-                onClick={() => toast.info("Mở chức năng kiểm kê tiền két & Chốt ca Z-Report")}
+                className="w-full rounded-xl text-xs font-bold text-ink-primary hover:bg-brand-50 hover:text-brand-900 transition-colors"
+                onClick={() => {
+                  toast.info("Chuyển tới Báo Cáo Doanh Thu & Kiểm Kê Ca Làm Việc (Z-Report)");
+                  onNavigateTab?.("analytics");
+                }}
               >
                 Chốt Ca & Bàn Giao Két Tiền
               </Button>

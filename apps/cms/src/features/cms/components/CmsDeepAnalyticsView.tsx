@@ -317,11 +317,11 @@ export const CmsDeepAnalyticsView: React.FC = () => {
       {/* Title & Filter bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">
-              Báo Cáo Doanh Số & Kiểm Toán Tài Chính F&B
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
+              Báo Cáo Doanh Số & Tài Chính F&B
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px]">
+            <Badge variant="success" className="font-extrabold text-[10px] shrink-0">
               Thời Gian Thực
             </Badge>
           </div>
@@ -330,9 +330,9 @@ export const CmsDeepAnalyticsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           {/* Lọc thời gian */}
-          <div className="p-1 bg-surface-muted rounded-2xl flex gap-1 text-xs font-bold border border-surface-border">
+          <div className="p-1 bg-surface-muted rounded-2xl flex gap-1 text-xs font-bold border border-surface-border overflow-x-auto shrink-0">
             {(
               [
                 { id: "today", label: "Hôm nay" },
@@ -345,7 +345,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                 key={t.id}
                 type="button"
                 onClick={() => setPeriod(t.id)}
-                className={`px-3 py-1.5 rounded-xl transition-all ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 ${
                   period === t.id
                     ? "bg-white text-brand-950 font-black shadow-sm"
                     : "text-ink-muted hover:text-ink-primary"
@@ -356,50 +356,53 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             ))}
           </div>
 
-          {/* Nút Xem Phiếu Z-Report Chốt Ca */}
-          <Button
-            size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white shadow-sm"
-            onClick={() => setIsZReportOpen(true)}
-          >
-            <Icon name="fileText" className="w-3.5 h-3.5" />
-            <span>Phiếu Chốt Ca (Z-Report)</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Nút Xem Phiếu Z-Report Chốt Ca */}
+            <Button
+              size="sm"
+              className="flex-1 sm:flex-none rounded-xl gap-1.5 text-xs bg-brand-900 text-white shadow-sm"
+              onClick={() => setIsZReportOpen(true)}
+            >
+              <Icon name="fileText" className="w-3.5 h-3.5" />
+              <span>Chốt Ca (Z-Report)</span>
+            </Button>
 
-          {/* Nút Xuất CSV thực sự */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl gap-1.5 text-xs bg-white"
-            onClick={handleExportCsv}
-          >
-            <Icon name="download" className="w-3.5 h-3.5" />
-            <span>Xuất CSV</span>
-          </Button>
+            {/* Nút Xuất CSV thực sự */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-xl gap-1.5 text-xs bg-white shrink-0"
+              onClick={handleExportCsv}
+            >
+              <Icon name="download" className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Xuất CSV</span>
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-2 border-b border-surface-border pb-3 overflow-x-auto text-xs font-bold">
+      <div className="flex items-center gap-1.5 sm:gap-2 border-b border-surface-border pb-2.5 overflow-x-auto no-scrollbar text-xs font-bold">
         {[
-          { id: "overview", label: "Tổng Quan & Dòng Tiền", icon: "activity" },
-          { id: "bills", label: `Sổ Chi Tiết Hóa Đơn (${bills.length} bills)`, icon: "fileText" },
-          { id: "pnl", label: "P&L Lãi / Lỗ", icon: "trending" },
-          { id: "menu_cogs", label: "Kỹ Thuật Thực Đơn & COGS", icon: "sparkles" },
-          { id: "void_audit", label: `Kiểm Toán Món Hủy (${canceledItems.length})`, icon: "alert" },
+          { id: "overview", label: "Tổng Quan & Dòng Tiền", shortLabel: "Tổng Quan", icon: "activity" },
+          { id: "bills", label: `Sổ Chi Tiết Hóa Đơn (${bills.length})`, shortLabel: `Hóa Đơn (${bills.length})`, icon: "fileText" },
+          { id: "pnl", label: "P&L Lãi / Lỗ", shortLabel: "Lãi / Lỗ", icon: "trending" },
+          { id: "menu_cogs", label: "Kỹ Thuật Thực Đơn & COGS", shortLabel: "COGS Món", icon: "sparkles" },
+          { id: "void_audit", label: `Kiểm Toán Món Hủy (${canceledItems.length})`, shortLabel: `Món Hủy (${canceledItems.length})`, icon: "alert" },
         ].map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-2 rounded-2xl flex items-center gap-2 shrink-0 transition-all ${
+            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all whitespace-nowrap ${
               activeTab === tab.id
                 ? "bg-brand-900 text-white shadow-sm font-black"
                 : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary hover:border-brand-200"
             }`}
           >
             <Icon name={tab.icon as any} className="w-3.5 h-3.5" />
-            <span>{tab.label}</span>
+            <span className="sm:hidden">{tab.shortLabel}</span>
+            <span className="hidden sm:inline">{tab.label}</span>
           </button>
         ))}
       </div>
@@ -408,54 +411,55 @@ export const CmsDeepAnalyticsView: React.FC = () => {
       {activeTab === "overview" && (
         <div className="space-y-6">
           {/* Row 1: Thẻ Chỉ Số Tài Chính F&B Cốt Lõi */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <Panel variant="featured" padding="md" className="flex flex-col justify-between">
-              <span className="text-xs font-bold text-brand-200">Tổng Thực Thu</span>
-              <div className="my-2">
-                <span className="text-3xl font-black tracking-tight">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <Panel variant="featured" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
+              <span className="text-xs font-semibold text-brand-200 truncate">Tổng Thực Thu</span>
+              <div className="my-1 sm:my-1.5">
+                <span className="text-xl sm:text-2xl font-bold tracking-tight truncate block">
                   {report.summary.totalRevenue.toLocaleString("vi-VN")}
+                  <span className="text-xs text-brand-200 ml-1 font-normal">đ</span>
                 </span>
-                <span className="text-xs text-brand-200 ml-1">đ</span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-brand-200">
-                <span className="px-1.5 py-0.5 rounded-md bg-white/10">+18%</span>
-                <span>So với cùng kỳ</span>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-brand-200 truncate">
+                <span className="px-1.5 py-0.2 rounded-md bg-white/10 shrink-0 text-[10px] font-bold">+18%</span>
+                <span className="truncate">So với cùng kỳ</span>
               </div>
             </Panel>
 
-            <Panel variant="default" padding="md" className="flex flex-col justify-between">
-              <span className="text-xs font-bold text-ink-muted">AOV (Giá Trị TB / Đơn)</span>
-              <div className="my-2">
-                <span className="text-3xl font-black text-brand-900 tracking-tight">
+            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
+              <span className="text-xs font-semibold text-ink-muted truncate">AOV (TB / Đơn)</span>
+              <div className="my-1 sm:my-1.5">
+                <span className="text-xl sm:text-2xl font-bold text-brand-900 tracking-tight truncate block">
                   {report.summary.averageOrderValue.toLocaleString("vi-VN")}
+                  <span className="text-xs text-ink-muted ml-1 font-normal">đ</span>
                 </span>
-                <span className="text-xs text-ink-muted ml-1">đ</span>
               </div>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
-                Tổng: {report.summary.totalOrders} lượt thanh toán
+              <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full w-fit truncate">
+                {report.summary.totalOrders} lượt thanh toán
               </span>
             </Panel>
 
-            <Panel variant="default" padding="md" className="flex flex-col justify-between">
-              <span className="text-xs font-bold text-ink-muted">Tỷ Lệ Chuyển Khoản VietQR</span>
-              <div className="my-2">
-                <span className="text-3xl font-black text-ink-primary tracking-tight">72.8%</span>
-                <span className="text-xs text-ink-muted ml-1.5">doanh thu</span>
+            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
+              <span className="text-xs font-semibold text-ink-muted truncate">Tỷ Lệ VietQR</span>
+              <div className="my-1 sm:my-1.5">
+                <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">72.8%</span>
+                <span className="text-xs text-ink-muted ml-1 font-normal">doanh thu</span>
               </div>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
-                11.550.000 đ qua tài khoản
+              <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full w-fit truncate">
+                11.55tr chuyển khoản
               </span>
             </Panel>
 
-            <Panel variant="default" padding="md" className="flex flex-col justify-between">
-              <span className="text-xs font-bold text-ink-muted">Món Hủy & Thất Thoát</span>
-              <div className="my-2">
-                <span className="text-2xl font-black text-rose-600 tracking-tight">
-                  {report.summary.discountLossTotal.toLocaleString("vi-VN")} đ
+            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
+              <span className="text-xs font-semibold text-ink-muted truncate">Món Hủy & Thất Thoát</span>
+              <div className="my-1 sm:my-1.5">
+                <span className="text-xl sm:text-2xl font-bold text-amber-800 tracking-tight truncate block">
+                  {report.summary.discountLossTotal.toLocaleString("vi-VN")}
+                  <span className="text-xs text-ink-muted ml-1 font-normal">đ</span>
                 </span>
               </div>
-              <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full w-fit">
-                {report.summary.canceledItemCount} món hủy sau in bếp
+              <span className="text-xs font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full w-fit truncate">
+                {report.summary.canceledItemCount} món hủy sau bếp
               </span>
             </Panel>
           </div>

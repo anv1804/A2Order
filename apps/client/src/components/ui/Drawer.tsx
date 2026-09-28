@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { Icon } from "./Icon";
 import { DrawerProps } from "@/types";
 
 export const Drawer: React.FC<DrawerProps> = ({
@@ -26,7 +26,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-all"
           >
-            <X className="w-4 h-4" />
+            <Icon name="x" className="w-4 h-4" />
           </button>
         </div>
 

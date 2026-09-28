@@ -10,6 +10,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   currentRole,
   onChangeRole,
   enabledModules = [],
+  onCloseMobileDrawer,
 }) => {
   // Nhóm Menu chuẩn nghiệp vụ F&B dành cho Chủ Quán
   const storeOwnerGroups: MenuGroup[] = [
@@ -17,8 +18,10 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       title: "VẬN HÀNH & BÁN HÀNG",
       items: [
         { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
+        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart", badge: "Cầm tay" },
         { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table", badge: "12+" },
-        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck", badge: "3" },
+        { id: "kds", label: "Bếp Nấu (KDS)", icon: "kitchen", badge: "Live", requiredModule: "MODULE_KDS" as any },
+        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck", badge: "Hotline" },
       ],
     },
     {
@@ -29,23 +32,30 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       ],
     },
     {
+      title: "KHÁCH HÀNG & MARKETING",
+      items: [
+        { id: "customers", label: "Khách Hàng & VIP", icon: "userCheck" },
+        { id: "promotions", label: "Khuyến Mãi & Voucher", icon: "tag" },
+      ],
+    },
+    {
       title: "TÀI CHÍNH & BÁO CÁO",
       items: [
         { id: "analytics", label: "Báo Cáo Doanh Thu", icon: "trending" },
       ],
     },
     {
-      title: "HỆ THỐNG & NHÂN SỰ",
+      title: "HỆ THỐNG & CÀI ĐẶT",
       items: [
         { id: "team", label: "Nhân Sự & Quyền", icon: "users" },
+        { id: "hardware", label: "Máy In & Thiết Bị", icon: "print" },
         {
           id: "landing_page",
           label: "Landing Page & Web",
           icon: "globe",
-          badge: "SEO",
-          requiredModule: "MODULE_LANDING_PAGE" as any,
+          badge: enabledModules.includes("MODULE_LANDING_PAGE" as any) ? "SEO" : "PRO",
         },
-        { id: "settings", label: "Cài Đặt Hệ Thống & Gói Cước", icon: "settings" },
+        { id: "settings", label: "Cài Đặt & Gói Cước", icon: "settings" },
       ],
     },
   ];
@@ -84,25 +94,37 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   const currentGroups = currentRole === "SUPER_ADMIN" ? superAdminGroups : filteredStoreOwnerGroups;
 
   return (
-    <aside className="w-64 h-full bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none overflow-y-auto">
+    <aside className="w-full lg:w-72 h-full bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none overflow-y-auto">
       <div>
-        {/* Logo Donezo style */}
-        <div className="flex items-center gap-2.5 px-2 mb-6">
-          <img
-            src="/logo-symbol.jpg"
-            alt="A2Order Logo"
-            className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10"
-          />
-          <div>
-            <span className="font-black text-xl tracking-tight text-ink-primary">A2Order</span>
-            <span className="block text-[10px] font-extrabold text-brand-700 tracking-wider">
-              {currentRole === "SUPER_ADMIN" ? "SUPER ADMIN" : "STORE CMS"}
-            </span>
+        {/* Logo & Close Button (on mobile) */}
+        <div className="flex items-center justify-between mb-5 px-1">
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/logo-symbol.jpg"
+              alt="A2Order Logo"
+              className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10"
+            />
+            <div>
+              <span className="font-black text-xl tracking-tight text-ink-primary">A2Order</span>
+              <span className="block text-[10px] font-extrabold text-brand-700 tracking-wider">
+                {currentRole === "SUPER_ADMIN" ? "SUPER ADMIN" : "STORE CMS"}
+              </span>
+            </div>
           </div>
+
+          {onCloseMobileDrawer && (
+            <button
+              onClick={onCloseMobileDrawer}
+              className="w-8 h-8 rounded-full bg-surface-muted hover:bg-slate-200 flex items-center justify-center text-ink-subtle hover:text-ink-primary transition-all lg:hidden"
+              title="Đóng menu"
+            >
+              <Icon name="x" size={16} />
+            </button>
+          )}
         </div>
 
         {/* Role Switcher Pill */}
-        <div className="mb-6 p-1 bg-surface-canvas rounded-2xl border border-surface-border flex text-[11px] font-bold">
+        <div className="mb-5 p-1 bg-surface-canvas rounded-2xl border border-surface-border flex text-[11px] font-bold">
           <button
             onClick={() => {
               onChangeRole("STORE_OWNER");
@@ -135,10 +157,10 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         </div>
 
         {/* Structured Menu Groups */}
-        <div className="space-y-5">
+        <div className="space-y-4">
           {currentGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-subtle px-3 mb-1.5 block">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-subtle px-2 mb-1 block">
                 {group.title}
               </span>
               {group.items.map((item) => {
@@ -147,21 +169,22 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
                   <button
                     key={item.id}
                     onClick={() => onSelectMenu(item.id)}
-                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-bold transition-all active:scale-98 ${
                       isActive
-                        ? "bg-brand-50 text-brand-900 shadow-sm"
+                        ? "bg-brand-50 text-brand-950 font-black shadow-xs border border-brand-200/60"
                         : "text-ink-muted hover:bg-surface-canvas hover:text-ink-primary"
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2 text-left">
                       <Icon
                         name={item.icon}
-                        className={`w-4 h-4 ${isActive ? "text-brand-900" : "text-ink-subtle"}`}
+                        className={`w-4 h-4 shrink-0 ${isActive ? "text-brand-900" : "text-ink-subtle"}`}
+                        size={17}
                       />
-                      <span>{item.label}</span>
+                      <span className="truncate">{item.label}</span>
                     </div>
                     {item.badge && (
-                      <span className="px-1.5 py-0.5 text-[10px] font-extrabold rounded-md bg-brand-900 text-white">
+                      <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-brand-900 text-white whitespace-nowrap shrink-0">
                         {item.badge}
                       </span>
                     )}

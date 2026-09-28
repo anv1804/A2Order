@@ -1,7 +1,6 @@
 import React from "react";
 import { useNotificationStore } from "@/stores/notificationStore";
-import { Button, Modal } from "@/components/ui";
-import { AlertTriangle } from "lucide-react";
+import { Button, Modal, Icon } from "@/components/ui";
 
 export const ConfirmDialog: React.FC = () => {
   const { confirmState, closeConfirm } = useNotificationStore();
@@ -16,7 +15,7 @@ export const ConfirmDialog: React.FC = () => {
     >
       <div className="flex flex-col items-center text-center">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">
-          <AlertTriangle className="w-6 h-6" />
+          <Icon name="alert" className="w-6 h-6" />
         </div>
 
         <h3 className="text-lg font-bold text-slate-900 mb-1.5">{confirmState.title}</h3>

@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+import { Icon } from "@/components/ui/Icon";
 import { useNotificationStore } from "@/stores/notificationStore";
 import { ToastType } from "@/types";
 
@@ -12,23 +12,23 @@ export const ToastContainer: React.FC = () => {
     switch (type) {
       case "success":
         return {
-          icon: <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />,
+          icon: <Icon name="checkCircle" className="w-5 h-5 text-emerald-500 shrink-0" />,
           bg: "bg-emerald-950/90 border-emerald-800 text-white",
         };
       case "error":
         return {
-          icon: <AlertCircle className="w-5 h-5 text-rose-500 flex-shrink-0" />,
+          icon: <Icon name="alertCircle" className="w-5 h-5 text-rose-500 shrink-0" />,
           bg: "bg-rose-950/90 border-rose-800 text-white",
         };
       case "warning":
         return {
-          icon: <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />,
+          icon: <Icon name="alert" className="w-5 h-5 text-amber-500 shrink-0" />,
           bg: "bg-amber-950/90 border-amber-800 text-white",
         };
       case "info":
       default:
         return {
-          icon: <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />,
+          icon: <Icon name="info" className="w-5 h-5 text-blue-500 shrink-0" />,
           bg: "bg-slate-900/90 border-slate-700 text-white",
         };
     }
@@ -52,7 +52,7 @@ export const ToastContainer: React.FC = () => {
               onClick={() => removeToast(toast.id)}
               className="text-slate-400 hover:text-white p-0.5"
             >
-              <X className="w-4 h-4" />
+              <Icon name="x" className="w-4 h-4" />
             </button>
           </div>
         );

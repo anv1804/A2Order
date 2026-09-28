@@ -12,6 +12,10 @@ import { CmsStoreSettings } from "@/features/cms/components/CmsStoreSettings";
 import { CmsAdminPricingManager } from "@/features/cms/components/CmsAdminPricingManager";
 import { CmsInventoryManagement } from "@/features/cms/components/CmsInventoryManagement";
 import { CmsKdsView } from "@/features/cms/components/CmsKdsView";
+import { CmsStaffOrderView } from "@/features/cms/components/CmsStaffOrderView";
+import { CmsCustomerManagement } from "@/features/cms/components/CmsCustomerManagement";
+import { CmsPromotionsManagement } from "@/features/cms/components/CmsPromotionsManagement";
+import { CmsHardwareSettings } from "@/features/cms/components/CmsHardwareSettings";
 import { UnifiedAuthModal } from "@/features/auth/components/UnifiedAuthModal";
 import { GlobalFeedback } from "@/components/feedback";
 import { LoadingScreen } from "@/components/ui";
@@ -84,20 +88,32 @@ export const App: React.FC = () => {
               subView={
                 activeMenu === "tenants"
                   ? "tenants"
-                  : activeMenu === "software_invoices" || activeMenu === "license_manager"
+                  : activeMenu === "license_manager"
+                  ? "license_manager"
+                  : activeMenu === "software_invoices"
                   ? "software_invoices"
                   : activeMenu === "audit_logs"
                   ? "audit_logs"
                   : "telemetry"
               }
+              onTabChange={(tab) => {
+                if (tab === "telemetry") setActiveMenu("telemetry");
+                else if (tab === "tenants") setActiveMenu("tenants");
+                else if (tab === "licenses") setActiveMenu("license_manager");
+                else if (tab === "invoices") setActiveMenu("software_invoices");
+                else if (tab === "audit") setActiveMenu("audit_logs");
+              }}
             />
           )
         ) : (
           <>
             {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={setActiveMenu} />}
+            {activeMenu === "staff_order" && <CmsStaffOrderView />}
             {activeMenu === "tables" && <CmsTableManagement />}
             {activeMenu === "menu" && <CmsMenuManagement />}
             {activeMenu === "inventory" && <CmsInventoryManagement />}
+            {activeMenu === "customers" && <CmsCustomerManagement />}
+            {activeMenu === "promotions" && <CmsPromotionsManagement />}
             {activeMenu === "reservations" && <CmsReservationsManagement />}
             {activeMenu === "kds" && <CmsKdsView />}
             {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
@@ -108,6 +124,7 @@ export const App: React.FC = () => {
               />
             )}
             {activeMenu === "team" && <CmsStaffManagement />}
+            {activeMenu === "hardware" && <CmsHardwareSettings />}
             {activeMenu === "settings" && (
               <CmsStoreSettings
                 enabledModules={enabledModules}

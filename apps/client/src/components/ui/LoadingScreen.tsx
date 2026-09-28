@@ -1,10 +1,6 @@
-﻿import React from "react";
-import { Loader2 } from "lucide-react";
-
-interface LoadingScreenProps {
-  message?: string;
-  subMessage?: string;
-}
+import React from "react";
+import { Icon } from "./Icon";
+import { LoadingScreenProps, LoadingSpinnerProps } from "@/types";
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   message = "Đang khởi tạo A2Order OS...",
@@ -36,7 +32,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           A2Order <span className="text-brand-700">OS</span>
         </h2>
         <p className="text-xs font-bold text-brand-800 mt-2 flex items-center gap-1.5">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <Icon name="loader" className="w-3.5 h-3.5 animate-spin" />
           <span>{message}</span>
         </p>
 
@@ -53,7 +49,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   );
 };
 
-export const LoadingSpinner: React.FC<{ size?: "sm" | "md" | "lg"; label?: string }> = ({
+export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   size = "md",
   label,
 }) => {
