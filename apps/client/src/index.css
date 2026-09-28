@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tối ưu công thái học di động: chống chọn chữ và hiệu ứng nháy xanh khi chạm */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@a2order/server",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "@a2order/shared": "*",
+    "@fastify/cors": "^8.5.0",
+    "@fastify/jwt": "^8.0.0",
+    "@prisma/client": "^5.10.2",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.26.1",
+    "socket.io": "^4.7.4",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "prisma": "^5.10.2",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
+  }
+}

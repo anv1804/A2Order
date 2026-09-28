@@ -1,0 +1,191 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. NHÀ HÀNG / QUÁN ĂN (TENANT)
+model Store {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  phone         String?
+  address       String?
+  bankAccount   String?   // Số tài khoản ngân hàng nhận tiền VietQR
+  bankBin       String?   // Mã ngân hàng Napas
+  bankOwnerName String?   // Tên chủ tài khoản
+  status        String    @default("ACTIVE") // ACTIVE, TRIAL, SUSPENDED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  staff         Staff[]
+  tableZones    TableZone[]
+  tables        Table[]
+  categories    Category[]
+  menuItems     MenuItem[]
+  orderSessions OrderSession[]
+  bills         Bill[]
+  auditLogs     AuditLog[]
+}
+
+// 2. NHÂN VIÊN & PHÂN QUYỀN RBAC
+model Staff {
+  id           String    @id @default(uuid())
+  storeId      String
+  name         String
+  email        String?   @unique
+  passwordHash String?
+  pinCode      String?   // 4 số cho nhân viên bàn/bếp
+  role         String    // SUPER_ADMIN, STORE_OWNER, ACCOUNTANT, CASHIER, CHEF, WAITER
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  store        Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  auditLogs    AuditLog[]
+
+  @@index([storeId])
+}
+
+// 3. KHU VỰC BÀN (TẦNG 1, TẦNG 2, SÂN VƯỜN)
+model TableZone {
+  id        String   @id @default(uuid())
+  storeId   String
+  name      String
+  sortOrder Int      @default(0)
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  tables    Table[]
+
+  @@index([storeId])
+}
+
+// 4. BÀN ĂN & MÃ QR
+model Table {
+  id               String    @id @default(uuid())
+  storeId          String
+  zoneId           String
+  name             String
+  status           String    @default("EMPTY") // EMPTY, OCCUPIED, WAITING_FOOD, SERVED, PAYMENT_PENDING
+  qrSecret         String    @default(uuid())  // Token sinh mã QR chống phá hoại
+  currentSessionId String?
+
+  store            Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  zone             TableZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  orderSessions    OrderSession[]
+
+  @@index([storeId])
+}
+
+// 5. DANH MỤC MÓN ĂN
+model Category {
+  id        String     @id @default(uuid())
+  storeId   String
+  name      String
+  sortOrder Int        @default(0)
+
+  store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  menuItems MenuItem[]
+
+  @@index([storeId])
+}
+
+// 6. MÓN ĂN & ĐỒ UỐNG
+model MenuItem {
+  id          String      @id @default(uuid())
+  storeId     String
+  categoryId  String
+  name        String
+  price       Int
+  image       String?
+  isAvailable Boolean     @default(true) // Nút 86 bật/tắt hết món của bếp
+  station     String      @default("KITCHEN") // KITCHEN hoặc BAR
+  createdAt   DateTime    @default(now())
+
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+
+  @@index([storeId])
+}
+
+// 7. PHIÊN ĂN CỦA BÀN
+model OrderSession {
+  id          String       @id @default(uuid())
+  storeId     String
+  tableId     String
+  status      String       @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  checkInAt   DateTime     @default(now())
+  checkOutAt  DateTime?
+
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  table       Table        @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  batches     OrderBatch[]
+  bills       Bill[]
+
+  @@index([storeId])
+  @@index([tableId])
+}
+
+// 8. ĐỢT GỌI MÓN (ĐỢT 1, ĐỢT 2, GỌI THÊM)
+model OrderBatch {
+  id             String       @id @default(uuid())
+  orderSessionId String
+  batchNumber    Int          @default(1)
+  isCustomerQr   Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  orderSession   OrderSession @relation(fields: [orderSessionId], references: [id], onDelete: Cascade)
+  items          OrderItem[]
+}
+
+// 9. CHI TIẾT MÓN ĐƯỢC GỌI
+model OrderItem {
+  id           String      @id @default(uuid())
+  orderBatchId String
+  menuItemId   String
+  quantity     Int
+  price        Int         // Giá lưu tại thời điểm gọi món (Server-side)
+  notes        String?
+  status       String      @default("QUEUED") // QUEUED, COOKING, DONE, SERVED, CANCELLED
+  createdAt    DateTime    @default(now())
+
+  orderBatch   OrderBatch  @relation(fields: [orderBatchId], references: [id], onDelete: Cascade)
+  menuItem     MenuItem    @relation(fields: [menuItemId], references: [id])
+}
+
+// 10. HÓA ĐƠN & THANH TOÁN VIETQR
+model Bill {
+  id              String       @id @default(uuid())
+  storeId         String
+  orderSessionId  String
+  totalAmount     Int
+  discountAmount  Int          @default(0)
+  finalAmount     Int
+  paymentMethod   String       @default("CASH") // CASH, VIETQR, CARD
+  paymentStatus   String       @default("PENDING") // PENDING, PAID, FAILED
+  transactionCode String?      // Mã đối soát VietQR
+  createdAt       DateTime     @default(now())
+
+  store           Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderSession    OrderSession @relation(fields: [orderSessionId], references: [id], onDelete: Cascade)
+
+  @@index([storeId])
+}
+
+// 11. NHẬT KÝ KIỂM TOÁN CHỐNG GIAN LẬN NỘI BỘ
+model AuditLog {
+  id        String   @id @default(uuid())
+  storeId   String
+  staffId   String?
+  action    String   // CANCEL_ITEM, DISCOUNT_BILL, MERGE_TABLE
+  details   String?  // JSON string
+  createdAt DateTime @default(now())
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  staff     Staff?   @relation(fields: [staffId], references: [id])
+
+  @@index([storeId])
+}
