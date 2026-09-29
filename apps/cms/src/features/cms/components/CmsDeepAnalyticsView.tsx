@@ -315,18 +315,18 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Title & Filter bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
               Báo Cáo Doanh Số & Tài Chính F&B
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px] shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
               Thời Gian Thực
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Sổ chi tiết từng bill, doanh thu theo ca, cơ cấu VietQR Napas và kiểm toán thất thoát.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Sổ chi tiết từng bill, doanh thu theo ca, cơ cấu VietQR Napas và kiểm toán thất thoát
           </p>
         </div>
 

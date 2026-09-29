@@ -16,6 +16,7 @@ export type IconName =
   | "logout"
   | "search"
   | "lock"
+  | "pin"
   | "refresh"
   | "globe"
   | "activity"
@@ -41,6 +42,7 @@ export type IconName =
   | "info"
   | "banknote"
   | "arrowRight"
+  | "arrowLeft"
   | "phone"
   | "x"
   | "percent"
@@ -65,7 +67,14 @@ export type IconName =
   | "backspace"
   | "alertCircle"
   | "bars"
-  | "moreHorizontal";
+  | "moreHorizontal"
+  | "mic"
+  | "micOff"
+  | "volume2"
+  | "messageSquare"
+  | "chevronDown"
+  | "chevronLeft"
+  | "chevronRight";
 
 export interface IconProps {
   name: IconName;

@@ -83,6 +83,58 @@ class SoundEngine {
     osc.start(now);
     osc.stop(now + 0.4);
   }
+
+  // Tiếng bíp bộ đàm đàm thoại PTT (Push-to-Talk chirp)
+  playWalkieBeep(type: "press" | "release" = "press") {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    if (type === "press") {
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.setValueAtTime(1600, now + 0.05);
+    } else {
+      osc.frequency.setValueAtTime(1600, now);
+      osc.frequency.setValueAtTime(1000, now + 0.05);
+    }
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.12);
+  }
+
+  // Tiếng chuông gọi nội bộ (Intercom Call)
+  playIntercomRing() {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(740, now); // F#5
+    osc.frequency.setValueAtTime(880, now + 0.1); // A5
+    osc.frequency.setValueAtTime(1108, now + 0.2); // C#6
+
+    gain.gain.setValueAtTime(0.25, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.5);
+  }
 }
 
 export const sound = new SoundEngine();

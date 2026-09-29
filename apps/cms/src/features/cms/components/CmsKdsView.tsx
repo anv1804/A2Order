@@ -114,14 +114,16 @@ const MOCK_TICKETS: KdsTicket[] = [
   },
 ];
 
+import { usePersistentState } from "@/hooks/usePersistentState";
+
 function minutesAgo(ts: number): number {
   return Math.floor((Date.now() - ts) / 60000);
 }
 
 export const CmsKdsView: React.FC = () => {
-  const [tickets, setTickets] = useState<KdsTicket[]>(MOCK_TICKETS);
-  const [stationFilter, setStationFilter] = useState<"ALL" | KdsStation>("ALL");
-  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [tickets, setTickets] = usePersistentState<KdsTicket[]>("kds_tickets_data", MOCK_TICKETS);
+  const [stationFilter, setStationFilter] = usePersistentState<"ALL" | KdsStation>("kds_station_filter", "ALL");
+  const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>("kds_sound_enabled", true);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -286,27 +288,28 @@ export const CmsKdsView: React.FC = () => {
   return (
     <div className="space-y-5 animate-fadeIn pb-20">
       {/* Tiêu đề & Cài đặt âm thanh thông báo */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
               Màn Hình Bếp & Bar (KDS)
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px] animate-pulse">
-              Live
-            </Badge>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Live Đồng Bộ
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Vé chế biến tự động cập nhật từ đơn POS & QR • Xử lý theo thứ tự ưu tiên.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Vé chế biến tự động cập nhật từ đơn POS & QR • Xử lý theo thứ tự ưu tiên
           </p>
         </div>
 
         <button
           type="button"
           onClick={() => setSoundEnabled((v) => !v)}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all shadow-2xs self-start sm:self-auto ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all shadow-2xs self-start sm:self-auto active:scale-95 ${
             soundEnabled
-              ? "bg-brand-900 text-white border-brand-900 shadow-xs"
+              ? "bg-brand-950 text-white border-brand-950 shadow-xs"
               : "bg-white text-ink-muted border-surface-border hover:bg-surface-canvas"
           }`}
           aria-label="Cài đặt âm báo bếp"

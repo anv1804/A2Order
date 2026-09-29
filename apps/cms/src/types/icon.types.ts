@@ -67,7 +67,13 @@ export type IconName =
   | "bars"
   | "moreHorizontal"
   | "chevronLeft"
-  | "arrowLeft";
+  | "arrowLeft"
+  | "coffee"
+  | "cup"
+  | "cake"
+  | "utensils"
+  | "grid"
+  | "list";
 
 export interface IconProps {
   name: IconName;

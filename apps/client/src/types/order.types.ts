@@ -4,6 +4,8 @@ export interface CartItem {
   price: number;
   quantity: number;
   notes?: string;
+  selectedVariant?: string;
+  selectedOptions?: string[];
 }
 
 export interface CartDrawerProps {

@@ -359,19 +359,18 @@ export const CmsInventoryManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
-              <span className="sm:hidden">Quản Lý Kho</span>
-              <span className="hidden sm:inline">Quản Lý Kho & Nhập Hàng</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Quản Lý Kho & Nhập Hàng
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-brand-100 text-brand-800 border border-brand-200 whitespace-nowrap shrink-0">
-              Inventory Engine
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
+              Định Mức & Trừ Tồn Kho
             </span>
           </div>
-          <p className="text-xs text-ink-muted line-clamp-1 sm:line-clamp-none">
-            Kiểm soát nguyên vật liệu tươi sống, định mức an toàn và trừ tồn tự động khi bán món.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Kiểm soát nguyên vật liệu tươi sống, định mức an toàn và trừ tồn tự động khi bán món
           </p>
         </div>
 

@@ -8,6 +8,9 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   staffList,
   onPinSubmit,
   onAdminLogin,
+  onClockIn,
+  onClockOut,
+  attendanceRecords = [],
   onClose,
 }) => {
   const [authMode, setAuthMode] = useState<"pin" | "admin">("admin");
@@ -79,7 +82,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
           </div>
 
           {/* Mode Switcher Pill */}
-          <div className="mt-5 p-1 bg-white/10 backdrop-blur-sm rounded-full flex text-xs font-bold">
+          <div className="mt-5 p-1 bg-white/10 backdrop-blur-sm rounded-full flex text-xs font-bold gap-1">
             <button
               onClick={() => {
                 setAuthMode("admin");
@@ -107,7 +110,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
               }`}
             >
               <Icon name="userCheck" className="w-3.5 h-3.5" />
-              <span>Mã PIN Ca Làm</span>
+              <span>Vào Ca / Chấm Công</span>
             </button>
           </div>
         </div>
@@ -217,21 +220,26 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedStaff(null);
-                      setPin("");
-                    }}
-                    className="text-xs text-brand-700 font-bold mb-2 hover:underline"
-                  >
-                    ← Chọn nhân viên khác
-                  </button>
+                  <div className="w-full flex items-center justify-between mb-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStaff(null);
+                        setPin("");
+                      }}
+                      className="text-xs text-brand-700 font-bold hover:underline"
+                    >
+                      ← Đổi nhân viên
+                    </button>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-900 border border-brand-200">
+                      {selectedStaff.role}
+                    </span>
+                  </div>
 
                   <h4 className="text-base font-black text-ink-primary">{selectedStaff.name}</h4>
-                  <p className="text-xs text-ink-muted mb-4">Nhập mã PIN 4 số của bạn</p>
+                  <p className="text-xs text-ink-muted mb-3">Nhập mã PIN 4 số của bạn</p>
 
-                  <div className="flex gap-3 mb-6">
+                  <div className="flex gap-3 mb-5">
                     {[0, 1, 2, 3].map((index) => (
                       <div
                         key={index}
@@ -249,6 +257,39 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
                     onDeletePress={handleDelete}
                     onClearPress={handleClear}
                   />
+
+                  {/* Chấm công nhanh vào ca / kết ca */}
+                  <div className="w-full mt-4 pt-3 border-t border-surface-border grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl text-xs gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50 h-9"
+                      onClick={() => {
+                        if (onClockIn && selectedStaff) {
+                          onClockIn(selectedStaff);
+                        }
+                      }}
+                    >
+                      <Icon name="checkCircle" className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Chấm Công Vào Ca</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl text-xs gap-1.5 border-rose-300 text-rose-800 hover:bg-rose-50 h-9"
+                      onClick={() => {
+                        if (onClockOut && selectedStaff) {
+                          onClockOut(selectedStaff);
+                        }
+                      }}
+                    >
+                      <Icon name="logout" className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Chấm Công Kết Ca</span>
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

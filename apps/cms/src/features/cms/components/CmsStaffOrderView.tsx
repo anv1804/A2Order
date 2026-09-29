@@ -176,10 +176,12 @@ const INITIAL_TABLES: WaiterTableOrder[] = [
   },
 ];
 
+import { usePersistentState } from "@/hooks/usePersistentState";
+
 export const CmsStaffOrderView: React.FC = () => {
-  const [tables, setTables] = useState<WaiterTableOrder[]>(INITIAL_TABLES);
+  const [tables, setTables] = usePersistentState<WaiterTableOrder[]>("staff_order_tables_data", INITIAL_TABLES);
   const [selectedZone, setSelectedZone] = useState<string>("TẤT CẢ");
-  const [activeTableId, setActiveTableId] = useState<string>("t1");
+  const [activeTableId, setActiveTableId] = usePersistentState<string>("staff_order_active_table", "t1");
   const [activeTab, setActiveTab] = useState<"MENU" | "SERVED_ITEMS">("MENU");
 
   // Điểm then chốt giải quyết khiếu nại UX Mobile: Luồng 3 bước rõ ràng
@@ -931,25 +933,21 @@ export const CmsStaffOrderView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-4 animate-fadeIn">
-      {/* Top Header thanh điều hành Order Cầm Tay (Chỉ hiện trên Desktop/Tablet để tránh chật chội màn hình mobile) */}
-      <div className="hidden lg:flex items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-surface-border shadow-xs shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-brand-900 text-white flex items-center justify-center font-bold shadow-xs">
-            <Icon name="cart" className="w-5 h-5 text-white" />
+      {/* Top Header thanh điều hành Order Cầm Tay */}
+      <div className="hidden lg:flex items-center justify-between gap-3 pb-1 shrink-0">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              POS Cầm Tay Phục Vụ (Waiter Handheld)
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Trực Tuyến
+            </span>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-black text-ink-primary tracking-tight">
-                POS Cầm Tay Phục Vụ (Waiter Handheld)
-              </h2>
-              <Badge variant="success" className="text-[10px] font-black">
-                Trực Tuyến
-              </Badge>
-            </div>
-            <p className="text-xs text-ink-muted">
-              Nhân viên: <span className="font-bold text-ink-primary">Tuấn Anh (Ca Sáng)</span> • Đang phục vụ tại bàn
-            </p>
-          </div>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Nhân viên: <span className="font-bold text-ink-primary">Tuấn Anh (Ca Sáng)</span> • Đang phục vụ tại bàn
+          </p>
         </div>
 
         {/* Nút tác vụ nhanh */}

@@ -3,6 +3,7 @@ import { AppModule, APP_MODULE_CATALOG } from "@a2order/shared";
 import { Panel, Button, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { CmsStoreSettingsProps } from "@/types/cms.types";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   enabledModules = [AppModule.CORE_POS],
@@ -10,14 +11,14 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"store_info" | "modules_license">("store_info");
 
-  // Tab 1: Store info state
-  const [storeName, setStoreName] = useState("Phở Bò Nam Định - Chi Nhánh 1");
-  const [phone, setPhone] = useState("0912 345 678");
-  const [address, setAddress] = useState("Số 88 Phố Trần Thái Tông, Cầu Giấy, Hà Nội");
-  const [bankBin, setBankBin] = useState("970415"); // VietinBank Napas
-  const [bankAccount, setBankAccount] = useState("113366668888");
-  const [bankOwnerName, setBankOwnerName] = useState("NGUYEN THANH AN");
-  const [vatRate, setVatRate] = useState("8");
+  // Tab 1: Store info state with persistent storage
+  const [storeName, setStoreName] = usePersistentState("store_settings_name", "Phở Bò Nam Định - Chi Nhánh 1");
+  const [phone, setPhone] = usePersistentState("store_settings_phone", "0912 345 678");
+  const [address, setAddress] = usePersistentState("store_settings_address", "Số 88 Phố Trần Thái Tông, Cầu Giấy, Hà Nội");
+  const [bankBin, setBankBin] = usePersistentState("store_settings_bankBin", "970415"); // VietinBank Napas
+  const [bankAccount, setBankAccount] = usePersistentState("store_settings_bankAccount", "113366668888");
+  const [bankOwnerName, setBankOwnerName] = usePersistentState("store_settings_bankOwnerName", "NGUYEN THANH AN");
+  const [vatRate, setVatRate] = usePersistentState("store_settings_vatRate", "8");
 
   // Tab 2: Modules state
   const [selectedModules, setSelectedModules] = useState<AppModule[]>(enabledModules);
@@ -64,13 +65,18 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   return (
     <div className="space-y-6 animate-fadeIn pb-10">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
-            Cài Đặt Hệ Thống & Gói Cước
-          </h2>
-          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
-            Quản lý tài khoản VietQR nhận tiền, thông tin in bill và gói bản quyền phần mềm.
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Cài Đặt Hệ Thống & Gói Cước
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
+              VietQR & Bản Quyền
+            </span>
+          </div>
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Quản lý tài khoản VietQR nhận tiền, thông tin in bill và gói bản quyền phần mềm
           </p>
         </div>
 

@@ -1,37 +1,13 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Badge, Icon } from "@/components/ui";
 import { TableItem, CartItem } from "@/types";
-
-export interface MenuDishItem {
-  id: string;
-  name: string;
-  category: "PHO_BUN" | "NUONG_LAU" | "KHAI_VI" | "DOUONG";
-  categoryLabel: string;
-  price: number;
-  image?: string;
-  isAvailable: boolean;
-  isPopular?: boolean;
-}
-
-const MENU_DATABASE: MenuDishItem[] = [
-  { id: "m1", name: "Phở Bò Tái Nạm", category: "PHO_BUN", categoryLabel: "Phở & Bún", price: 65000, isAvailable: true, isPopular: true },
-  { id: "m2", name: "Phở Bò Tái Lăn", category: "PHO_BUN", categoryLabel: "Phở & Bún", price: 70000, isAvailable: true },
-  { id: "m3", name: "Bún Chả Hà Nội Đặc Biệt", category: "PHO_BUN", categoryLabel: "Phở & Bún", price: 60000, isAvailable: true, isPopular: true },
-  { id: "m4", name: "Bò Tái Thăn Thượng Hạng", category: "PHO_BUN", categoryLabel: "Phở & Bún", price: 85000, isAvailable: true },
-  { id: "m5", name: "Lẩu Đuôi Bò Nồi Đất", category: "NUONG_LAU", categoryLabel: "Nướng & Lẩu", price: 350000, isAvailable: true, isPopular: true },
-  { id: "m6", name: "Bò Nướng Tảng Sốt Phô Mai", category: "NUONG_LAU", categoryLabel: "Nướng & Lẩu", price: 185000, isAvailable: true },
-  { id: "m7", name: "Nem Rán Hải Sản (4 chiếc)", category: "KHAI_VI", categoryLabel: "Khai Vị", price: 55000, isAvailable: true },
-  { id: "m8", name: "Gỏi Cuốn Tôm Thịt (3 cuốn)", category: "KHAI_VI", categoryLabel: "Khai Vị", price: 45000, isAvailable: true },
-  { id: "m9", name: "Quẩy Giòn Phở", category: "KHAI_VI", categoryLabel: "Khai Vị", price: 10000, isAvailable: true },
-  { id: "m10", name: "Trứng Gà Trần", category: "KHAI_VI", categoryLabel: "Khai Vị", price: 12000, isAvailable: true },
-  { id: "m11", name: "Trà Đào Cam Sả", category: "DOUONG", categoryLabel: "Đồ Uống", price: 35000, isAvailable: true, isPopular: true },
-  { id: "m12", name: "Trà Chanh Mật Ong", category: "DOUONG", categoryLabel: "Đồ Uống", price: 25000, isAvailable: true },
-  { id: "m13", name: "Bia Tiger Bạc (Lon)", category: "DOUONG", categoryLabel: "Đồ Uống", price: 28000, isAvailable: true },
-  { id: "m14", name: "Coca Cola / Pepsi", category: "DOUONG", categoryLabel: "Đồ Uống", price: 18000, isAvailable: true },
-];
-
-const QUICK_NOTES = ["Không hành", "Nhiều nước béo", "Ít cay", "Cay nhiều", "Ít đá", "Để riêng nước dùng"];
+import { MenuDishItem, MENU_DATABASE } from "@/data/mockMenu";
+import { OrderStepNav } from "./OrderStepNav";
+import { DishCard } from "./DishCard";
+import { CartSidebar, SelectedDishItem } from "./CartSidebar";
+import { OrderReviewStep } from "./OrderReviewStep";
+import { DishDetailModal } from "./DishDetailModal";
 
 interface OrderMenuModalProps {
   isOpen: boolean;
@@ -46,10 +22,18 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   onClose,
   onSubmitOrder,
 }) => {
+  const [orderStep, setOrderStep] = useState<"TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART">("SELECT_MENU");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedItems, setSelectedItems] = useState<Record<string, { dish: MenuDishItem; quantity: number; notes: string }>>({});
-  const [activeNoteDishId, setActiveNoteDishId] = useState<string | null>(null);
+  // Quản lý giỏ hàng theo unique ID (hỗ trợ 1 món nhiều biến thể khác nhau)
+  const [selectedItems, setSelectedItems] = useState<Record<string, SelectedDishItem>>({});
+  const [activeNoteItemId, setActiveNoteItemId] = useState<string | null>(null);
+  
+  // State mở modal chi tiết món
+  const [detailContext, setDetailContext] = useState<{
+    dish: MenuDishItem;
+    editingItemId?: string;
+  } | null>(null);
 
   if (!isOpen || !table) return null;
 
@@ -67,320 +51,411 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
     return true;
   });
 
-  const handleAddDish = (dish: MenuDishItem) => {
+  // Tăng số lượng của item cụ thể trong giỏ
+  const handleIncreaseQuantity = (itemId: string) => {
     setSelectedItems((prev) => {
-      const existing = prev[dish.id];
-      if (existing) {
-        return {
-          ...prev,
-          [dish.id]: { ...existing, quantity: existing.quantity + 1 },
-        };
-      }
+      const existing = prev[itemId];
+      if (!existing) return prev;
       return {
         ...prev,
-        [dish.id]: { dish, quantity: 1, notes: "" },
+        [itemId]: { ...existing, quantity: existing.quantity + 1 },
       };
     });
   };
 
-  const handleRemoveOrDecrease = (dishId: string) => {
+  // Giảm số lượng của item cụ thể trong giỏ
+  const handleDecreaseQuantity = (itemId: string) => {
     setSelectedItems((prev) => {
-      const existing = prev[dishId];
+      const existing = prev[itemId];
       if (!existing) return prev;
       if (existing.quantity <= 1) {
         const next = { ...prev };
-        delete next[dishId];
+        delete next[itemId];
         return next;
       }
       return {
         ...prev,
-        [dishId]: { ...existing, quantity: existing.quantity - 1 },
+        [itemId]: { ...existing, quantity: existing.quantity - 1 },
       };
     });
   };
 
-  const handleSetNote = (dishId: string, note: string) => {
+  // Quick add từ nút + trên DishCard
+  const handleQuickAdd = (dish: MenuDishItem) => {
+    const existingEntry = Object.values(selectedItems).find((i) => i.dish.id === dish.id);
+    if (existingEntry) {
+      handleIncreaseQuantity(existingEntry.id);
+    } else {
+      const defaultVariant = dish.variants?.[0]?.name;
+      const defaultPrice = dish.variants?.[0]?.price || dish.price;
+      const newId = `${dish.id}_${Date.now()}`;
+      setSelectedItems((prev) => ({
+        ...prev,
+        [newId]: {
+          id: newId,
+          dish,
+          quantity: 1,
+          notes: "",
+          selectedVariant: defaultVariant,
+          unitPrice: defaultPrice,
+        },
+      }));
+    }
+  };
+
+  // Quick decrease từ nút - trên DishCard
+  const handleQuickDecrease = (dish: MenuDishItem) => {
+    const itemsOfDish = Object.values(selectedItems).filter((i) => i.dish.id === dish.id);
+    if (itemsOfDish.length === 0) return;
+    // Giảm item cuối cùng
+    const lastItem = itemsOfDish[itemsOfDish.length - 1];
+    handleDecreaseQuantity(lastItem.id);
+  };
+
+  const handleSetNote = (itemId: string, note: string) => {
     setSelectedItems((prev) => {
-      const existing = prev[dishId];
+      const existing = prev[itemId];
       if (!existing) return prev;
       return {
         ...prev,
-        [dishId]: { ...existing, notes: note },
+        [itemId]: { ...existing, notes: note },
       };
     });
   };
 
+  // Xử lý xác nhận từ DishDetailModal (chọn biến thể, options, ghi chú bếp)
+  const handleConfirmDishDetail = (payload: {
+    dish: MenuDishItem;
+    quantity: number;
+    notes: string;
+    selectedVariant?: string;
+    selectedOptions?: string[];
+    priceWithExtras: number;
+  }) => {
+    if (detailContext?.editingItemId && selectedItems[detailContext.editingItemId]) {
+      // Đang chỉnh sửa một item có sẵn trong giỏ
+      setSelectedItems((prev) => ({
+        ...prev,
+        [detailContext.editingItemId!]: {
+          ...prev[detailContext.editingItemId!],
+          quantity: payload.quantity,
+          notes: payload.notes,
+          selectedVariant: payload.selectedVariant,
+          selectedOptions: payload.selectedOptions,
+          unitPrice: payload.priceWithExtras,
+        },
+      }));
+    } else {
+      // Thêm mới một phần ăn (cho phép khách đặt cùng 1 món nhưng nhiều biến thể / ghi chú khác nhau)
+      const optionsKey = (payload.selectedOptions || []).sort().join(",");
+      const matchExisting = Object.values(selectedItems).find(
+        (i) =>
+          i.dish.id === payload.dish.id &&
+          i.selectedVariant === payload.selectedVariant &&
+          (i.selectedOptions || []).sort().join(",") === optionsKey &&
+          i.notes.trim() === payload.notes.trim()
+      );
+
+      if (matchExisting) {
+        // Trùng 100% biến thể và ghi chú => cộng dồn số lượng
+        setSelectedItems((prev) => ({
+          ...prev,
+          [matchExisting.id]: {
+            ...matchExisting,
+            quantity: matchExisting.quantity + payload.quantity,
+          },
+        }));
+      } else {
+        // Khác biến thể hoặc khác ghi chú => tạo dòng món riêng trong giỏ
+        const newId = `${payload.dish.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        setSelectedItems((prev) => ({
+          ...prev,
+          [newId]: {
+            id: newId,
+            dish: payload.dish,
+            quantity: payload.quantity,
+            notes: payload.notes,
+            selectedVariant: payload.selectedVariant,
+            selectedOptions: payload.selectedOptions,
+            unitPrice: payload.priceWithExtras,
+          },
+        }));
+      }
+    }
+    setDetailContext(null);
+  };
+
   const orderList = Object.values(selectedItems);
-  const totalAmount = orderList.reduce((sum, item) => sum + item.dish.price * item.quantity, 0);
+  const totalAmount = orderList.reduce((sum, item) => sum + (item.unitPrice || item.dish.price) * item.quantity, 0);
   const totalQuantity = orderList.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleConfirmSubmit = () => {
     if (orderList.length === 0) return;
     const cartItems: CartItem[] = orderList.map((item) => ({
-      id: item.dish.id,
+      id: item.id,
       name: item.dish.name,
-      price: item.dish.price,
+      price: item.unitPrice || item.dish.price,
       quantity: item.quantity,
       notes: item.notes || undefined,
+      selectedVariant: item.selectedVariant,
+      selectedOptions: item.selectedOptions,
     }));
     onSubmitOrder(table.name, cartItems);
     setSelectedItems({});
     onClose();
   };
 
+  const handleHeaderBack = () => {
+    if (orderStep === "REVIEW_CART") {
+      setOrderStep("SELECT_MENU");
+    } else if (orderStep === "SELECT_MENU") {
+      setOrderStep("TABLE_INFO");
+    } else {
+      onClose();
+    }
+  };
+
+  // Tính số lượng và trạng thái đã chọn cho từng card món
+  const getDishCartMeta = (dishId: string) => {
+    const items = orderList.filter((i) => i.dish.id === dishId);
+    const totalQty = items.reduce((sum, i) => sum + i.quantity, 0);
+    const distinctCount = items.length;
+    const latestItem = items[items.length - 1];
+    return {
+      totalQuantityInCart: totalQty,
+      distinctCount,
+      latestNote: latestItem?.notes,
+      latestVariant: latestItem?.selectedVariant,
+    };
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white w-full max-w-5xl h-[92vh] max-h-[820px] rounded-3xl shadow-2xl border border-surface-border flex flex-col overflow-hidden animate-scaleUp">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-5 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-white w-full max-w-5xl h-[95vh] sm:h-[92vh] max-h-[820px] rounded-2xl sm:rounded-3xl shadow-2xl border border-surface-border flex flex-col overflow-hidden animate-scaleUp">
         {/* Top Header */}
-        <div className="px-5 py-3.5 bg-surface-canvas border-b border-surface-border flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-900 text-white flex items-center justify-center font-black shadow-sm">
-              <Icon name="table" className="w-5 h-5 text-white" />
+        <div className="px-3 sm:px-5 py-3 sm:py-3.5 bg-surface-canvas border-b border-surface-border flex items-center justify-between gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Back Button */}
+            <button
+              onClick={handleHeaderBack}
+              className="flex items-center gap-1 px-2 sm:px-2.5 py-1.5 rounded-xl bg-white hover:bg-brand-50 border border-surface-border text-ink-primary hover:text-brand-900 transition-all text-xs font-black shrink-0 active:scale-95 shadow-2xs"
+              title="Quay lại bước trước hoặc về sơ đồ bàn"
+            >
+              <Icon name="arrowLeft" className="w-4 h-4 text-brand-900" size={15} />
+              <span className="hidden xs:inline">
+                {orderStep === "REVIEW_CART"
+                  ? "Chọn món"
+                  : orderStep === "SELECT_MENU"
+                  ? "Bàn"
+                  : "Sơ đồ bàn"}
+              </span>
+            </button>
+
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-brand-900 text-white flex items-center justify-center font-black shadow-sm shrink-0">
+              <Icon name="table" className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-black text-ink-primary">{table.name}</h3>
-                <Badge variant={table.status === "EMPTY" ? "default" : "brand"}>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-lg font-black text-ink-primary truncate">{table.name}</h3>
+                <span className="text-[9px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-brand-100 text-brand-900 shrink-0">
                   {table.status === "EMPTY" ? "Bàn Mới" : "Đang Phục Vụ"}
-                </Badge>
+                </span>
               </div>
-              <p className="text-xs text-ink-muted">Chọn món nhanh & gửi lệnh vào màn hình bếp (KDS)</p>
+              <p className="text-[10px] sm:text-[11px] text-ink-muted truncate hidden sm:block">Chọn món & gửi lệnh vào màn hình bếp (KDS)</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="relative w-48 sm:w-64">
-              <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm món nhanh..."
-                className="w-full h-9 pl-8 pr-3 rounded-full border border-surface-border text-xs font-semibold text-ink-primary bg-white focus:outline-none focus:border-brand-800"
-              />
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="text-right hidden sm:block">
+              <span className="text-[11px] text-ink-muted block">Tạm tính giỏ món:</span>
+              <strong className="text-sm font-black text-brand-900">{formatCurrency(totalAmount)}</strong>
             </div>
             <button
               onClick={onClose}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted hover:text-ink-primary"
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted hover:text-ink-primary shrink-0 transition-colors"
+              title="Đóng (Esc)"
             >
               <Icon name="x" className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Category Pills Bar */}
-        <div className="px-5 py-2.5 border-b border-surface-border bg-white flex items-center gap-2 overflow-x-auto shrink-0">
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setSelectedCategory(c.id)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
-                selectedCategory === c.id
-                  ? "bg-brand-900 text-white shadow-sm"
-                  : "bg-surface-canvas text-ink-muted hover:text-ink-primary border border-surface-border/60"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
+        {/* 3-STEP ORDER NAVIGATION BAR */}
+        <OrderStepNav
+          orderStep={orderStep}
+          setOrderStep={setOrderStep}
+          totalQuantity={totalQuantity}
+          totalAmount={totalAmount}
+        />
 
-        {/* Body 2 columns: Left = Menu Grid, Right = Current Order Basket */}
-        <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-          {/* Menu Dishes Grid */}
-          <div className="flex-1 p-4 overflow-y-auto bg-surface-canvas/50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredDishes.map((dish) => {
-                const inCart = selectedItems[dish.id];
-                return (
-                  <div
-                    key={dish.id}
-                    onClick={() => handleAddDish(dish)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
-                      inCart
-                        ? "bg-brand-50/70 border-brand-800 shadow-sm"
-                        : "bg-white border-surface-border hover:border-brand-300 hover:shadow-card"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-extrabold text-xs text-ink-primary line-clamp-1">{dish.name}</h4>
-                        {dish.isPopular && (
-                          <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 shrink-0">
-                            ★ HOT
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-ink-subtle">{dish.categoryLabel}</span>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between">
-                      <span className="font-black text-xs text-brand-900">{formatCurrency(dish.price)}</span>
-                      {inCart ? (
-                        <div
-                          className="flex items-center gap-1.5 bg-brand-900 text-white px-2 py-0.5 rounded-full text-xs font-black shadow-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => handleRemoveOrDecrease(dish.id)}
-                            className="w-4 h-4 flex items-center justify-center hover:opacity-80"
-                          >
-                            -
-                          </button>
-                          <span>{inCart.quantity}</span>
-                          <button
-                            onClick={() => handleAddDish(dish)}
-                            className="w-4 h-4 flex items-center justify-center hover:opacity-80"
-                          >
-                            +
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="w-7 h-7 rounded-xl bg-surface-muted hover:bg-brand-900 hover:text-white text-ink-primary flex items-center justify-center transition-colors"
-                        >
-                          <Icon name="plus" className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Right: Selected Order Basket */}
-          <div className="w-full md:w-80 lg:w-96 bg-white border-t md:border-t-0 md:border-l border-surface-border flex flex-col justify-between shrink-0">
-            <div className="p-4 border-b border-surface-border flex items-center justify-between">
-              <div>
-                <h4 className="font-black text-sm text-ink-primary">Giỏ Gọi Món</h4>
-                <p className="text-[11px] text-ink-muted">{totalQuantity} phần ăn đang chọn</p>
-              </div>
-              {orderList.length > 0 && (
+        {/* Thanh Tìm Kiếm & Lọc Danh Mục Trong Chọn Món */}
+        {orderStep === "SELECT_MENU" && (
+          <div className="p-2.5 sm:px-5 sm:py-2.5 border-b border-surface-border bg-white flex flex-col gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              {categories.map((c) => (
                 <button
-                  onClick={() => setSelectedItems({})}
-                  className="text-xs font-bold text-rose-600 hover:underline"
+                  key={c.id}
+                  onClick={() => setSelectedCategory(c.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                    selectedCategory === c.id
+                      ? "bg-brand-900 text-white shadow-sm"
+                      : "bg-surface-canvas text-ink-muted hover:text-ink-primary border border-surface-border/60"
+                  }`}
                 >
-                  Xóa tất cả
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full">
+              <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Tìm món trong thực đơn..."
+                className="w-full h-9 pl-9 pr-8 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas focus:bg-white focus:outline-none focus:border-brand-800 transition-colors"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-surface-muted text-ink-subtle flex items-center justify-center text-xs hover:text-ink-primary"
+                >
+                  ×
                 </button>
               )}
             </div>
+          </div>
+        )}
 
-            {/* List of items in basket */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3">
-              {orderList.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-ink-muted">
-                  <div className="w-12 h-12 rounded-2xl bg-surface-muted flex items-center justify-center mb-2">
-                    <Icon name="cart" className="w-6 h-6 text-ink-subtle" />
+        {/* STEP 1: TABLE INFO */}
+        {orderStep === "TABLE_INFO" && (
+          <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-surface-canvas/40 flex flex-col justify-between">
+            <div className="max-w-xl mx-auto w-full space-y-4 sm:space-y-6">
+              <div className="bg-white p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-surface-border shadow-sm space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-brand-900 text-white flex items-center justify-center font-black text-xl sm:text-2xl shadow-md shrink-0">
+                    <Icon name="table" className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
                   </div>
-                  <p className="text-xs font-bold text-ink-primary">Chưa có món nào được chọn</p>
-                  <p className="text-[11px] text-ink-subtle mt-0.5">Chạm vào món ăn ở bảng thực đơn bên trái để thêm</p>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-ink-primary">{table.name}</h3>
+                    <p className="text-xs text-ink-muted mt-0.5">
+                      Khu vực: <span className="font-bold text-ink-primary">{table.zone === "T2" ? "Tầng 2 (Sân Vườn)" : table.zone === "VIP" ? "Phòng VIP" : table.zone === "SAN_VUON" ? "Khu Ngoài Trời" : "Tầng 1 (Máy Lạnh)"}</span>
+                    </p>
+                    <div className="mt-1">
+                      <Badge variant={table.status === "EMPTY" ? "default" : "brand"}>
+                        {table.status === "EMPTY" ? "Bàn trống sẵn sàng đón khách" : "Bàn đang có khách phục vụ"}
+                      </Badge>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                orderList.map((item) => (
-                  <div key={item.dish.id} className="p-3 rounded-2xl bg-surface-canvas border border-surface-border space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="font-extrabold text-xs text-ink-primary truncate">{item.dish.name}</div>
-                        <div className="text-[11px] font-bold text-brand-900">{formatCurrency(item.dish.price * item.quantity)}</div>
-                      </div>
 
-                      <div className="flex items-center gap-1 bg-white border border-surface-border rounded-xl px-1.5 py-0.5 shadow-sm">
-                        <button
-                          onClick={() => handleRemoveOrDecrease(item.dish.id)}
-                          className="w-5 h-5 flex items-center justify-center text-xs font-black text-ink-muted hover:text-rose-600"
-                        >
-                          -
-                        </button>
-                        <span className="w-5 text-center text-xs font-black text-ink-primary">{item.quantity}</span>
-                        <button
-                          onClick={() => handleAddDish(item.dish)}
-                          className="w-5 h-5 flex items-center justify-center text-xs font-black text-ink-muted hover:text-brand-900"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick Note Editor */}
-                    <div className="pt-1.5 border-t border-surface-border/50">
-                      {activeNoteDishId === item.dish.id ? (
-                        <div className="space-y-1.5">
-                          <input
-                            type="text"
-                            value={item.notes}
-                            onChange={(e) => handleSetNote(item.dish.id, e.target.value)}
-                            placeholder="Gõ ghi chú bếp..."
-                            className="w-full h-7 px-2 text-[11px] rounded-lg border border-brand-800 bg-white focus:outline-none font-medium"
-                            autoFocus
-                          />
-                          <div className="flex flex-wrap gap-1">
-                            {QUICK_NOTES.map((n) => (
-                              <button
-                                key={n}
-                                onClick={() => handleSetNote(item.dish.id, n)}
-                                className="px-1.5 py-0.5 rounded-md bg-white border border-surface-border text-[9px] font-bold text-ink-muted hover:text-brand-900"
-                              >
-                                {n}
-                              </button>
-                            ))}
-                            <button
-                              onClick={() => setActiveNoteDishId(null)}
-                              className="text-[9px] font-bold text-brand-800 ml-auto hover:underline"
-                            >
-                              Xong
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => setActiveNoteDishId(item.dish.id)}
-                          className="text-[10px] text-ink-muted hover:text-brand-900 cursor-pointer flex items-center justify-between"
-                        >
-                          <span className={item.notes ? "font-bold text-amber-700" : "italic"}>
-                            {item.notes ? `📝 ${item.notes}` : "+ Thêm ghi chú bếp..."}
-                          </span>
-                          <Icon name="edit" className="w-3 h-3 text-ink-subtle" />
-                        </div>
-                      )}
-                    </div>
+                <div className="pt-4 border-t border-surface-border grid grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 bg-surface-canvas rounded-2xl">
+                    <span className="text-ink-muted text-[11px] block">Sức chứa tối đa:</span>
+                    <strong className="text-sm font-black text-ink-primary">4 - 6 Chỗ Ngồi</strong>
                   </div>
-                ))
-              )}
+                  <div className="p-3 bg-surface-canvas rounded-2xl">
+                    <span className="text-ink-muted text-[11px] block">Món đã chọn:</span>
+                    <strong className="text-sm font-black text-brand-900">{totalQuantity} món ({formatCurrency(totalAmount)})</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-brand-50/70 border border-brand-200/80 p-3.5 sm:p-4 rounded-2xl text-xs text-brand-950 flex items-start gap-2.5 sm:gap-3">
+                <Icon name="info" className="w-5 h-5 text-brand-800 shrink-0 mt-0.5" />
+                <div>
+                  <h5 className="font-bold">Quy trình phục vụ bàn chuyên nghiệp:</h5>
+                  <p className="text-brand-900/80 text-[11px] mt-0.5">
+                    1. Xác nhận số lượng khách → 2. Chuyển sang Tab <strong>"Chọn Món"</strong> để gọi món cho khách → 3. Kiểm tra giỏ hàng và bấm <strong>"Gửi Bếp"</strong> để KDS nhận đơn.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Bottom Total & Gửi Bếp Button */}
-            <div className="p-4 border-t border-surface-border bg-surface-canvas space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-ink-muted font-bold">Tổng cộng:</span>
-                <span className="text-lg font-black text-brand-950">{formatCurrency(totalAmount)}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="md"
-                  variant="outline"
-                  className="rounded-2xl text-xs w-1/3"
-                  onClick={onClose}
-                >
-                  Đóng
-                </Button>
-
-                <Button
-                  size="md"
-                  disabled={orderList.length === 0}
-                  className="flex-1 rounded-2xl bg-brand-900 hover:bg-brand-950 text-white font-black text-xs gap-2 shadow-sm"
-                  onClick={handleConfirmSubmit}
-                >
-                  <Icon name="send" className="w-4 h-4 text-white" />
-                  <span>GỬI BẾP ({totalQuantity})</span>
-                </Button>
-              </div>
+            <div className="max-w-xl mx-auto w-full pt-4 flex items-center justify-between border-t border-surface-border">
+              <Button size="md" variant="outline" className="rounded-2xl text-xs" onClick={onClose}>
+                Hủy Bỏ
+              </Button>
+              <Button
+                size="md"
+                className="rounded-2xl bg-brand-900 text-white font-black text-xs gap-1.5 shadow-sm hover:bg-black"
+                onClick={() => setOrderStep("SELECT_MENU")}
+              >
+                <span>Tiếp Tục Chọn Món Cho Bàn</span>
+                <Icon name="arrowRight" className="w-4 h-4 text-white" />
+              </Button>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* STEP 2: MENU DISHES SELECTOR */}
+        {orderStep === "SELECT_MENU" && (
+          <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden relative">
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto bg-surface-canvas/50 pb-20 md:pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+                {filteredDishes.map((dish) => {
+                  const meta = getDishCartMeta(dish.id);
+                  return (
+                    <DishCard
+                      key={dish.id}
+                      dish={dish}
+                      totalQuantityInCart={meta.totalQuantityInCart}
+                      distinctCount={meta.distinctCount}
+                      latestNote={meta.latestNote}
+                      latestVariant={meta.latestVariant}
+                      onQuickAdd={handleQuickAdd}
+                      onQuickDecrease={handleQuickDecrease}
+                      onOpenDetail={(d) => setDetailContext({ dish: d })}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            <CartSidebar
+              orderList={orderList}
+              totalQuantity={totalQuantity}
+              totalAmount={totalAmount}
+              onIncreaseQuantity={handleIncreaseQuantity}
+              onDecreaseQuantity={handleDecreaseQuantity}
+              onSetNote={handleSetNote}
+              onClearAll={() => setSelectedItems({})}
+              activeNoteItemId={activeNoteItemId}
+              setActiveNoteItemId={setActiveNoteItemId}
+              onOpenDishDetail={(d, item) => setDetailContext({ dish: d, editingItemId: item?.id })}
+              onGoToReview={() => setOrderStep("REVIEW_CART")}
+              onGoToTableInfo={() => setOrderStep("TABLE_INFO")}
+            />
+          </div>
+        )}
+
+        {/* STEP 3: REVIEW CART & SEND TO KITCHEN */}
+        {orderStep === "REVIEW_CART" && (
+          <OrderReviewStep
+            table={table}
+            orderList={orderList}
+            totalQuantity={totalQuantity}
+            totalAmount={totalAmount}
+            onGoBackToMenu={() => setOrderStep("SELECT_MENU")}
+            onConfirmSubmit={handleConfirmSubmit}
+          />
+        )}
       </div>
+
+      {/* Modal chi tiết biến thể / option / ghi chú bếp (Render cùng cấp root overlay z-50 che phủ hoàn toàn, không bị khuất) */}
+      {detailContext && (
+        <DishDetailModal
+          isOpen={Boolean(detailContext)}
+          dish={detailContext.dish}
+          initialQuantity={detailContext.editingItemId ? selectedItems[detailContext.editingItemId]?.quantity : 1}
+          initialNotes={detailContext.editingItemId ? selectedItems[detailContext.editingItemId]?.notes : ""}
+          initialVariant={detailContext.editingItemId ? selectedItems[detailContext.editingItemId]?.selectedVariant : undefined}
+          initialOptions={detailContext.editingItemId ? selectedItems[detailContext.editingItemId]?.selectedOptions : undefined}
+          onClose={() => setDetailContext(null)}
+          onConfirm={handleConfirmDishDetail}
+        />
+      )}
     </div>
   );
 };

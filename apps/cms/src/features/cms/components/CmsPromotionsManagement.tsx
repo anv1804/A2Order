@@ -256,31 +256,29 @@ export const CmsPromotionsManagement: React.FC = () => {
   return (
     <div className="space-y-5 animate-fadeIn pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-2xl font-bold text-ink-primary tracking-tight">
-              <span className="sm:hidden">Khuyến Mãi & Voucher</span>
-              <span className="hidden sm:inline">Khuyến Mãi & Voucher Giảm Giá</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Khuyến Mãi & Voucher Giảm Giá
             </h2>
-            <Badge variant="success" className="text-xs font-semibold whitespace-nowrap shrink-0">
-              Đồng Bộ POS
-            </Badge>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
+              Đồng Bộ POS Tức Thì
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
-            Thiết lập chương trình giảm giá theo %, tiền mặt, giờ vàng và voucher.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Thiết lập chương trình giảm giá theo %, tiền mặt, giờ vàng và voucher
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap shrink-0"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
             onClick={handleOpenCreateModal}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">+ Tạo Voucher</span>
-            <span className="hidden sm:inline">Tạo Khuyến Mãi Mới</span>
+            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+            <span>+ Tạo Khuyến Mãi Mới</span>
           </Button>
         </div>
       </div>

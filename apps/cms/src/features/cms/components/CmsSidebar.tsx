@@ -71,22 +71,27 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     }))
     .filter((group) => group.items.length > 0);
 
-  // Nhóm Menu dành cho Super Admin Nền Tảng
+  // Nhóm Menu dành cho Super Admin Nền Tảng (Chuẩn SaaS F&B)
   const superAdminGroups: MenuGroup[] = [
     {
-      title: "GIÁM SÁT HẠ TẦNG",
+      title: "TỔNG QUAN NỀN TẢNG",
       items: [
-        { id: "telemetry", label: "Hạ Tầng & Ping", icon: "activity", badge: "12ms" },
-        { id: "audit_logs", label: "Kiểm Toán Hệ Thống", icon: "shield" },
+        { id: "telemetry", label: "Tổng Quan & Doanh Số SaaS", icon: "chart" },
+        { id: "scenarios", label: "Kịch Bản & Món Mẫu F&B", icon: "clipboard" },
       ],
     },
     {
-      title: "ĐỐI TÁC & BẢNG GIÁ",
+      title: "ĐỐI TÁC & THUÊ BAO",
       items: [
-        { id: "tenants", label: "Danh Sách Quán Thuê", icon: "building" },
-        { id: "pricing_config", label: "Bảng Giá & Voucher", icon: "tag" },
-        { id: "license_manager", label: "Cấp License Key", icon: "key" },
-        { id: "software_invoices", label: "Hóa Đơn Thu Tiền", icon: "fileText" },
+        { id: "tenants", label: "Quản Lý Quán & Chuỗi", icon: "building", badge: "4" },
+        { id: "software_invoices", label: "Hóa Đơn & Thu Phí", icon: "fileText", badge: "3" },
+        { id: "pricing_config", label: "Bảng Giá Gói & Voucher", icon: "tag" },
+      ],
+    },
+    {
+      title: "HỆ THỐNG & KỸ THUẬT",
+      items: [
+        { id: "audit_logs", label: "Kiểm Toán & Giám Sát", icon: "shield" },
       ],
     },
   ];
@@ -207,18 +212,18 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Card: Bảo mật hoặc License Status */}
+      {/* Bottom Card: Bản quyền & Hỗ trợ kỹ thuật */}
       <div className="p-4 rounded-3xl bg-brand-950 text-white relative overflow-hidden shadow-elevated mt-6 shrink-0">
         <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-brand-800/30 blur-xl" />
         <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center mb-2.5">
           <Icon name="shield" className="w-4 h-4 text-emerald-400" />
         </div>
         <h4 className="text-xs font-extrabold leading-snug">
-          {currentRole === "SUPER_ADMIN" ? "Zero-Knowledge Mode" : "Bản Quyền PRO 2026"}
+          {currentRole === "SUPER_ADMIN" ? "A2Order Platform Cloud" : "Bản Quyền PRO 2026"}
         </h4>
         <p className="text-[10px] text-brand-200/80 mt-1 mb-2">
           {currentRole === "SUPER_ADMIN"
-            ? "Dữ liệu doanh thu của các quán được bảo mật tuyệt đối."
+            ? "Phiên bản v2.4.0 • Uptime 99.98% • Hotline Kỹ Thuật: 1900 8866"
             : "Còn 28 ngày thuê • Tự động gia hạn qua VietQR."}
         </p>
       </div>

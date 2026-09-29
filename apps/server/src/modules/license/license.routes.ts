@@ -1,8 +1,65 @@
-﻿import { FastifyInstance } from "fastify";
+import { FastifyInstance } from "fastify";
 import { prisma } from "../../core/database/prismaClient.js";
-import { LicensePlan, LicenseStatus, InvoiceStatus, AppModule, APP_MODULE_CATALOG } from "@a2order/shared";
+import { licenseRepository, invoiceRepository } from "../../core/database/repositoryFactory.js";
+import { LicensePlan, LicenseStatus, InvoiceStatus, AppModule, APP_MODULE_CATALOG, SoftwareInvoiceRecord } from "@a2order/shared";
 
 export async function licenseRoutes(fastify: FastifyInstance) {
+  /**
+   * 0. LẤY TẤT CẢ GIẤY PHÉP BẢN QUYỀN
+   * GET /api/licenses
+   */
+  fastify.get("/", async (_request, reply) => {
+    try {
+      const licenses = await licenseRepository.getAll();
+      return { success: true, count: licenses.length, data: licenses };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * TẠO MỚI GIẤY PHÉP BẢN QUYỀN
+   * POST /api/licenses
+   */
+  fastify.post("/", async (request, reply) => {
+    try {
+      const body = request.body as any;
+      const created = await licenseRepository.create(body);
+      return { success: true, data: created };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * GIA HẠN GIẤY PHÉP BẢN QUYỀN
+   * POST /api/licenses/:keyCode/renew
+   */
+  fastify.post("/:keyCode/renew", async (request, reply) => {
+    const { keyCode } = request.params as { keyCode: string };
+    const { durationMonths } = (request.body as { durationMonths?: number }) || {};
+    try {
+      const renewed = await licenseRepository.renew(keyCode, durationMonths || 12);
+      if (!renewed) return reply.status(404).send({ success: false, error: "License not found" });
+      return { success: true, data: renewed };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * LẤY TOÀN BỘ HÓA ĐƠN SAAS
+   * GET /api/licenses/invoices/all
+   */
+  fastify.get("/invoices/all", async (_request, reply) => {
+    try {
+      const invoices = await invoiceRepository.getAll();
+      return { success: true, count: invoices.length, data: invoices };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
   /**
    * 1. LẤY THÔNG TIN LICENSE & CÁC MODULE KÍCH HOẠT CỦA QUÁN
    */

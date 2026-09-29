@@ -87,10 +87,11 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
                   settings: "Cài Đặt Quán",
                   landing_builder: "Trang Web Quán",
                   super_admin: "Super Admin",
-                  telemetry: "Hạ Tầng & Ping",
-                  license_manager: "Quản Lý License",
-                  software_invoices: "Hóa Đơn Thuê",
-                  audit_logs: "Nhật Ký Kiểm Toán",
+                  telemetry: "Tổng Quan & Doanh Số SaaS",
+                  tenants: "Quản Lý Quán & Chuỗi",
+                  software_invoices: "Hóa Đơn & Thu Phí",
+                  pricing_config: "Bảng Giá Gói & Voucher",
+                  audit_logs: "Kiểm Toán & Giám Sát",
                 } as Record<string, string>)[activeMenu] || "Phở Nam Định"
               }
             />

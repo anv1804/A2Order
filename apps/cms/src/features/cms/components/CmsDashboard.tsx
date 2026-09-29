@@ -60,22 +60,22 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
       ) : null}
 
       {/* 2. Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-2">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
               Tổng Quan Vận Hành Quán
             </h2>
-            <span className="px-2 py-0.5 rounded-md bg-surface-muted text-xs font-mono font-bold text-ink-muted border border-surface-border shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-surface-canvas text-ink-muted border border-surface-border font-mono shadow-2xs">
               Snapshot {currentVersion}
             </span>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 flex items-center gap-1 shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
               Đang Mở Ca
             </span>
           </div>
-          <p className="text-xs text-ink-muted line-clamp-1 sm:line-clamp-none">
-            Theo dõi doanh số thời gian thực, bàn ăn đang phục vụ và nhịp vận hành ca.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Theo dõi doanh số thời gian thực, bàn ăn đang phục vụ và nhịp vận hành ca
           </p>
         </div>
 
@@ -83,16 +83,16 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl gap-1.5 text-xs border-surface-border text-ink-primary hover:bg-surface-muted flex-1 sm:flex-none whitespace-nowrap h-9"
+            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
             onClick={() => toast.info("Đang trích xuất báo cáo doanh thu ca làm việc ra file Excel...")}
           >
-            <Icon name="download" className="w-3.5 h-3.5" />
+            <Icon name="download" className="w-3.5 h-3.5 text-ink-muted" />
             <span>Xuất Báo Cáo</span>
           </Button>
 
           <Button
             size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white hover:bg-brand-950 px-3.5 shadow-sm flex-1 sm:flex-none whitespace-nowrap h-9"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all"
             onClick={() => {
               if (onNavigateTab) {
                 onNavigateTab("menu");
@@ -102,7 +102,7 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
               }
             }}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
+            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
             <span>Cập Nhật Menu</span>
           </Button>
         </div>

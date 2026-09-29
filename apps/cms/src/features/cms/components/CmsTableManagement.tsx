@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { TableZoneData } from "@/types/cms.types";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 export const CmsTableManagement: React.FC = () => {
-  const [zones, setZones] = useState<TableZoneData[]>([
+  const [zones, setZones] = usePersistentState<TableZoneData[]>("tables_zones_data", [
     {
       id: "z1",
       name: "Tầng 1 (Khu Máy Lạnh)",
@@ -144,18 +145,18 @@ export const CmsTableManagement: React.FC = () => {
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* Title & Header Actions */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-1">
-        <div className="space-y-0.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-xl font-bold text-ink-primary tracking-tight">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
               Sơ Đồ Bàn Ăn & Mã QR
             </h2>
-            <Badge variant="success" className="font-bold text-[10px] shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
               Tự Động Sinh QR
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs text-ink-muted line-clamp-1 sm:line-clamp-none">
-            Cấu hình khu vực bàn, in mã QR dán tại bàn để khách tự quét gọi món & thanh toán.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Cấu hình khu vực bàn, in mã QR dán tại bàn để khách tự quét gọi món & thanh toán
           </p>
         </div>
 
@@ -163,19 +164,19 @@ export const CmsTableManagement: React.FC = () => {
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl gap-1.5 text-xs border-surface-border text-ink-primary hover:bg-surface-muted bg-white flex-1 sm:flex-none h-9 whitespace-nowrap"
+            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
             onClick={() => setIsBatchQrModalOpen(true)}
           >
-            <Icon name="print" className="w-3.5 h-3.5" />
+            <Icon name="print" className="w-3.5 h-3.5 text-ink-muted" />
             <span>In QR<span className="hidden sm:inline"> Hàng Loạt</span></span>
           </Button>
 
           <Button
             size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white hover:bg-brand-950 shadow-sm flex-1 sm:flex-none h-9 whitespace-nowrap"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all"
             onClick={() => setIsAddZoneOpen(true)}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
+            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
             <span>Thêm Khu Vực</span>
           </Button>
         </div>

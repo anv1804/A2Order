@@ -1,27 +1,65 @@
-import React, { useState, useEffect } from "react";
-import { CmsLayout, CmsDashboard } from "@/features/cms";
-import { CmsSuperAdminView } from "@/features/cms/components/CmsSuperAdminView";
-import { CmsDeepAnalyticsView } from "@/features/cms/components/CmsDeepAnalyticsView";
-import { CmsLandingPageEditor } from "@/features/cms/components/CmsLandingPageEditor";
-import { CmsModuleManager } from "@/features/cms/components/CmsModuleManager";
-import { CmsTableManagement } from "@/features/cms/components/CmsTableManagement";
-import { CmsMenuManagement } from "@/features/cms/components/CmsMenuManagement";
-import { CmsReservationsManagement } from "@/features/cms/components/CmsReservationsManagement";
-import { CmsStaffManagement } from "@/features/cms/components/CmsStaffManagement";
-import { CmsStoreSettings } from "@/features/cms/components/CmsStoreSettings";
-import { CmsAdminPricingManager } from "@/features/cms/components/CmsAdminPricingManager";
-import { CmsInventoryManagement } from "@/features/cms/components/CmsInventoryManagement";
-import { CmsKdsView } from "@/features/cms/components/CmsKdsView";
-import { CmsStaffOrderView } from "@/features/cms/components/CmsStaffOrderView";
-import { CmsCustomerManagement } from "@/features/cms/components/CmsCustomerManagement";
-import { CmsPromotionsManagement } from "@/features/cms/components/CmsPromotionsManagement";
-import { CmsHardwareSettings } from "@/features/cms/components/CmsHardwareSettings";
+import React, { useState, useEffect, lazy, Suspense } from "react";
+import { CmsLayout } from "@/features/cms/components/CmsLayout";
 import { UnifiedAuthModal } from "@/features/auth/components/UnifiedAuthModal";
 import { GlobalFeedback } from "@/components/feedback";
-import { LoadingScreen } from "@/components/ui";
+import { LoadingScreen, CmsPageSkeleton } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { StaffMember } from "@/types";
 import { AppModule } from "@a2order/shared";
+import { usePersistentState } from "@/hooks/usePersistentState";
+
+// Tải bất đồng bộ (Lazy-load & Code-splitting) các phân hệ CMS để giảm tải bundle và hiển thị Skeleton tức thì
+const CmsDashboard = lazy(() => import("@/features/cms").then((m) => ({ default: m.CmsDashboard })));
+const CmsSuperAdminView = lazy(() =>
+  import("@/features/cms/components/CmsSuperAdminView").then((m) => ({ default: m.CmsSuperAdminView }))
+);
+const CmsAdminPricingManager = lazy(() =>
+  import("@/features/cms/components/CmsAdminPricingManager").then((m) => ({ default: m.CmsAdminPricingManager }))
+);
+const ScenarioTemplateManager = lazy(() =>
+  import("@/features/cms/components/superAdmin/ScenarioTemplateManager").then((m) => ({
+    default: m.ScenarioTemplateManager,
+  }))
+);
+const CmsDeepAnalyticsView = lazy(() =>
+  import("@/features/cms/components/CmsDeepAnalyticsView").then((m) => ({ default: m.CmsDeepAnalyticsView }))
+);
+const CmsLandingPageEditor = lazy(() =>
+  import("@/features/cms/components/CmsLandingPageEditor").then((m) => ({ default: m.CmsLandingPageEditor }))
+);
+const CmsTableManagement = lazy(() =>
+  import("@/features/cms/components/CmsTableManagement").then((m) => ({ default: m.CmsTableManagement }))
+);
+const CmsMenuManagement = lazy(() =>
+  import("@/features/cms/components/CmsMenuManagement").then((m) => ({ default: m.CmsMenuManagement }))
+);
+const CmsReservationsManagement = lazy(() =>
+  import("@/features/cms/components/CmsReservationsManagement").then((m) => ({ default: m.CmsReservationsManagement }))
+);
+const CmsStaffManagement = lazy(() =>
+  import("@/features/cms/components/CmsStaffManagement").then((m) => ({ default: m.CmsStaffManagement }))
+);
+const CmsStoreSettings = lazy(() =>
+  import("@/features/cms/components/CmsStoreSettings").then((m) => ({ default: m.CmsStoreSettings }))
+);
+const CmsInventoryManagement = lazy(() =>
+  import("@/features/cms/components/CmsInventoryManagement").then((m) => ({ default: m.CmsInventoryManagement }))
+);
+const CmsKdsView = lazy(() =>
+  import("@/features/cms/components/CmsKdsView").then((m) => ({ default: m.CmsKdsView }))
+);
+const CmsStaffOrderView = lazy(() =>
+  import("@/features/cms/components/CmsStaffOrderView").then((m) => ({ default: m.CmsStaffOrderView }))
+);
+const CmsCustomerManagement = lazy(() =>
+  import("@/features/cms/components/CmsCustomerManagement").then((m) => ({ default: m.CmsCustomerManagement }))
+);
+const CmsPromotionsManagement = lazy(() =>
+  import("@/features/cms/components/CmsPromotionsManagement").then((m) => ({ default: m.CmsPromotionsManagement }))
+);
+const CmsHardwareSettings = lazy(() =>
+  import("@/features/cms/components/CmsHardwareSettings").then((m) => ({ default: m.CmsHardwareSettings }))
+);
 
 const MOCK_STAFF: StaffMember[] = [
   { id: "s1", name: "Nguyễn Thành An", role: "Chủ quán" },
@@ -31,15 +69,14 @@ const MOCK_STAFF: StaffMember[] = [
 
 export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [currentRole, setCurrentRole] = useState<"STORE_OWNER" | "SUPER_ADMIN">("STORE_OWNER");
-  const [activeMenu, setActiveMenu] = useState<string>("dashboard");
+  const [currentRole, setCurrentRole] = usePersistentState<"STORE_OWNER" | "SUPER_ADMIN">("currentRole", "STORE_OWNER");
+  const [activeMenu, setActiveMenu] = usePersistentState<string>("activeMenu", "reservations");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [enabledModules, setEnabledModules] = useState<AppModule[]>([
+  const [enabledModules, setEnabledModules] = usePersistentState<AppModule[]>("enabledModules", [
     AppModule.CORE_POS,
     AppModule.MODULE_KDS,
     AppModule.MODULE_QR_ORDER,
     AppModule.MODULE_ADVANCED_ANALYTICS,
-    // Chưa mua MODULE_LANDING_PAGE để test tính năng Paywall trả phí
   ]);
 
   useEffect(() => {
@@ -80,59 +117,69 @@ export const App: React.FC = () => {
           toast.info(`Đã chuyển sang chế độ ${role === "SUPER_ADMIN" ? "Super Admin Nền Tảng" : "Chủ Quán"}`);
         }}
       >
-        {currentRole === "SUPER_ADMIN" ? (
-          activeMenu === "pricing_config" ? (
-            <CmsAdminPricingManager />
+        <Suspense fallback={<CmsPageSkeleton />}>
+          {currentRole === "SUPER_ADMIN" ? (
+            activeMenu === "pricing_config" ? (
+              <CmsAdminPricingManager />
+            ) : activeMenu === "scenarios" ? (
+              <ScenarioTemplateManager />
+            ) : (
+              <CmsSuperAdminView
+                subView={
+                  activeMenu === "tenants"
+                    ? "tenants"
+                    : activeMenu === "license_manager"
+                    ? "license_manager"
+                    : activeMenu === "software_invoices"
+                    ? "software_invoices"
+                    : activeMenu === "audit_logs"
+                    ? "audit_logs"
+                    : "telemetry"
+                }
+                onTabChange={(tab) => {
+                  if (tab === "telemetry") setActiveMenu("telemetry");
+                  else if (tab === "tenants") setActiveMenu("tenants");
+                  else if (tab === "licenses") setActiveMenu("license_manager");
+                  else if (tab === "invoices") setActiveMenu("software_invoices");
+                  else if (tab === "audit") setActiveMenu("audit_logs");
+                  else if (tab === "scenarios") setActiveMenu("scenarios");
+                }}
+                onImpersonateStore={(store) => {
+                  setCurrentRole("STORE_OWNER");
+                  setActiveMenu("dashboard");
+                  toast.success(`Đã truy cập quản trị quán: ${store.name} (Chế độ hỗ trợ kỹ thuật)`);
+                }}
+              />
+            )
           ) : (
-            <CmsSuperAdminView
-              subView={
-                activeMenu === "tenants"
-                  ? "tenants"
-                  : activeMenu === "license_manager"
-                  ? "license_manager"
-                  : activeMenu === "software_invoices"
-                  ? "software_invoices"
-                  : activeMenu === "audit_logs"
-                  ? "audit_logs"
-                  : "telemetry"
-              }
-              onTabChange={(tab) => {
-                if (tab === "telemetry") setActiveMenu("telemetry");
-                else if (tab === "tenants") setActiveMenu("tenants");
-                else if (tab === "licenses") setActiveMenu("license_manager");
-                else if (tab === "invoices") setActiveMenu("software_invoices");
-                else if (tab === "audit") setActiveMenu("audit_logs");
-              }}
-            />
-          )
-        ) : (
-          <>
-            {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={setActiveMenu} />}
-            {activeMenu === "staff_order" && <CmsStaffOrderView />}
-            {activeMenu === "tables" && <CmsTableManagement />}
-            {activeMenu === "menu" && <CmsMenuManagement />}
-            {activeMenu === "inventory" && <CmsInventoryManagement />}
-            {activeMenu === "customers" && <CmsCustomerManagement />}
-            {activeMenu === "promotions" && <CmsPromotionsManagement />}
-            {activeMenu === "reservations" && <CmsReservationsManagement />}
-            {activeMenu === "kds" && <CmsKdsView />}
-            {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
-            {activeMenu === "landing_page" && (
-              <CmsLandingPageEditor
-                isUnlocked={isLandingPageUnlocked}
-                onUpgradeClick={() => setActiveMenu("settings")}
-              />
-            )}
-            {activeMenu === "team" && <CmsStaffManagement />}
-            {activeMenu === "hardware" && <CmsHardwareSettings />}
-            {activeMenu === "settings" && (
-              <CmsStoreSettings
-                enabledModules={enabledModules}
-                onSaveModules={setEnabledModules}
-              />
-            )}
-          </>
-        )}
+            <>
+              {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={setActiveMenu} />}
+              {activeMenu === "staff_order" && <CmsStaffOrderView />}
+              {activeMenu === "tables" && <CmsTableManagement />}
+              {activeMenu === "menu" && <CmsMenuManagement />}
+              {activeMenu === "inventory" && <CmsInventoryManagement />}
+              {activeMenu === "customers" && <CmsCustomerManagement />}
+              {activeMenu === "promotions" && <CmsPromotionsManagement />}
+              {activeMenu === "reservations" && <CmsReservationsManagement />}
+              {activeMenu === "kds" && <CmsKdsView />}
+              {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
+              {activeMenu === "landing_page" && (
+                <CmsLandingPageEditor
+                  isUnlocked={isLandingPageUnlocked}
+                  onUpgradeClick={() => setActiveMenu("settings")}
+                />
+              )}
+              {activeMenu === "team" && <CmsStaffManagement />}
+              {activeMenu === "hardware" && <CmsHardwareSettings />}
+              {activeMenu === "settings" && (
+                <CmsStoreSettings
+                  enabledModules={enabledModules}
+                  onSaveModules={setEnabledModules}
+                />
+              )}
+            </>
+          )}
+        </Suspense>
       </CmsLayout>
 
       <UnifiedAuthModal
@@ -147,7 +194,7 @@ export const App: React.FC = () => {
           if (email.includes("superadmin") || email.includes("admin")) {
             setCurrentRole("SUPER_ADMIN");
             setActiveMenu("telemetry");
-            toast.success("Đăng nhập Super Admin thành công! Đã kích hoạt Zero-Knowledge.");
+            toast.success("Đăng nhập Super Admin thành công! Đã kết nối trung tâm điều hành SaaS F&B.");
           } else {
             setCurrentRole("STORE_OWNER");
             setActiveMenu("dashboard");

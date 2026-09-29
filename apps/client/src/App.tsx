@@ -13,6 +13,10 @@ import { toast, confirmDialog } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 import { formatCurrency } from "@/lib/formatters";
 import { TableItem, KdsTicket, MenuItemData, StaffMember, CartItem } from "@/types";
+import { INITIAL_MENU } from "@/data/mockMenu";
+import { StaffIntercomWidget } from "@/components/shared/StaffIntercomWidget";
+import { StaffScheduleProfile } from "@/features/staff/components/StaffScheduleProfile";
+import { MenuDashboard } from "@/features/menu/components/MenuDashboard";
 
 const INITIAL_TABLES: (TableItem & { zone?: string })[] = [
   { id: "1", name: "Bàn 01", status: TableStatus.EMPTY, zone: "T1" },
@@ -50,23 +54,12 @@ const INITIAL_KDS_TICKETS: KdsTicket[] = [
   {
     id: "t3",
     tableName: "Bàn 07 (VIP 1)",
-    minutesAgo: 8,
+    minutesAgo: 2,
     batchNumber: 2,
     items: [
       { id: "i6", name: "Lẩu Đuôi Bò Nồi Đất", quantity: 1, notes: "Cay vừa", status: OrderItemStatus.COOKING },
     ],
   },
-];
-
-const INITIAL_MENU: (MenuItemData & { category: string })[] = [
-  { id: "m1", name: "Phở Bò Tái Nạm", price: 65000, isAvailable: true, category: "PHO" },
-  { id: "m2", name: "Phở Bò Tái Lăn", price: 70000, isAvailable: true, category: "PHO" },
-  { id: "m3", name: "Bún Chả Hà Nội Đặc Biệt", price: 60000, isAvailable: true, category: "PHO" },
-  { id: "m4", name: "Bò Tái Thăn Thượng Hạng", price: 85000, isAvailable: false, category: "PHO" },
-  { id: "m5", name: "Lẩu Đuôi Bò Nồi Đất", price: 350000, isAvailable: true, category: "LAU" },
-  { id: "m6", name: "Bò Nướng Tảng Sốt Phô Mai", price: 185000, isAvailable: true, category: "LAU" },
-  { id: "m7", name: "Nem Rán Hải Sản", price: 55000, isAvailable: true, category: "KHAI_VI" },
-  { id: "m8", name: "Trà Đào Cam Sả", price: 35000, isAvailable: true, category: "DOUONG" },
 ];
 
 const MOCK_STAFF: StaffMember[] = [
@@ -77,7 +70,7 @@ const MOCK_STAFF: StaffMember[] = [
 
 export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"tables" | "kds" | "billing" | "menu" | "settings">("tables");
+  const [activeTab, setActiveTab] = useState<"tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings">("tables");
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentStaff, setCurrentStaff] = useState<StaffMember>(MOCK_STAFF[0]);
 
@@ -89,6 +82,13 @@ export const App: React.FC = () => {
   // Table filters
   const [tableSearch, setTableSearch] = useState("");
   const [selectedZone, setSelectedZone] = useState<string>("ALL");
+  const [pinnedTables, setPinnedTables] = useState<string[]>([]);
+
+  const handleTogglePin = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPinnedTables((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
+  };
+
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
 
   // Active table interaction modal
@@ -97,12 +97,23 @@ export const App: React.FC = () => {
   const [activeTableMenuActions, setActiveTableMenuActions] = useState<TableItem | null>(null);
 
   useEffect(() => {
+    if (!isLoading) {
+      const loader = document.getElementById("initial-loader");
+      if (loader) {
+        loader.style.opacity = "0";
+        setTimeout(() => {
+          loader.remove();
+        }, 400);
+      }
+    }
+  }, [isLoading]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 500);
     return () => clearTimeout(timer);
   }, []);
-
   // Xử lý khi nhấn vào bàn ăn trên sơ đồ
   const handleTableClick = (table: TableItem) => {
     if (table.status === TableStatus.EMPTY) {
@@ -204,13 +215,11 @@ export const App: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <LoadingScreen
-        message="Khởi tạo Trạm POS A2Order..."
-        subMessage="Đồng bộ sơ đồ bàn, vé bếp KDS và kết nối cổng thanh toán VietQR"
-      />
-    );
+    return null;
   }
+
+  // RBAC checks
+  const isWaiter = currentStaff.role.toLowerCase().includes("phục vụ");
 
   // Lọc bàn ăn
   const filteredTables = tables.filter((t: any) => {
@@ -218,6 +227,18 @@ export const App: React.FC = () => {
     if (selectedStatus !== "ALL" && t.status !== selectedStatus) return false;
     if (tableSearch.trim() && !t.name.toLowerCase().includes(tableSearch.toLowerCase())) return false;
     return true;
+  });
+
+  const sortedFilteredTables = [...filteredTables].sort((a, b) => {
+    const aIndex = pinnedTables.indexOf(a.id);
+    const bIndex = pinnedTables.indexOf(b.id);
+    
+    if (aIndex !== -1 && bIndex !== -1) {
+      return aIndex - bIndex; // pinned earlier comes first
+    }
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return 0;
   });
 
   const occupiedCount = tables.filter((t) => t.status !== TableStatus.EMPTY).length;
@@ -240,31 +261,11 @@ export const App: React.FC = () => {
       >
         {/* ===================== TAB 1: SƠ ĐỒ BÀN & GỌI MÓN ===================== */}
         {activeTab === "tables" && (
-          <div className="space-y-5 animate-fadeIn">
-            {/* Header & Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-black text-ink-primary tracking-tight">Sơ Đồ Bàn Phục Vụ</h2>
-                  <Badge variant="success" className="font-extrabold text-[10px]">Thời Gian Thực</Badge>
-                </div>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Chạm vào bàn trống để gọi món • Chạm vào bàn có khách để xem bill hoặc gọi thêm
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="relative w-48 sm:w-64">
-                  <Icon name="search" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
-                  <input
-                    type="text"
-                    value={tableSearch}
-                    onChange={(e) => setTableSearch(e.target.value)}
-                    placeholder="Tìm nhanh bàn ăn..."
-                    className="w-full h-10 pl-9 pr-3 rounded-full bg-white border border-surface-border text-xs font-semibold text-ink-primary focus:outline-none focus:border-brand-800 shadow-sm"
-                  />
-                </div>
-              </div>
+          <div className="space-y-4 animate-fadeIn">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-black text-ink-primary tracking-tight">Sơ Đồ Bàn Phục Vụ</h2>
+              <Badge variant="success" className="font-extrabold text-[10px]">Thời Gian Thực</Badge>
             </div>
 
             {/* Metric KPI Cards (Forest Green Donezo style) */}
@@ -287,7 +288,7 @@ export const App: React.FC = () => {
 
               <Panel variant="default" padding="sm" className="p-3 sm:p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
-                  <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Bàn Trống Đón Khách</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Bàn Trống</span>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-emerald-600 shrink-0">
                     <Icon name="checkCircle" className="w-3.5 h-3.5 sm:w-4 sm:h-4" size={15} />
                   </div>
@@ -302,7 +303,7 @@ export const App: React.FC = () => {
 
               <Panel variant="default" padding="sm" className="p-3 sm:p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
-                  <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Bàn Đang Chờ Món</span>
+                  <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Chờ Món</span>
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-orange-600 shrink-0">
                     <Icon name="clock" className="w-3.5 h-3.5 sm:w-4 sm:h-4" size={15} />
                   </div>
@@ -315,76 +316,151 @@ export const App: React.FC = () => {
                 </span>
               </Panel>
 
-              <Panel variant="default" padding="sm" className="p-3 sm:p-4 flex flex-col justify-between">
-                <div className="flex items-start justify-between">
-                  <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Tạm Tính Giờ Này</span>
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-brand-800 shrink-0">
-                    <Icon name="banknote" className="w-3.5 h-3.5 sm:w-4 sm:h-4" size={15} />
+              {!isWaiter ? (
+                <Panel variant="default" padding="sm" className="p-3 sm:p-4 flex flex-col justify-between">
+                  <div className="flex items-start justify-between">
+                    <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Tạm Tính</span>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center text-brand-800 shrink-0">
+                      <Icon name="banknote" className="w-3.5 h-3.5 sm:w-4 sm:h-4" size={15} />
+                    </div>
                   </div>
-                </div>
-                <div className="my-1.5 sm:my-2">
-                  <span className="text-lg sm:text-2xl font-black text-brand-900 tracking-tight truncate block">
-                    {formatCurrency(currentTotalRevenue)}
+                  <div className="my-1.5 sm:my-2">
+                    <span className="text-lg sm:text-2xl font-black text-brand-900 tracking-tight truncate block">
+                      {formatCurrency(currentTotalRevenue)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted truncate">
+                    {occupiedCount} bàn chưa thanh toán
                   </span>
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted truncate">
-                  {occupiedCount} bàn chưa thanh toán
-                </span>
-              </Panel>
+                </Panel>
+              ) : (
+                <Panel variant="default" padding="sm" className="p-3 sm:p-4 flex flex-col justify-between relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-blue-500/10 rounded-bl-full"></div>
+                  <div className="flex items-start justify-between">
+                    <span className="text-[11px] sm:text-xs font-bold text-ink-muted">Chờ Bưng</span>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      <Icon name="bell" className="w-3.5 h-3.5 sm:w-4 sm:h-4" size={15} />
+                    </div>
+                  </div>
+                  <div className="my-1.5 sm:my-2">
+                    <span className="text-2xl sm:text-3xl font-black text-ink-primary tracking-tight">{Math.floor(Math.random() * 5) + 1}</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full w-fit animate-pulse flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-600"></div> Bếp vừa trả đồ
+                  </span>
+                </Panel>
+              )}
             </div>
 
-            {/* Zone & Status Filter Pills */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-white border border-surface-border">
+            {/* Zone, Status, and Search Filters */}
+            <div className="flex flex-col gap-1.5 sticky top-16 z-30 bg-surface-canvas/95 backdrop-blur-md pt-2 pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b border-surface-border">
               {/* Zone Filter */}
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                {[
-                  { id: "ALL", label: "Tất Cả Khu Vực" },
-                  { id: "T1", label: "Tầng 1 (Máy Lạnh)" },
-                  { id: "T2", label: "Tầng 2 (Sân Vườn)" },
-                  { id: "VIP", label: "Phòng VIP" },
-                  { id: "SAN_VUON", label: "Khu Ngoài Trời" },
-                ].map((z) => (
-                  <button
-                    key={z.id}
-                    onClick={() => setSelectedZone(z.id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
-                      selectedZone === z.id
-                        ? "bg-brand-900 text-white shadow-sm"
-                        : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
-                    }`}
-                  >
-                    {z.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setSelectedZone("ALL")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 border ${
+                    selectedZone === "ALL"
+                      ? "bg-brand-900 text-white border-brand-900 shadow-sm"
+                      : "bg-surface-canvas text-ink-muted border-surface-border hover:text-ink-primary"
+                  }`}
+                >
+                  Tất Cả Khu Vực
+                </button>
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mb-1">
+                  {[
+                    { id: "T1", label: "Tầng 1 (Máy Lạnh)" },
+                    { id: "T2", label: "Tầng 2 (Sân Vườn)" },
+                    { id: "VIP", label: "Phòng VIP" },
+                    { id: "SAN_VUON", label: "Khu Ngoài Trời" },
+                  ].map((z) => (
+                    <button
+                      key={z.id}
+                      onClick={() => setSelectedZone(z.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 border ${
+                        selectedZone === z.id
+                          ? "bg-brand-900 text-white border-brand-900 shadow-sm"
+                          : "bg-white text-ink-muted border-surface-border hover:text-ink-primary"
+                      }`}
+                    >
+                      {z.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Status Filter */}
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                {[
-                  { id: "ALL", label: "Tất Cả Trạng Thái" },
-                  { id: TableStatus.EMPTY, label: "Trống" },
-                  { id: TableStatus.WAITING_FOOD, label: "Chờ Món" },
-                  { id: TableStatus.OCCUPIED, label: "Đang Dùng" },
-                  { id: TableStatus.PAYMENT_PENDING, label: "Chờ Tính Tiền" },
-                ].map((st) => (
+              <div className="flex items-center gap-1.5 mt-1">
+                <button
+                  onClick={() => setSelectedStatus("ALL")}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 border ${
+                    selectedStatus === "ALL"
+                      ? "bg-brand-100 text-brand-900 border-brand-300 shadow-sm"
+                      : "bg-surface-canvas text-ink-muted border-surface-border hover:text-ink-primary"
+                  }`}
+                >
+                  Tất Cả Trạng Thái
+                </button>
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mb-1">
+                  {[
+                    { id: TableStatus.EMPTY, label: "Trống" },
+                    { id: TableStatus.WAITING_FOOD, label: "Chờ Món" },
+                    { id: TableStatus.OCCUPIED, label: "Đang Dùng" },
+                    { id: TableStatus.PAYMENT_PENDING, label: "Chờ Tính Tiền" },
+                  ].map((st) => (
+                    <button
+                      key={st.id}
+                      onClick={() => setSelectedStatus(st.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 border ${
+                        selectedStatus === st.id
+                          ? "bg-brand-100 text-brand-900 border-brand-300 shadow-sm"
+                          : "bg-white text-ink-muted border-surface-border hover:text-ink-primary"
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search & Reset */}
+              <div className="flex items-center gap-2 mt-2 w-full">
+                <div className="relative flex-1">
+                  <Icon name="search" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle" />
+                  <input
+                    type="text"
+                    value={tableSearch}
+                    onChange={(e) => setTableSearch(e.target.value)}
+                    placeholder="Tìm nhanh bàn ăn..."
+                    className="w-full h-10 pl-9 pr-9 rounded-xl bg-white border border-surface-border text-xs font-semibold text-ink-primary focus:outline-none focus:border-brand-800 shadow-sm"
+                  />
+                  {tableSearch && (
+                    <button
+                      onClick={() => setTableSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-surface-muted flex items-center justify-center text-ink-subtle hover:text-ink-primary transition-colors"
+                    >
+                      <Icon name="x" className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                {(selectedZone !== "ALL" || selectedStatus !== "ALL" || tableSearch) && (
                   <button
-                    key={st.id}
-                    onClick={() => setSelectedStatus(st.id)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition-all shrink-0 ${
-                      selectedStatus === st.id
-                        ? "bg-brand-100 text-brand-900 border border-brand-300"
-                        : "text-ink-muted hover:text-ink-primary"
-                    }`}
+                    onClick={() => {
+                      setTableSearch("");
+                      setSelectedZone("ALL");
+                      setSelectedStatus("ALL");
+                    }}
+                    className="h-10 px-3 bg-red-50 text-red-600 rounded-xl font-bold text-xs flex items-center gap-1.5 shrink-0 border border-red-100 hover:bg-red-100 transition-colors"
                   >
-                    {st.label}
+                    <Icon name="refresh" className="w-3.5 h-3.5" />
+                    <span>Xóa Lọc</span>
                   </button>
-                ))}
+                )}
               </div>
             </div>
 
             {/* Tables Grid */}
-            <div className="pt-1">
-              <TableGrid tables={filteredTables} onTableClick={handleTableClick} />
+            <div className="pt-1 min-h-[60vh]">
+              <TableGrid tables={sortedFilteredTables} onTableClick={handleTableClick} pinnedTables={pinnedTables} onTogglePin={handleTogglePin} />
             </div>
           </div>
         )}
@@ -446,29 +522,38 @@ export const App: React.FC = () => {
 
         {/* ===================== TAB 4: DANH MỤC MÓN & BÁO HẾT 86 ===================== */}
         {activeTab === "menu" && (
-          <div className="space-y-4 max-w-4xl mx-auto animate-fadeIn">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-black text-ink-primary">Kiểm Soát Món Ăn (Báo Hết 86)</h2>
-                <p className="text-xs text-ink-muted">Gạt công tắc để tạm ngưng nhận món khi bếp hết nguyên liệu trong ca</p>
-              </div>
-            </div>
+          <MenuDashboard 
+            menuItems={menuItems} 
+            onToggleStock={(id, avail) => {
+              setMenuItems((prev) =>
+                prev.map((m) => (m.id === id ? { ...m, isAvailable: avail } : m))
+              );
+            }} 
+          />
+        )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {menuItems.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  showAdminControls
-                  onToggleStock={(id, avail) => {
-                    setMenuItems((prev) =>
-                      prev.map((m) => (m.id === id ? { ...m, isAvailable: avail } : m))
-                    );
-                    toast.warning(`Đã đổi trạng thái "${item.name}": ${avail ? "Còn hàng" : "Hết hàng (86)"}`);
-                  }}
-                />
-              ))}
-            </div>
+        {/* ===================== TAB 5: BỘ ĐÀM (CHAT) ===================== */}
+        {activeTab === "chat" && (
+          <div className="w-full flex-1 flex flex-col animate-fadeIn">
+            <StaffIntercomWidget 
+              currentStaffName={currentStaff.name} 
+              currentStaffRole={currentStaff.role} 
+              fullScreenMode={true}
+              tables={tables} 
+            />
+          </div>
+        )}
+
+        {/* ===================== TAB 6: LỊCH TRÌNH ===================== */}
+        {activeTab === "schedule" && (
+          <div className="w-full">
+            <StaffScheduleProfile 
+              currentStaff={currentStaff} 
+              attendanceRecords={[]}
+              onClockIn={() => {}}
+              onClockOut={() => {}}
+              onOpenPinModal={() => setIsAuthModalOpen(true)}
+            />
           </div>
         )}
 

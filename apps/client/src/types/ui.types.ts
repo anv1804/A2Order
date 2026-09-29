@@ -62,9 +62,10 @@ export interface AppShellProps {
   storeName: string;
   userName: string;
   userRole: string;
-  activeTab: "tables" | "kds" | "billing" | "menu" | "settings";
-  onTabChange: (tab: "tables" | "kds" | "billing" | "menu" | "settings") => void;
+  activeTab: "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings";
+  onTabChange: (tab: "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings") => void;
   onLogout: () => void;
+  onBackToTables?: () => void;
   children: React.ReactNode;
 }
 

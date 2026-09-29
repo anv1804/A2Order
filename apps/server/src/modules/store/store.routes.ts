@@ -1,7 +1,8 @@
 import { FastifyInstance } from "fastify";
 import { prisma } from "../../core/database/prismaClient.js";
+import { storeRepository } from "../../core/database/repositoryFactory.js";
 import { emitToStore, getStoreTelemetryStats } from "../../core/websocket/socketServer.js";
-import { SocketEvents, UserRole } from "@a2order/shared";
+import { SocketEvents, TenantStoreRecord } from "@a2order/shared";
 import { enforceDataPrivacy } from "../../core/middlewares/privacyMiddleware.js";
 
 export async function storeRoutes(fastify: FastifyInstance) {
@@ -9,34 +10,108 @@ export async function storeRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", enforceDataPrivacy);
 
   /**
-   * 1. LẤY CẤU HÌNH ĐÃ XUẤT BẢN (PUBLISHED CONFIG) CỦA QUÁN
-   * Có hỗ trợ ETag và Cache-Control riêng biệt theo từng quán
-   * Quán A thay đổi -> Chỉ Quán A có ETag mới, Quán B ăn nguyên 304 Not Modified
+   * 1. LẤY DANH SÁCH TẤT CẢ CÁC QUÁN THUÊ (TENANTS)
+   * GET /api/stores
+   */
+  fastify.get("/", async (_request, reply) => {
+    try {
+      const stores = await storeRepository.getAll();
+      return { success: true, count: stores.length, data: stores };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * 2. LẤY CHI TIẾT 1 QUÁN
+   * GET /api/stores/:storeId
+   */
+  fastify.get("/:storeId", async (request, reply) => {
+    const { storeId } = request.params as { storeId: string };
+    try {
+      const store = await storeRepository.getById(storeId);
+      if (!store) {
+        return reply.status(404).send({ success: false, error: "Quán không tồn tại" });
+      }
+      return { success: true, data: store };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * 3. ĐĂNG KÝ QUÁN MỚI (TỰ ĐỘNG SEED KỊCH BẢN)
+   * POST /api/stores
+   */
+  fastify.post("/", async (request, reply) => {
+    const body = request.body as Partial<TenantStoreRecord>;
+    if (!body || !body.name || !body.phone) {
+      return reply.status(400).send({ success: false, error: "Tên quán và số điện thoại là bắt buộc" });
+    }
+
+    try {
+      const created = await storeRepository.create(body);
+      return {
+        success: true,
+        message: `Đã khởi tạo quán "${created.name}" thành công với License Key [${created.licenseKey}]!`,
+        data: created,
+      };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * 4. CẬP NHẬT THÔNG TIN QUÁN
+   * PUT /api/stores/:storeId
+   */
+  fastify.put("/:storeId", async (request, reply) => {
+    const { storeId } = request.params as { storeId: string };
+    const body = request.body as Partial<TenantStoreRecord>;
+
+    try {
+      const updated = await storeRepository.update(storeId, body);
+      if (!updated) {
+        return reply.status(404).send({ success: false, error: "Quán không tồn tại" });
+      }
+      return { success: true, message: "Đã cập nhật thông tin quán thành công!", data: updated };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * 5. LẤY CẤU HÌNH ĐÃ XUẤT BẢN (PUBLISHED CONFIG) CỦA QUÁN
    */
   fastify.get("/:storeId/published-config", async (request, reply) => {
     const { storeId } = request.params as { storeId: string };
 
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-      include: {
-        categories: { orderBy: { sortOrder: "asc" } },
-        menuItems: true,
-        tableZones: {
-          include: {
-            tables: true,
+    let store: any = null;
+    try {
+      store = await prisma.store.findUnique({
+        where: { id: storeId },
+        include: {
+          categories: { orderBy: { sortOrder: "asc" } },
+          menuItems: true,
+          tableZones: {
+            include: {
+              tables: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (e) {
+      // Mock fallback
+      store = await storeRepository.getById(storeId);
+    }
 
     if (!store) {
       return reply.status(404).send({ error: "Store not found" });
     }
 
-    const currentEtag = `W/"${store.id}-${store.configVersion}"`;
+    const currentEtag = `W/"${store.id}-${store.configVersion || store.configVer || 'v1.0.0'}"`;
     const clientEtag = request.headers["if-none-match"];
 
-    // Nếu client đã có bản snapshot này, trả về 304 không tốn băng thông
     if (clientEtag === currentEtag) {
       return reply.status(304).send();
     }
@@ -47,39 +122,29 @@ export async function storeRoutes(fastify: FastifyInstance) {
     return {
       storeId: store.id,
       storeName: store.name,
-      configVersion: store.configVersion,
-      categories: store.categories,
-      menuItems: store.menuItems,
-      tableZones: store.tableZones,
+      configVersion: store.configVersion || store.configVer || "v1.0.0",
+      categories: store.categories || [],
+      menuItems: store.menuItems || [],
+      tableZones: store.tableZones || [],
     };
   });
 
   /**
-   * 2. CHỦ QUÁN NHẤN "ÁP DỤNG THAY ĐỔI" (PUBLISH CONFIG)
-   * Nâng version snapshot của Quán đó lên (vd v1.0.0 -> v1.0.1)
-   * Chỉ bắn Socket.io tới Room của Quán đó, các quán khác hoàn toàn không nhận
+   * 6. CHỦ QUÁN NHẤN "ÁP DỤNG THAY ĐỔI" (PUBLISH CONFIG)
    */
   fastify.post("/:storeId/publish", async (request, reply) => {
     const { storeId } = request.params as { storeId: string };
 
-    const store = await prisma.store.findUnique({
-      where: { id: storeId },
-    });
-
+    const store = await storeRepository.getById(storeId);
     if (!store) {
       return reply.status(404).send({ error: "Store not found" });
     }
 
-    // Tăng phiên bản snapshot (vd: v1.0.0 -> v1.0.1)
-    const currentVerParts = store.configVersion.replace("v", "").split(".").map(Number);
+    const currentVerParts = (store.configVer || "v1.0.0").replace("v", "").split(".").map(Number);
     const nextVer = `v${currentVerParts[0]}.${currentVerParts[1]}.${(currentVerParts[2] || 0) + 1}`;
 
-    const updatedStore = await prisma.store.update({
-      where: { id: storeId },
-      data: { configVersion: nextVer },
-    });
+    await storeRepository.update(storeId, { configVer: nextVer });
 
-    // Chỉ bắn thông báo vào phòng WebSocket của quán đó
     emitToStore(storeId, SocketEvents.CONFIG_UPDATED, {
       storeId,
       version: nextVer,
@@ -90,28 +155,17 @@ export async function storeRoutes(fastify: FastifyInstance) {
     return {
       success: true,
       message: "Đã xuất bản cấu hình mới thành công!",
-      configVersion: updatedStore.configVersion,
+      configVersion: nextVer,
     };
   });
 
   /**
-   * 3. SUPER ADMIN: GIÁM SÁT TỐC ĐỘ ĐƯỜNG TRUYỀN & TELEMETRY
-   * Super Admin xem ping/latency của tất cả các quán mà không thấy doanh thu
+   * 7. SUPER ADMIN: GIÁM SÁT TỐC ĐỘ ĐƯỜNG TRUYỀN & TELEMETRY
    */
-  fastify.get("/telemetry/system-status", async (request, reply) => {
+  fastify.get("/telemetry/system-status", async (_request, _reply) => {
     const telemetryStats = getStoreTelemetryStats();
-    
-    let totalStores = 4;
-    let activeStores = 4;
-    try {
-      [totalStores, activeStores] = await Promise.all([
-        prisma.store.count(),
-        prisma.store.count({ where: { status: "ACTIVE" } }),
-      ]);
-    } catch (e) {
-      // Khi chạy dev không có PostgreSQL cục bộ, trả về telemetry hạ tầng & socket vẫn chuẩn
-    }
-
+    const stores = await storeRepository.getAll();
+    const activeStores = stores.filter((s) => s.status === "ACTIVE").length;
     const memoryUsage = process.memoryUsage();
 
     return {
@@ -126,11 +180,11 @@ export async function storeRoutes(fastify: FastifyInstance) {
         activeConnectionsCount: telemetryStats.length,
         avgPingMs: telemetryStats.length > 0 
           ? Math.round(telemetryStats.reduce((sum, s) => sum + s.latencyMs, 0) / telemetryStats.length)
-          : 12,
+          : 18,
         connections: telemetryStats,
       },
       tenantSummary: {
-        totalStores,
+        totalStores: stores.length,
         activeStores,
       },
     };

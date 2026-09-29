@@ -13,9 +13,13 @@ export interface TableItem {
 export interface TableCardProps {
   table: TableItem;
   onClick: (table: TableItem) => void;
+  isPinned?: boolean;
+  onTogglePin?: (id: string, e: React.MouseEvent) => void;
 }
 
 export interface TableGridProps {
   tables: TableItem[];
   onTableClick: (table: TableItem) => void;
+  pinnedTables?: string[];
+  onTogglePin?: (id: string, e: React.MouseEvent) => void;
 }

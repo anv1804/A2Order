@@ -69,6 +69,11 @@ import {
   MoreHorizontal,
   ChevronLeft,
   ArrowLeft,
+  Coffee,
+  CupSoda,
+  Cake,
+  Utensils,
+  List,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -143,6 +148,12 @@ const iconMap: Record<IconName, LucideIcon> = {
   moreHorizontal: MoreHorizontal,
   chevronLeft: ChevronLeft,
   arrowLeft: ArrowLeft,
+  coffee: Coffee,
+  cup: CupSoda,
+  cake: Cake,
+  utensils: Utensils,
+  grid: LayoutGrid,
+  list: List,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

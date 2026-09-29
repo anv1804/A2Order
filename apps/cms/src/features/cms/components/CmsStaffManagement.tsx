@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
-import { StaffRole, StaffUser, PermissionItem } from "@/types/cms.types";
+import { StaffRole, StaffUser, PermissionItem, AttendanceLogRecord } from "@/types/cms.types";
 
 const PERMISSIONS: PermissionItem[] = [
   {
@@ -73,13 +73,13 @@ const DEFAULT_ROLE_PERMISSIONS: Record<StaffRole, string[]> = {
     "MENU_EDIT",
   ],
   CASHIER: ["CREATE_ORDER", "APPLY_DISCOUNT", "OPEN_CASH_DRAWER", "CLOSE_SHIFT"],
-  WAITER: ["CREATE_ORDER"],
+  WAITER: ["CREATE_ORDER", "MENU_EDIT"],
   CHEF: ["MENU_EDIT"],
   ACCOUNTANT: ["CLOSE_SHIFT", "VIEW_REVENUE"],
 };
 
 export const CmsStaffManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"STAFF_LIST" | "RBAC_MATRIX" | "SCHEDULE">("STAFF_LIST");
+  const [activeTab, setActiveTab] = useState<"STAFF_LIST" | "RBAC_MATRIX" | "SCHEDULE" | "ATTENDANCE">("STAFF_LIST");
 
   const [staffList, setStaffList] = useState<StaffUser[]>([
     {
@@ -152,6 +152,73 @@ export const CmsStaffManagement: React.FC = () => {
       isActive: false,
     },
   ]);
+
+  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLogRecord[]>([
+    {
+      id: "att-001",
+      staffId: "s2",
+      staffName: "Trần Mai Lan",
+      role: "CASHIER",
+      clockInTime: "06:28",
+      shiftName: "Ca Sáng",
+      date: "29/09/2026",
+      status: "ACTIVE",
+      workHours: 3.2,
+      note: "Vào ca đúng giờ, kiểm két ban đầu 2.000.000đ",
+    },
+    {
+      id: "att-002",
+      staffId: "s4",
+      staffName: "Bác Ba (Bếp trưởng)",
+      role: "CHEF",
+      clockInTime: "06:15",
+      shiftName: "Ca Sáng",
+      date: "29/09/2026",
+      status: "ACTIVE",
+      workHours: 3.4,
+      note: "Chuẩn bị nước dùng phở bò buổi sáng",
+    },
+    {
+      id: "att-003",
+      staffId: "s3",
+      staffName: "Phạm Hùng Cường",
+      role: "WAITER",
+      clockInTime: "06:45",
+      shiftName: "Ca Sáng",
+      date: "29/09/2026",
+      status: "ACTIVE",
+      workHours: 2.8,
+      note: "Trực sảnh bàn T1 & VIP",
+    },
+    {
+      id: "att-004",
+      staffId: "s1",
+      staffName: "Nguyễn Thành An",
+      role: "STORE_OWNER",
+      clockInTime: "08:00",
+      shiftName: "Toàn Thời Gian",
+      date: "29/09/2026",
+      status: "ACTIVE",
+      workHours: 1.5,
+      note: "Giám sát vận hành & kiểm tra kho sáng",
+    },
+    {
+      id: "att-005",
+      staffId: "s5",
+      staffName: "Lê Thị Thu",
+      role: "STORE_MANAGER",
+      clockInTime: "14:00",
+      clockOutTime: "22:30",
+      shiftName: "Ca Tối",
+      date: "28/09/2026",
+      status: "COMPLETED",
+      workHours: 8.5,
+      note: "Chốt két ca tối & bàn giao doanh thu Z-Report",
+    },
+  ]);
+
+  const [attendanceSearch, setAttendanceSearch] = useState("");
+  const [attendanceFilterStatus, setAttendanceFilterStatus] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
 
   const [rolePermissions, setRolePermissions] = useState<Record<StaffRole, string[]>>(
     DEFAULT_ROLE_PERMISSIONS
@@ -277,32 +344,29 @@ export const CmsStaffManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
-              <span className="sm:hidden">Quản Trị Nhân Sự</span>
-              <span className="hidden sm:inline">Quản Trị Nhân Sự & Phân Quyền</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Quản Trị Nhân Sự & Phân Quyền
             </h2>
-            <Badge variant="success" className="font-extrabold text-[10px] whitespace-nowrap shrink-0">
-              <span className="sm:hidden">Bảo Mật Ca</span>
-              <span className="hidden sm:inline">Bảo Mật Két & Ca Làm</span>
-            </Badge>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
+              Bảo Mật Két & Ca Làm
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
-            Phân bổ ca làm việc, mã PIN đăng nhập POS/KDS và phân quyền hạn.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Phân bổ ca làm việc, mã PIN đăng nhập POS/KDS và phân quyền hạn
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-full gap-2 text-xs bg-brand-900 text-white shadow-sm whitespace-nowrap shrink-0"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
             onClick={handleOpenAddModal}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">+ Thêm Nhân Viên</span>
-            <span className="hidden sm:inline">+ Thêm Nhân Viên Mới</span>
+            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+            <span>+ Thêm Nhân Viên Mới</span>
           </Button>
         </div>
       </div>
@@ -346,6 +410,19 @@ export const CmsStaffManagement: React.FC = () => {
           <Icon name="calendar" className="w-4 h-4" />
           <span className="sm:hidden">Lịch Ca</span>
           <span className="hidden sm:inline">Lịch Làm Việc Tuần</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("ATTENDANCE")}
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+            activeTab === "ATTENDANCE"
+              ? "bg-brand-900 text-white shadow-sm"
+              : "bg-surface-canvas text-ink-muted hover:text-ink-primary"
+          }`}
+        >
+          <Icon name="userCheck" className="w-4 h-4" />
+          <span className="sm:hidden">Chấm Công ({attendanceLogs.filter(a => a.status === 'ACTIVE').length})</span>
+          <span className="hidden sm:inline">Chấm Công & Giờ Làm ({attendanceLogs.filter(a => a.status === 'ACTIVE').length} đang làm)</span>
         </button>
       </div>
 
@@ -818,6 +895,214 @@ export const CmsStaffManagement: React.FC = () => {
                 ].map((item) => (
                   <span key={item.label} className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold ${item.color}`}>{item.label}</span>
                 ))}
+              </div>
+            </Panel>
+          </div>
+        );
+      })()}
+
+      {/* TAB 4: Bảng Chấm Công & Nhật Ký Giờ Làm */}
+      {activeTab === "ATTENDANCE" && (() => {
+        const activeCount = attendanceLogs.filter((l) => l.status === "ACTIVE").length;
+        const completedCount = attendanceLogs.filter((l) => l.status === "COMPLETED").length;
+        const totalHours = attendanceLogs.reduce((acc, curr) => acc + (curr.workHours || 0), 0);
+
+        const filteredLogs = attendanceLogs.filter((log) => {
+          if (attendanceFilterStatus !== "ALL" && log.status !== attendanceFilterStatus) return false;
+          if (attendanceSearch.trim()) {
+            const q = attendanceSearch.toLowerCase();
+            return (
+              log.staffName.toLowerCase().includes(q) ||
+              log.shiftName.toLowerCase().includes(q) ||
+              (log.note && log.note.toLowerCase().includes(q))
+            );
+          }
+          return true;
+        });
+
+        const handleClockOutStaff = (id: string, staffName: string) => {
+          const now = new Date();
+          const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+          setAttendanceLogs((prev) =>
+            prev.map((l) =>
+              l.id === id
+                ? {
+                    ...l,
+                    status: "COMPLETED",
+                    clockOutTime: timeStr,
+                    note: (l.note ? l.note + " • " : "") + `Quản lý chốt kết ca lúc ${timeStr}`,
+                  }
+                : l
+            )
+          );
+          toast.success(`Đã chốt kết ca cho nhân viên ${staffName} lúc ${timeStr}!`);
+        };
+
+        return (
+          <div className="space-y-4 animate-fadeIn">
+            {/* Header info & summary cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Panel variant="default" padding="sm" className="bg-gradient-to-br from-emerald-50 to-white border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Đang Trong Ca</span>
+                    <h3 className="text-xl font-black text-emerald-950 mt-0.5">{activeCount} nhân sự</h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                    <Icon name="userCheck" className="w-5 h-5" />
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel variant="default" padding="sm" className="bg-gradient-to-br from-blue-50 to-white border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">Đã Kết Ca Hôm Nay</span>
+                    <h3 className="text-xl font-black text-blue-950 mt-0.5">{completedCount} lượt</h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-sm">
+                    <Icon name="checkCircle" className="w-5 h-5" />
+                  </div>
+                </div>
+              </Panel>
+
+              <Panel variant="default" padding="sm" className="bg-gradient-to-br from-brand-50 to-white border-brand-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-brand-900 uppercase tracking-wider">Tổng Giờ Làm Ghi Nhận</span>
+                    <h3 className="text-xl font-black text-brand-950 mt-0.5">{totalHours.toFixed(1)} Giờ</h3>
+                  </div>
+                  <div className="w-10 h-10 rounded-2xl bg-brand-900 text-white flex items-center justify-center shadow-sm">
+                    <Icon name="clock" className="w-5 h-5" />
+                  </div>
+                </div>
+              </Panel>
+            </div>
+
+            {/* Filter controls */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="relative flex-1 max-w-sm">
+                <Icon name="search" className="w-4 h-4 text-ink-subtle absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Tìm nhân viên, ca làm, ghi chú..."
+                  value={attendanceSearch}
+                  onChange={(e) => setAttendanceSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-surface-border text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-700"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {(["ALL", "ACTIVE", "COMPLETED"] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setAttendanceFilterStatus(st)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                      attendanceFilterStatus === st
+                        ? "bg-brand-900 text-white shadow-sm"
+                        : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary"
+                    }`}
+                  >
+                    {st === "ALL" && "Tất Cả Lượt"}
+                    {st === "ACTIVE" && "Đang Làm Việc"}
+                    {st === "COMPLETED" && "Đã Kết Ca"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Attendance Table */}
+            <Panel variant="default" padding="lg">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-surface-border text-ink-muted uppercase tracking-wider text-[10px] font-extrabold">
+                      <th className="pb-3 px-3">Nhân Viên</th>
+                      <th className="pb-3 px-3">Vai Trò</th>
+                      <th className="pb-3 px-3">Ca Làm</th>
+                      <th className="pb-3 px-3">Giờ Vào Ca</th>
+                      <th className="pb-3 px-3">Giờ Ra Ca</th>
+                      <th className="pb-3 px-3 text-center">Tổng Giờ</th>
+                      <th className="pb-3 px-3">Trạng Thái</th>
+                      <th className="pb-3 px-3">Ghi Chú</th>
+                      <th className="pb-3 px-3 text-right">Thao Tác</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-border">
+                    {filteredLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-xs text-ink-muted">
+                          Không tìm thấy lượt chấm công nào phù hợp bộ lọc
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-surface-canvas/60 transition-colors">
+                          <td className="py-3 px-3 font-bold text-ink-primary">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-brand-100 text-brand-900 flex items-center justify-center font-black text-xs shrink-0">
+                                {log.staffName.charAt(0)}
+                              </div>
+                              <span>{log.staffName}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="text-[11px] font-bold text-ink-secondary">
+                              {getRoleLabel(log.role)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-medium text-ink-muted">{log.shiftName}</td>
+                          <td className="py-3 px-3 font-bold text-emerald-700">
+                            <div className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                              <span>{log.clockInTime}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-bold text-ink-muted">
+                            {log.clockOutTime ? (
+                              <span>{log.clockOutTime}</span>
+                            ) : (
+                              <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                Đang trực
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-center font-black text-brand-900">
+                            {log.workHours ? `${log.workHours}h` : "—"}
+                          </td>
+                          <td className="py-3 px-3">
+                            {log.status === "ACTIVE" ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Đang Làm
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-muted text-ink-muted border border-surface-border">
+                                Đã Kết Ca
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-[11px] text-ink-muted max-w-[200px] truncate" title={log.note}>
+                            {log.note || "—"}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            {log.status === "ACTIVE" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-xl text-[11px] text-rose-700 border-rose-200 hover:bg-rose-50 h-7 px-2.5"
+                                onClick={() => handleClockOutStaff(log.id, log.staffName)}
+                              >
+                                Chốt Ra Ca
+                              </Button>
+                            ) : (
+                              <span className="text-[11px] text-ink-subtle italic">Hoàn tất</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </Panel>
           </div>

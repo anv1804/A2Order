@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { Reservation } from "@/types/cms.types";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
 const AVAILABLE_TABLES = [
   "Bàn 01 (Tầng 1 - 4 người)",
@@ -13,7 +14,7 @@ const AVAILABLE_TABLES = [
 ];
 
 export const CmsReservationsManagement: React.FC = () => {
-  const [reservations, setReservations] = useState<Reservation[]>([
+  const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", [
     {
       id: "r1",
       guestName: "Anh Hoàng Tuấn",
@@ -81,8 +82,8 @@ export const CmsReservationsManagement: React.FC = () => {
   ]);
 
   // Bộ lọc & Phân trang
-  const [filterDate, setFilterDate] = useState<"ALL" | "TODAY" | "TOMORROW" | "THIS_WEEK">("ALL");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [filterDate, setFilterDate] = usePersistentState<"ALL" | "TODAY" | "TOMORROW" | "THIS_WEEK">("reservations_filter_date", "ALL");
+  const [filterStatus, setFilterStatus] = usePersistentState<string>("reservations_filter_status", "ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [reservationPage, setReservationPage] = useState(1);
   const PAGE_SIZE = 6;
@@ -313,95 +314,106 @@ export const CmsReservationsManagement: React.FC = () => {
   return (
     <div className="space-y-4 animate-fadeIn pb-16">
       {/* Tiêu đề gọn gàng & Nút tạo mới */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-            Lịch Đặt Bàn & Giữ Chỗ
-          </h2>
-          <p className="text-xs text-ink-muted">
-            Quản lý tiếp nhận đặt chỗ qua Hotline & Website
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Lịch Đặt Bàn & Giữ Chỗ
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200">
+              Hotline & Web
+            </span>
+          </div>
+          <p className="text-xs text-ink-muted mt-1">
+            Điều phối chỗ ngồi đón tiếp khách tự động, quản lý tiền cọc và xác nhận khách đến
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white shadow-xs font-bold hover:bg-brand-950"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white shadow-sm font-bold hover:bg-black transition-all px-3.5 py-2"
             onClick={() => openModal("PHONE_CALL")}
           >
-            <Icon name="phone" className="w-3.5 h-3.5" />
+            <Icon name="phone" className="w-3.5 h-3.5 text-brand-400" />
             <span>+ Đặt Bàn Hotline</span>
           </Button>
 
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl gap-1.5 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold"
+            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
             onClick={() => openModal("WALK_IN")}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
+            <Icon name="plus" className="w-3.5 h-3.5 text-ink-muted" />
             <span>Khách Đến Ngay</span>
           </Button>
         </div>
       </div>
 
-      {/* 4 Thẻ Thống Kê Tinh Gọn (Gọn, cùng tông màu, không rối mắt) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
-        <div className="p-3.5 rounded-2xl bg-white border border-surface-border flex items-center justify-between shadow-2xs">
-          <div>
-            <span className="text-[11px] font-bold text-ink-muted block leading-none mb-1">Khách Hôm Nay</span>
-            <span className="text-lg sm:text-xl font-black text-ink-primary tracking-tight">
-              {totalGuestsToday} <span className="text-xs font-semibold text-ink-muted">khách</span>
-            </span>
+      {/* 4 Thẻ Thống Kê Thiết Kế Tối Giản Cao Cấp */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-brand-300 transition-all group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Khách Hôm Nay</span>
+            <div className="w-8 h-8 rounded-xl bg-surface-canvas flex items-center justify-center text-ink-muted group-hover:text-brand-900 group-hover:bg-brand-50 transition-colors">
+              <Icon name="users" size={16} />
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center text-brand-900 shrink-0">
-            <Icon name="users" size={16} />
-          </div>
-        </div>
-
-        <div className="p-3.5 rounded-2xl bg-white border border-surface-border flex items-center justify-between shadow-2xs">
-          <div>
-            <span className="text-[11px] font-bold text-ink-muted block leading-none mb-1">Chờ Xác Nhận</span>
-            <span className="text-lg sm:text-xl font-black text-amber-700 tracking-tight">
-              {pendingCount} <span className="text-xs font-semibold text-ink-muted">yêu cầu</span>
-            </span>
-          </div>
-          <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-700 shrink-0">
-            <Icon name="clock" size={16} />
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-ink-primary tracking-tight">{totalGuestsToday}</span>
+            <span className="text-xs font-medium text-ink-muted">khách đã ghi nhận</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white border border-surface-border flex items-center justify-between shadow-2xs">
-          <div>
-            <span className="text-[11px] font-bold text-ink-muted block leading-none mb-1">Đã Giữ Chỗ</span>
-            <span className="text-lg sm:text-xl font-black text-ink-primary tracking-tight">
-              {confirmedCount} <span className="text-xs font-semibold text-ink-muted">bàn sẵn sàng</span>
-            </span>
+        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-amber-300 transition-all group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Chờ Xác Nhận</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50/70 flex items-center justify-center text-amber-700 group-hover:bg-amber-100 transition-colors">
+              <Icon name="clock" size={16} />
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-700 shrink-0">
-            <Icon name="calendarCheck" size={16} />
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-amber-700 tracking-tight">{pendingCount}</span>
+            <span className="text-xs font-medium text-amber-700/80">yêu cầu cần duyệt</span>
           </div>
         </div>
 
-        <div className="p-3.5 rounded-2xl bg-white border border-surface-border flex items-center justify-between shadow-2xs">
-          <div>
-            <span className="text-[11px] font-bold text-ink-muted block leading-none mb-1">Tiền Cọc Đã Thu</span>
-            <span className="text-lg sm:text-xl font-black text-brand-900 tracking-tight">
-              {totalDeposits.toLocaleString("vi-VN")} <span className="text-xs font-semibold text-ink-muted">đ</span>
-            </span>
+        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-emerald-300 transition-all group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Bàn Đã Giữ</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50/70 flex items-center justify-center text-emerald-700 group-hover:bg-emerald-100 transition-colors">
+              <Icon name="calendarCheck" size={16} />
+            </div>
           </div>
-          <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 shrink-0">
-            <Icon name="vietqr" size={16} />
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-emerald-800 tracking-tight">{confirmedCount}</span>
+            <span className="text-xs font-medium text-ink-muted">bàn sẵn sàng đón</span>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-brand-300 transition-all group">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-ink-muted">Tiền Cọc Đã Thu</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50/70 flex items-center justify-center text-blue-700 group-hover:bg-blue-100 transition-colors">
+              <Icon name="vietqr" size={16} />
+            </div>
+          </div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-brand-950 tracking-tight">
+              {totalDeposits.toLocaleString("vi-VN")}
+            </span>
+            <span className="text-xs font-bold text-ink-muted">đ</span>
           </div>
         </div>
       </div>
 
-      {/* Thanh Công Cụ Hợp Nhất: Tìm Kiếm + Bộ Lọc Thời Gian & Trạng Thái */}
-      <div className="bg-white rounded-2xl border border-surface-border p-3 space-y-3 shadow-xs">
-        {/* Hàng 1: Ô Tìm Kiếm & Lọc Thời Gian */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="relative flex-1 max-w-md">
-            <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
+      {/* Thanh Bộ Lọc & Tìm Kiếm Hợp Nhất Một Hộp Sang Trọng Chuẩn SaaS */}
+      <div className="bg-white rounded-2xl border border-surface-border p-3 shadow-xs space-y-2.5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Ô Tìm Kiếm Thanh Thoát */}
+          <div className="relative flex-1 min-w-[260px] max-w-md">
+            <Icon name="search" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted/70" />
             <input
               type="text"
               value={searchQuery}
@@ -410,23 +422,23 @@ export const CmsReservationsManagement: React.FC = () => {
                 setReservationPage(1);
               }}
               placeholder="Tìm theo tên khách, số điện thoại, số bàn..."
-              className="w-full h-9 pl-9 pr-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800 shadow-2xs"
+              className="w-full h-9 pl-9 pr-8 rounded-xl border border-surface-border text-xs font-medium text-ink-primary bg-surface-canvas/40 focus:bg-white focus:outline-none focus:border-brand-700 transition-all placeholder:text-ink-muted/60"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-primary"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink-primary"
               >
                 <Icon name="x" className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Lọc ngày đơn giản */}
-          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+          {/* Nhóm Bộ Lọc Thời Gian */}
+          <div className="flex items-center gap-1 p-1 bg-surface-canvas rounded-xl border border-surface-border/60 overflow-x-auto no-scrollbar">
             {(
               [
-                { id: "ALL", label: "Tất cả" },
+                { id: "ALL", label: "Tất cả ngày" },
                 { id: "TODAY", label: "Hôm nay" },
                 { id: "TOMORROW", label: "Ngày mai" },
                 { id: "THIS_WEEK", label: "Tuần này" },
@@ -438,10 +450,10 @@ export const CmsReservationsManagement: React.FC = () => {
                   setFilterDate(tab.id);
                   setReservationPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
                   filterDate === tab.id
-                    ? "bg-brand-900 text-white shadow-2xs font-black"
-                    : "text-ink-muted hover:text-ink-primary hover:bg-surface-canvas"
+                    ? "bg-white text-ink-primary shadow-xs font-black"
+                    : "text-ink-muted hover:text-ink-primary"
                 }`}
               >
                 {tab.label}
@@ -450,52 +462,55 @@ export const CmsReservationsManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Hàng 2: Tab lọc trạng thái đơn giản, thanh thoát */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-2 border-t border-surface-border/60">
+        {/* Hàng Tab Trạng Thái Thanh Thoát */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2.5 border-t border-surface-border/50 text-xs">
           {[
             { id: "ALL", label: "Tất Cả", count: reservations.length },
-            { id: "PENDING", label: "Chờ Duyệt", count: pendingCount },
+            { id: "PENDING", label: "Chờ Duyệt", count: pendingCount, highlight: pendingCount > 0 ? "text-amber-700 bg-amber-50" : "" },
             { id: "CONFIRMED", label: "Đã Giữ Bàn", count: confirmedCount },
             { id: "ARRIVED", label: "Đang Tại Quán", count: arrivedCount },
             { id: "NO_SHOW", label: "Vắng Mặt", count: reservations.filter((r) => r.status === "NO_SHOW").length },
             { id: "CANCELLED", label: "Đã Hủy", count: reservations.filter((r) => r.status === "CANCELLED").length },
-          ].map((st) => (
-            <button
-              key={st.id}
-              onClick={() => {
-                setFilterStatus(st.id);
-                setReservationPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
-                filterStatus === st.id
-                  ? "bg-brand-900 text-white shadow-2xs font-black"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-              }`}
-            >
-              <span>{st.label}</span>
-              <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  filterStatus === st.id
-                    ? "bg-white/20 text-white"
-                    : "bg-surface-muted text-ink-muted"
+          ].map((st) => {
+            const isActive = filterStatus === st.id;
+            return (
+              <button
+                key={st.id}
+                onClick={() => {
+                  setFilterStatus(st.id);
+                  setReservationPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 border ${
+                  isActive
+                    ? "bg-brand-950 text-white border-brand-950 shadow-xs"
+                    : "bg-white border-surface-border text-ink-muted hover:text-ink-primary hover:border-slate-300"
                 }`}
               >
-                {st.count}
-              </span>
-            </button>
-          ))}
+                <span>{st.label}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : st.highlight || "bg-surface-canvas text-ink-muted"
+                  }`}
+                >
+                  {st.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Danh sách thẻ đặt bàn thiết kế tinh giản, thoáng đãng */}
+      {/* Danh Sách Thẻ Đặt Bàn Kiểu Dáng Cao Cấp (Luxury Timeline Cards) */}
       <div className="space-y-3">
         {filteredReservations.length === 0 ? (
-          <div className="p-10 text-center rounded-2xl bg-white border border-surface-border">
-            <div className="w-10 h-10 rounded-full bg-surface-canvas flex items-center justify-center mx-auto mb-2 text-ink-subtle">
-              <Icon name="calendar" size={18} />
+          <div className="p-12 text-center rounded-2xl bg-white border border-surface-border">
+            <div className="w-12 h-12 rounded-2xl bg-surface-canvas flex items-center justify-center mx-auto mb-3 text-ink-muted">
+              <Icon name="calendar" size={20} />
             </div>
             <h4 className="text-sm font-bold text-ink-primary">Không tìm thấy lịch đặt bàn nào</h4>
-            <p className="text-xs text-ink-muted mt-0.5">
+            <p className="text-xs text-ink-muted mt-1">
               Thử tìm kiếm với từ khóa khác hoặc chuyển sang khung thời gian khác
             </p>
           </div>
@@ -510,162 +525,202 @@ export const CmsReservationsManagement: React.FC = () => {
             return (
               <div
                 key={res.id}
-                className="p-4 rounded-2xl bg-white border border-surface-border shadow-2xs hover:border-brand-500 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3.5"
+                className={`p-4 sm:p-5 rounded-2xl bg-white border transition-all relative overflow-hidden shadow-2xs hover:shadow-md ${
+                  isArrived
+                    ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/20 to-white"
+                    : isPending
+                    ? "border-amber-200/80 hover:border-amber-400"
+                    : "border-surface-border hover:border-brand-400"
+                }`}
               >
-                {/* Khối Thông Tin Chính */}
-                <div className="space-y-2 flex-1 min-w-0">
-                  {/* Hàng 1: Giờ hẹn • Tên Khách • SĐT • Trạng Thái Duy Nhất */}
-                  <div className="flex items-center gap-2.5 flex-wrap">
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-50 border border-brand-200/60 font-black text-brand-950 text-xs shrink-0">
-                      <Icon name="clock" size={13} className="text-brand-800" />
-                      <span>{res.reservationTime}</span>
+                {/* Viền trạng thái bên trái thanh lịch */}
+                <div
+                  className={`absolute top-0 bottom-0 left-0 w-1.5 ${
+                    isArrived
+                      ? "bg-emerald-500"
+                      : isConfirmed
+                      ? "bg-brand-800"
+                      : isPending
+                      ? "bg-amber-500"
+                      : isNoShow
+                      ? "bg-slate-400"
+                      : "bg-rose-400"
+                  }`}
+                />
+
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pl-2">
+                  {/* Cột 1: Thời gian & Thông tin khách */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 flex-1 min-w-0">
+                    {/* Badge Giờ Hẹn Sang Trọng Chuẩn Khách Sạn / Luxury Dining */}
+                    <div className="shrink-0 w-28 sm:w-32 py-2.5 px-3 rounded-2xl bg-surface-canvas/90 border border-surface-border flex flex-col items-center justify-center text-center shadow-2xs">
+                      <span className="text-[10px] font-black tracking-widest text-ink-muted uppercase">
+                        {res.reservationTime.includes("-") ? res.reservationTime.split("-")[1].trim() : "Hẹn Giờ"}
+                      </span>
+                      <span className="text-base sm:text-lg font-black text-brand-950 tracking-tight mt-0.5">
+                        {res.reservationTime.includes("-") ? res.reservationTime.split("-")[0].trim() : res.reservationTime}
+                      </span>
                     </div>
 
-                    <h4 className="font-black text-sm text-ink-primary">
-                      {res.guestName}
-                    </h4>
+                    {/* Chi tiết khách hàng & Bàn gán */}
+                    <div className="space-y-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h4 className="font-black text-base text-ink-primary tracking-tight">
+                          {res.guestName}
+                        </h4>
 
-                    <span className="text-xs text-ink-muted font-bold">
-                      ({res.guestCount} người)
-                    </span>
+                        <span className="px-2.5 py-0.5 rounded-lg text-xs font-bold bg-surface-canvas text-ink-primary border border-surface-border/70">
+                          {res.guestCount} khách
+                        </span>
 
-                    <a
-                      href={`tel:${res.phone}`}
-                      className="text-xs font-semibold text-ink-muted hover:text-brand-900 flex items-center gap-1"
-                    >
-                      <Icon name="phone" size={12} className="text-ink-subtle" />
-                      <span>{res.phone}</span>
-                    </a>
-
-                    {/* Huy hiệu trạng thái duy nhất */}
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ml-auto sm:ml-0 ${
-                        isArrived
-                          ? "bg-emerald-100 text-emerald-800"
-                          : isConfirmed
-                          ? "bg-brand-100 text-brand-900"
-                          : isPending
-                          ? "bg-amber-100 text-amber-800"
-                          : isNoShow
-                          ? "bg-slate-100 text-slate-700"
-                          : "bg-surface-muted text-ink-muted"
-                      }`}
-                    >
-                      {isArrived
-                        ? "Đang tại quán"
-                        : isConfirmed
-                        ? "Đã giữ bàn"
-                        : isPending
-                        ? "Chờ xác nhận"
-                        : isNoShow
-                        ? "Vắng mặt"
-                        : "Đã hủy"}
-                    </span>
-                  </div>
-
-                  {/* Hàng 2: Vị trí bàn & Tiền cọc & Nguồn đặt */}
-                  <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <span className="text-ink-subtle">Vị trí:</span>
-                      <span className="font-bold text-ink-primary">
-                        {res.tableAssigned || "Chưa gán bàn"}
-                      </span>
-                      {!isCancelled && !isNoShow && (
-                        <button
-                          onClick={() => handleOpenAssignTable(res)}
-                          className="text-[11px] font-bold text-brand-800 hover:underline ml-1"
+                        <a
+                          href={`tel:${res.phone}`}
+                          className="text-xs font-semibold text-ink-muted hover:text-brand-900 inline-flex items-center gap-1.5 transition-colors"
                         >
-                          {res.tableAssigned && res.tableAssigned !== "Chưa gán bàn" ? "[Đổi bàn]" : "[Xếp bàn]"}
-                        </button>
+                          <Icon name="phone" size={13} className="text-ink-muted/80" />
+                          <span>{res.phone}</span>
+                        </a>
+
+                        {/* Tag trạng thái chuẩn cao cấp */}
+                        <span
+                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${
+                            isArrived
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs"
+                              : isConfirmed
+                              ? "bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs"
+                              : isPending
+                              ? "bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs"
+                              : isNoShow
+                              ? "bg-slate-100 text-slate-700 border border-slate-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
+                        >
+                          {isArrived
+                            ? "Đang tại quán"
+                            : isConfirmed
+                            ? "Đã giữ bàn"
+                            : isPending
+                            ? "Chờ xác nhận"
+                            : isNoShow
+                            ? "Vắng mặt"
+                            : "Đã hủy"}
+                        </span>
+                      </div>
+
+                      {/* Chi tiết vị trí bàn, tiền cọc & nguồn */}
+                      <div className="flex items-center gap-3 text-xs text-ink-muted flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <Icon name="table" size={13} className="text-ink-muted/70" />
+                          <span className="text-ink-subtle">Bàn:</span>
+                          <span className={`font-bold ${res.tableAssigned && res.tableAssigned !== "Chưa gán bàn" ? "text-ink-primary" : "text-amber-700 font-extrabold"}`}>
+                            {res.tableAssigned || "Chưa gán bàn"}
+                          </span>
+                          {!isCancelled && !isNoShow && (
+                            <button
+                              onClick={() => handleOpenAssignTable(res)}
+                              className="text-[11px] font-bold text-brand-800 hover:text-brand-950 underline underline-offset-2 ml-0.5"
+                            >
+                              {res.tableAssigned && res.tableAssigned !== "Chưa gán bàn" ? "Đổi" : "Gán ngay"}
+                            </button>
+                          )}
+                        </div>
+
+                        {(res.depositAmount ?? 0) > 0 && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-ink-muted/40">•</span>
+                            <button
+                              type="button"
+                              onClick={() => handleToggleDeposit(res)}
+                              className={`flex items-center gap-1 font-bold ${
+                                res.depositStatus === "PAID" ? "text-emerald-700" : "text-amber-700"
+                              }`}
+                              title="Bấm để đổi trạng thái cọc"
+                            >
+                              <Icon name="checkCircle" size={13} className={res.depositStatus === "PAID" ? "text-emerald-600" : "text-amber-600"} />
+                              <span>
+                                Cọc {(res.depositAmount ?? 0).toLocaleString("vi-VN")} đ
+                              </span>
+                              <span className="text-[10px] uppercase font-black px-1.5 py-0.2 rounded bg-surface-canvas border border-surface-border">
+                                {res.depositStatus === "PAID" ? "Đã cọc" : "Chưa cọc"}
+                              </span>
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-1 text-ink-muted">
+                          <span className="text-ink-muted/40">•</span>
+                          <span>{res.source === "LANDING_PAGE" ? "Website" : "Hotline"}</span>
+                        </div>
+                      </div>
+
+                      {/* Ghi chú: Hiển thị thanh thoát, không phải một input xám to đùng */}
+                      {res.notes && (
+                        <div className="flex items-start gap-1.5 mt-1 text-xs text-ink-muted bg-amber-50/50 border border-amber-200/50 px-2.5 py-1 rounded-lg">
+                          <Icon name="info" size={13} className="text-amber-700 mt-0.5 shrink-0" />
+                          <span className="font-medium text-amber-900">
+                            {res.notes}
+                          </span>
+                        </div>
                       )}
                     </div>
-
-                    {(res.depositAmount ?? 0) > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleDeposit(res)}
-                        className={`flex items-center gap-1 font-bold ${
-                          res.depositStatus === "PAID"
-                            ? "text-emerald-700"
-                            : "text-amber-700"
-                        }`}
-                        title="Bấm để đổi trạng thái cọc"
-                      >
-                        <span>•</span>
-                        <span>
-                          Cọc {(res.depositAmount ?? 0).toLocaleString("vi-VN")} đ (
-                          {res.depositStatus === "PAID" ? "Đã cọc VietQR" : "Chưa cọc"})
-                        </span>
-                      </button>
-                    )}
-
-                    <span className="text-ink-subtle hidden sm:inline">
-                      • Nguồn: {res.source === "LANDING_PAGE" ? "Website" : "Hotline"}
-                    </span>
                   </div>
 
-                  {/* Ghi chú dặn dò (nếu có) */}
-                  {res.notes && (
-                    <p className="text-xs text-ink-muted italic bg-surface-canvas/60 px-3 py-1.5 rounded-xl border border-surface-border/50">
-                      Ghi chú: "{res.notes}"
-                    </p>
-                  )}
-                </div>
+                  {/* Cột 2: Cụm Nút Thao Tác Chuyên Nghiệp */}
+                  <div className="flex items-center gap-2 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-surface-border/50 justify-end">
+                    {isPending && (
+                      <>
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-xl bg-brand-950 text-white text-xs font-black shadow-xs hover:bg-black active:scale-95 transition-all flex items-center gap-1.5"
+                          onClick={() => handleConfirmReservation(res)}
+                        >
+                          <Icon name="check" size={13} className="text-emerald-400" />
+                          <span>Giữ Bàn</span>
+                        </button>
 
-                {/* Khối Nút Hành Động (Gọn, rõ ràng) */}
-                <div className="flex items-center gap-2 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-surface-border/60">
-                  {isPending && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="rounded-xl bg-brand-900 text-white text-xs gap-1.5 shadow-xs font-bold hover:bg-brand-950"
-                        onClick={() => handleConfirmReservation(res)}
-                      >
-                        <Icon name="check" size={14} />
-                        <span>Giữ Bàn</span>
-                      </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectReservation(res)}
+                          className="px-3 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-rose-600 hover:bg-rose-50 active:scale-95 transition-all"
+                        >
+                          Từ Chối
+                        </button>
+                      </>
+                    )}
 
-                      <button
-                        onClick={() => handleRejectReservation(res)}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        Từ Chối
-                      </button>
-                    </>
-                  )}
+                    {isConfirmed && (
+                      <>
+                        <button
+                          type="button"
+                          className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-black shadow-xs hover:bg-emerald-800 active:scale-95 transition-all flex items-center gap-1.5"
+                          onClick={() => handleCustomerArrived(res)}
+                        >
+                          <Icon name="checkCircle" size={14} />
+                          <span>Đón Khách</span>
+                        </button>
 
-                  {isConfirmed && (
-                    <>
-                      <Button
-                        size="sm"
-                        className="rounded-xl bg-emerald-700 text-white text-xs gap-1.5 shadow-xs hover:bg-emerald-800 font-bold"
-                        onClick={() => handleCustomerArrived(res)}
-                      >
-                        <Icon name="checkCircle" size={14} />
-                        <span>Đón Khách</span>
-                      </Button>
+                        <button
+                          type="button"
+                          onClick={() => handleNoShow(res)}
+                          className="px-3 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-rose-600 hover:bg-rose-50 active:scale-95 transition-all"
+                        >
+                          Vắng Mặt
+                        </button>
+                      </>
+                    )}
 
-                      <button
-                        onClick={() => handleNoShow(res)}
-                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-ink-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      >
-                        Vắng Mặt
-                      </button>
-                    </>
-                  )}
+                    {isArrived && (
+                      <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black">
+                        <Icon name="checkCircle" size={14} className="text-emerald-600" />
+                        <span>Đang dùng bữa tại bàn</span>
+                      </div>
+                    )}
 
-                  {isArrived && (
-                    <span className="text-xs font-bold text-emerald-700 flex items-center gap-1 px-2.5 py-1 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <Icon name="checkCircle" size={14} className="text-emerald-600" />
-                      <span>Đang dùng bữa</span>
-                    </span>
-                  )}
-
-                  {(isNoShow || isCancelled) && (
-                    <span className="text-xs text-ink-subtle italic px-2 py-1">
-                      Đã kết thúc
-                    </span>
-                  )}
+                    {(isNoShow || isCancelled) && (
+                      <span className="text-xs font-bold text-ink-muted px-3 py-1 bg-surface-canvas rounded-lg border border-surface-border">
+                        {isNoShow ? "Đã ghi nhận vắng mặt" : "Đã hủy giữ chỗ"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             );

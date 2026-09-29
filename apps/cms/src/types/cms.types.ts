@@ -1,8 +1,9 @@
 import React from "react";
 import { IconName } from "./icon.types.js";
-import { AppModule } from "@a2order/shared";
+import { AppModule, StoreScale } from "@a2order/shared";
 
 export { AppModule };
+export type { StoreScale };
 
 export interface CmsMetric {
   id: string;
@@ -57,6 +58,28 @@ export interface ModifierOption {
   price: number;
 }
 
+export interface DishVariantOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface DishCustomizationOption {
+  id: string;
+  name: string;
+  priceModifier?: number;
+}
+
+export interface DishCustomizationGroup {
+  id: string;
+  name: string;
+  required?: boolean;
+  minSelect?: number;
+  maxSelect?: number;
+  type?: "SINGLE" | "MULTIPLE";
+  options: DishCustomizationOption[];
+}
+
 export interface FnbDishItem {
   id: string;
   name: string;
@@ -70,6 +93,37 @@ export interface FnbDishItem {
   description?: string;
   isBestSeller?: boolean;
   modifiers?: ModifierOption[];
+  variants?: DishVariantOption[];
+  customizationGroups?: DishCustomizationGroup[];
+}
+
+export interface BusinessScenarioCategory {
+  id: string;
+  name: string;
+  emoji?: string;
+  icon?: string;
+}
+
+export interface BusinessScenarioTable {
+  id: string;
+  name: string;
+  capacity: number;
+  zone: string;
+}
+
+export interface BusinessScenarioTemplate {
+  type: BusinessType;
+  label: string;
+  businessName?: string;
+  emoji: string;
+  tagline: string;
+  description: string;
+  suggestedModules: AppModule[];
+  categories: BusinessScenarioCategory[];
+  suggestedCategories?: BusinessScenarioCategory[];
+  defaultTables: BusinessScenarioTable[];
+  suggestedTables?: BusinessScenarioTable[];
+  dishes: FnbDishItem[];
 }
 
 // Inventory & Inward Stock Types
@@ -143,6 +197,20 @@ export interface StaffUser {
   email?: string;
   ordersServedToday: number;
   isActive: boolean;
+}
+
+export interface AttendanceLogRecord {
+  id: string;
+  staffId: string;
+  staffName: string;
+  role: StaffRole;
+  clockInTime: string;
+  clockOutTime?: string;
+  shiftName: string;
+  date: string;
+  status: "ACTIVE" | "COMPLETED";
+  workHours?: number;
+  note?: string;
 }
 
 export interface PermissionItem {
@@ -236,8 +304,9 @@ export interface CmsStoreSettingsProps {
 }
 
 export interface CmsSuperAdminViewProps {
-  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config";
+  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config" | "scenarios";
   onTabChange?: (tab: string) => void;
+  onImpersonateStore?: (store: TenantStoreRecord) => void;
 }
 
 export interface CmsDashboardProps {
@@ -361,6 +430,16 @@ export const BUSINESS_TYPE_CONFIG: Record<
   },
 };
 
+export interface ConnectedTerminalRecord {
+  id: string;
+  name: string;
+  role: "POS_CASHIER" | "KITCHEN_KDS" | "TABLET_WAITER" | "BAR_KDS";
+  ipAddress: string;
+  appVersion: string;
+  lastSync: string;
+  status: "ONLINE" | "OFFLINE";
+}
+
 export interface TenantStoreRecord {
   id: string;
   name: string;
@@ -378,7 +457,10 @@ export interface TenantStoreRecord {
   activeDevices: number;
   configVer: string;
   modules: AppModule[];
+  scale?: StoreScale;
   businessType?: BusinessType;
+  lastSync?: string;
+  terminals?: ConnectedTerminalRecord[];
 }
 
 export interface SoftwareInvoiceRecord {

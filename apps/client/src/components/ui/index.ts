@@ -6,3 +6,4 @@ export * from "./Modal.js";
 export * from "./Drawer.js";
 export * from "./Icon.js";
 export * from "./LoadingScreen.js";
+export * from "./NotificationModal";

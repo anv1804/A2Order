@@ -1,87 +1,197 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/logo-symbol.jpg" />
     <link rel="apple-touch-icon" href="/logo-symbol.jpg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#12372A" />
+    <meta name="theme-color" content="#F4F5F6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>A2Order - Hệ Thống Vận Hành & Quản Trị Nhà Hàng</title>
     <style>
-      /* Chống chớp trắng (FOUC) khi app đang tải bundle */
       #initial-loader {
         position: fixed;
         inset: 0;
+        z-index: 99999;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         background-color: #F4F5F6;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        z-index: 9999;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        user-select: none;
+        transition: opacity 0.4s ease-out;
       }
-      .loader-logo {
-        width: 64px;
-        height: 64px;
-        border-radius: 20px;
+      
+      .loader-content {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 24rem;
+        text-align: center;
+        z-index: 10;
+      }
+
+      /* Ambient blurs */
+      .blur-1 {
+        position: absolute;
+        width: 18rem;
+        height: 18rem;
+        border-radius: 9999px;
+        background-color: rgba(163, 219, 206, 0.4);
+        filter: blur(40px);
+        top: -2.5rem;
+        right: -2.5rem;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .blur-2 {
+        position: absolute;
+        width: 18rem;
+        height: 18rem;
+        border-radius: 9999px;
+        background-color: rgba(72, 177, 130, 0.1);
+        filter: blur(40px);
+        bottom: -2.5rem;
+        left: -2.5rem;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .logo-wrapper {
+        position: relative;
+        margin-bottom: 1.5rem;
+      }
+
+      .logo-inner {
+        width: 5rem;
+        height: 5rem;
+        border-radius: 1.5rem;
+        background-color: #12372A;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 0 0 4px #ffffff, 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      }
+
+      .logo-img {
+        width: 100%;
+        height: 100%;
         object-fit: cover;
-        box-shadow: 0 10px 25px rgba(18, 55, 42, 0.15);
-        margin-bottom: 16px;
-        animation: pulseLogo 2s infinite ease-in-out;
+        border-radius: 1rem;
       }
-      .loader-title {
-        font-size: 18px;
+
+      .orbit {
+        position: absolute;
+        top: -0.5rem;
+        right: -0.5rem;
+        bottom: -0.5rem;
+        left: -0.5rem;
+        border-radius: 1.5rem;
+        border: 2px solid rgba(72, 177, 130, 0.3);
+        border-top-color: #22604B;
+        animation: spin 1s linear infinite;
+      }
+
+      .title {
+        font-size: 1.25rem;
         font-weight: 900;
         color: #161918;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.025em;
         margin: 0;
       }
-      .loader-sub {
+      .title span {
+        color: #22604B;
+      }
+
+      .message {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #194B3A;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+      }
+      .spinner-small {
+        width: 0.875rem;
+        height: 0.875rem;
+        border: 2px solid rgba(72, 177, 130, 0.3);
+        border-top-color: #22604B;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      .sub-message {
         font-size: 11px;
         color: #69706D;
-        margin-top: 4px;
-        font-weight: 600;
+        margin-top: 0.25rem;
+        line-height: 1.625;
       }
-      .loader-bar {
-        width: 140px;
-        height: 4px;
+
+      .progress-bg {
+        width: 12rem;
+        height: 0.375rem;
         background-color: #E3E5E5;
-        border-radius: 999px;
-        margin-top: 18px;
+        border-radius: 9999px;
         overflow: hidden;
+        margin-top: 1.5rem;
         position: relative;
       }
-      .loader-bar-fill {
-        width: 45%;
+
+      .progress-fill {
         height: 100%;
-        background-color: #12372A;
-        border-radius: 999px;
-        animation: barSlide 1.2s infinite ease-in-out;
+        background: linear-gradient(to right, #2E795E, #194B3A);
+        border-radius: 9999px;
+        width: 66.666667%;
+        animation: pulse 1.5s ease-in-out infinite;
       }
-      @keyframes pulseLogo {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
+
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
-      @keyframes barSlide {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(250%); }
+      
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: .5; }
       }
     </style>
   </head>
   <body class="bg-surface-canvas text-ink-primary antialiased select-none">
-    <div id="root">
-      <!-- Fallback loader styled identically to Donezo theme before bundle execution -->
-      <div id="initial-loader">
-        <img src="/logo-symbol.jpg" alt="A2Order" class="loader-logo" />
-        <h1 class="loader-title">A2Order <span style="color: #22604B;">OS</span></h1>
-        <p class="loader-sub">Hệ thống quản lý thông minh</p>
-        <div class="loader-bar">
-          <div class="loader-bar-fill"></div>
+    <div id="initial-loader">
+      <div class="blur-1"></div>
+      <div class="blur-2"></div>
+      
+      <div class="loader-content">
+        <div class="logo-wrapper">
+          <div class="logo-inner">
+            <img src="/logo-symbol.jpg" alt="A2Order" class="logo-img" />
+          </div>
+          <div class="orbit"></div>
+        </div>
+
+        <h2 class="title">A2Order <span>OS</span></h2>
+        
+        <p class="message">
+          <span class="spinner-small"></span>
+          <span>Khởi tạo Trạm POS A2Order...</span>
+        </p>
+        
+        <p class="sub-message">Đồng bộ sơ đồ bàn, vé bếp KDS và kết nối cổng thanh toán VietQR</p>
+        
+        <div class="progress-bg">
+          <div class="progress-fill"></div>
         </div>
       </div>
     </div>
+    
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -5,65 +5,79 @@ import { formatCurrency } from "@/lib/formatters";
 import { Panel, Icon } from "@/components/ui";
 import { TableCardProps } from "@/types";
 
-export const TableCard: React.FC<TableCardProps> = ({ table, onClick }) => {
+export const TableCard: React.FC<TableCardProps> = ({ table, onClick, isPinned = false, onTogglePin }) => {
   const isEmpty = table.status === TableStatus.EMPTY;
 
+  const zoneLabel =
+    table.zone === "T2"
+      ? "Tầng 2"
+      : table.zone === "VIP"
+      ? "Phòng VIP"
+      : table.zone === "SAN_VUON"
+      ? "Sân Vườn"
+      : "Tầng 1";
+
   return (
-    <Panel
-      padding="md"
+    <div
       onClick={() => onClick(table)}
-      className="active:scale-95 transition-all cursor-pointer flex flex-col justify-between min-h-[148px] hover:shadow-elevated hover:border-brand-500/40 select-none group border border-surface-border"
+      className={`group active:scale-[0.98] transition-all cursor-pointer flex flex-col justify-between p-2.5 sm:p-3.5 rounded-2xl border select-none min-w-0 overflow-hidden relative ${
+        isEmpty
+          ? "bg-white border-surface-border hover:border-brand-500/50 hover:shadow-card"
+          : "bg-amber-50/30 border-amber-200/90 hover:border-amber-400 hover:shadow-card"
+      } ${isPinned ? "ring-2 ring-brand-500 shadow-md" : ""}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-base sm:text-lg font-black text-ink-primary group-hover:text-brand-900 transition-colors truncate">
-              {table.name}
-            </h3>
-            {/* Icon giỏ hàng đặt bàn theo yêu cầu */}
-            <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                isEmpty
-                  ? "bg-brand-50 text-brand-800 group-hover:bg-brand-900 group-hover:text-white"
-                  : "bg-amber-100 text-amber-900"
-              }`}
-              title={isEmpty ? "Đặt bàn & Gọi món" : "Đang có giỏ món"}
-            >
-              <Icon name="cart" size={13} />
-            </div>
-          </div>
-          <span className="text-[11px] text-ink-muted block truncate">
-            {table.zone === "T2" ? "Khu Tầng 2" : table.zone === "VIP" ? "Phòng VIP" : table.zone === "SAN_VUON" ? "Sân Vườn" : "Khu Tầng 1"}
+      {/* Hàng 1: Ghim & Khu vực, Trạng thái phân tách 2 góc rõ ràng */}
+      <div className="flex items-center justify-between gap-1 pb-1 min-w-0">
+        <div className="flex items-center gap-1 shrink-0 min-w-0">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePin?.(table.id, e);
+            }}
+            className={`p-1 -ml-1 rounded-full transition-colors shrink-0 ${isPinned ? "text-brand-700 bg-brand-50" : "text-ink-subtle hover:bg-surface-hover hover:text-ink-primary"}`}
+          >
+            <Icon name="pin" className={`w-3 h-3 ${isPinned ? "fill-brand-700" : ""}`} />
+          </button>
+          <span className="text-[10px] font-bold text-ink-subtle uppercase tracking-wider truncate shrink-0 max-w-[55px] sm:max-w-none">
+            {zoneLabel}
           </span>
         </div>
-
-        <TableStatusBadge status={table.status} />
+        <div className="shrink-0 min-w-0">
+          <TableStatusBadge status={table.status} />
+        </div>
       </div>
 
-      <div className="mt-3 pt-2.5 border-t border-surface-border/60 flex items-center justify-between text-xs text-ink-muted">
-        {table.occupiedMinutes !== undefined && table.occupiedMinutes > 0 ? (
-          <div className="flex items-center gap-1 font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full text-[11px]">
-            <Icon name="clock" className="w-3 h-3 text-amber-700" size={12} />
-            <span>{table.occupiedMinutes}p</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 font-medium text-[11px]">
-            <Icon name="users" className="w-3.5 h-3.5 text-ink-subtle" size={13} />
-            <span>4 chỗ</span>
-          </div>
-        )}
+      {/* Hàng 2: Tên bàn to, đậm, rõ ràng 100% không bị cắt chữ B... */}
+      <div className="my-1 min-w-0">
+        <div className="flex items-center justify-between gap-1 min-w-0">
+          <h3 className="text-sm sm:text-base font-black text-ink-primary group-hover:text-brand-900 transition-colors truncate">
+            {table.name}
+          </h3>
+        </div>
 
+        {/* Thông tin phụ: Thời gian ngồi hoặc sức chứa */}
+        <p className="text-[10px] sm:text-[11px] text-ink-muted mt-0.5 truncate font-medium">
+          {!isEmpty && table.occupiedMinutes !== undefined && table.occupiedMinutes > 0
+            ? `⏱ Ngồi ${table.occupiedMinutes} phút`
+            : "Sức chứa 4 - 6 chỗ"}
+        </p>
+      </div>
+
+      {/* Hàng 3: Đáy thẻ - Tạm tính hoặc Nút Mở bàn */}
+      <div className="mt-1 pt-1.5 border-t border-surface-border/70 flex items-center justify-between min-w-0">
         {table.totalAmount !== undefined && table.totalAmount > 0 ? (
-          <div className="flex items-center gap-1 text-brand-950 font-black text-xs sm:text-sm">
-            <Icon name="cart" size={12} className="text-brand-800" />
-            <span>{formatCurrency(table.totalAmount)}</span>
+          <div className="flex items-baseline justify-between w-full min-w-0 gap-1">
+            <span className="text-[9px] sm:text-[10px] text-ink-subtle font-medium truncate shrink-0">Tạm tính:</span>
+            <span className="text-xs sm:text-sm font-black text-brand-900 truncate">
+              {formatCurrency(table.totalAmount)}
+            </span>
           </div>
         ) : (
-          <div className="flex items-center gap-1 text-brand-800 font-extrabold text-[11px] group-hover:translate-x-0.5 transition-transform">
-            <span>+ Đặt món</span>
+          <div className="w-full flex items-center justify-center gap-1 py-1 rounded-xl bg-brand-50/80 text-brand-900 font-extrabold text-[10px] sm:text-[11px] group-hover:bg-brand-900 group-hover:text-white transition-all whitespace-nowrap">
+            <span>+ Đặt Món</span>
           </div>
         )}
       </div>
-    </Panel>
+    </div>
   );
 };

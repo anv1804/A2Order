@@ -7,7 +7,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   subMessage = "Đồng bộ dữ liệu thời gian thực và cấu hình quán",
 }) => {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-surface-canvas p-6 select-none animate-fadeIn">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-surface-canvas p-6 select-none animate-fadeIn">
       {/* Background soft ambient blur */}
       <div className="absolute w-72 h-72 rounded-full bg-brand-200/40 blur-3xl -top-10 -right-10 pointer-events-none" />
       <div className="absolute w-72 h-72 rounded-full bg-brand-500/10 blur-3xl -bottom-10 -left-10 pointer-events-none" />

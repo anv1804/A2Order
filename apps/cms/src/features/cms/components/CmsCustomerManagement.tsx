@@ -98,8 +98,10 @@ const TIER_CONFIG: Record<CustomerMembershipTier, { label: string; badgeClass: s
   MEMBER: { label: "Thành Viên", badgeClass: "bg-slate-100 text-slate-800 border-slate-200", discountPercent: 0, minSpend: "0 đ" },
 };
 
+import { usePersistentState } from "@/hooks/usePersistentState";
+
 export const CmsCustomerManagement: React.FC = () => {
-  const [customers, setCustomers] = useState<CustomerRecord[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = usePersistentState<CustomerRecord[]>("customers_data", INITIAL_CUSTOMERS);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("ALL");
 
@@ -250,31 +252,29 @@ export const CmsCustomerManagement: React.FC = () => {
   return (
     <div className="space-y-5 animate-fadeIn pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-lg sm:text-2xl font-bold text-ink-primary tracking-tight">
-              <span className="sm:hidden">Khách Hàng & VIP</span>
-              <span className="hidden sm:inline">Khách Hàng & Thẻ Thành Viên (CRM)</span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+              Khách Hàng & Thẻ Thành Viên (CRM)
             </h2>
-            <Badge variant="success" className="text-xs font-semibold whitespace-nowrap shrink-0">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
               Tích Điểm Tự Động
-            </Badge>
+            </span>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5 line-clamp-1 sm:line-clamp-none">
-            Quản lý dữ liệu khách quen, phân hạng thẻ thành viên và điểm thưởng.
+          <p className="text-xs text-ink-muted leading-relaxed">
+            Quản lý dữ liệu khách quen, phân hạng thẻ thành viên và điểm thưởng
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap shrink-0"
+            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
             onClick={handleOpenCreateModal}
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">+ Thêm Khách</span>
-            <span className="hidden sm:inline">+ Thêm Khách Hàng Mới</span>
+            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+            <span>+ Thêm Khách Hàng Mới</span>
           </Button>
         </div>
       </div>

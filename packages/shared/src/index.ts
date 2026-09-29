@@ -1,4 +1,4 @@
-﻿export * from "./table-status.js";
+export * from "./table-status.js";
 export * from "./order-status.js";
 export * from "./roles.js";
 export * from "./socket-events.js";
@@ -6,3 +6,4 @@ export * from "./schemas/index.js";
 export * from "./license.js";
 export * from "./analytics.js";
 export * from "./pricing-rules.js";
+export * from "./fnb.js";
