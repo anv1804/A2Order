@@ -1,165 +1,11 @@
-import React, { useState, useMemo } from "react";
-import { Panel, Button, Badge, Icon } from "@/components/ui";
-import { toast, confirmDialog } from "@/stores/notificationStore";
-import { usePersistentState } from "@/hooks/usePersistentState";
-import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
-import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
-import { formatCurrency } from "@/lib/formatters";
-import {
-  APP_MODULE_CATALOG,
-  AppModule,
-  ModulePricingInfo,
-  PromoVoucher,
-  DEFAULT_PERIOD_DISCOUNTS,
-  PeriodDiscountRule,
-} from "@a2order/shared";
+import re
 
-export const CmsAdminPricingManager: React.FC = () => {
-  const [catalog, setCatalog] = usePersistentState<ModulePricingInfo[]>("admin_module_catalog", APP_MODULE_CATALOG);
-  const [editingModuleId, setEditingModuleId] = useState<AppModule | null>(null);
-  const [editPrice, setEditPrice] = useState<number>(0);
+with open("apps/cms/src/features/cms/components/CmsAdminPricingManager.tsx", "r") as f:
+    content = f.read()
 
-  const [periodDiscounts, setPeriodDiscounts] = usePersistentState<PeriodDiscountRule[]>("admin_period_discounts", DEFAULT_PERIOD_DISCOUNTS);
-  const [editingDiscountMonths, setEditingDiscountMonths] = useState<number | null>(null);
-  const [discountPercentInput, setDiscountPercentInput] = useState(0);
+jsx_start = content.find("  return (")
 
-  const [vouchers, setVouchers] = usePersistentState<PromoVoucher[]>("admin_vouchers", [
-    {
-      id: "v1",
-      code: "A2CHAOBAN",
-      discountType: "PERCENT",
-      discountValue: 15,
-      minContractMonths: 6,
-      validUntil: "2026-12-31",
-      usageCount: 18,
-      maxUsage: 50,
-      isActive: true,
-    },
-    {
-      id: "v2",
-      code: "QUANMOI100K",
-      discountType: "FIXED_AMOUNT",
-      discountValue: 100000,
-      minContractMonths: 3,
-      validUntil: "2026-10-31",
-      usageCount: 8,
-      maxUsage: 30,
-      isActive: true,
-    },
-  ]);
-
-  // Modal voucher state
-  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
-  const [newVoucherCode, setNewVoucherCode] = useState("");
-  const [newVoucherType, setNewVoucherType] = useState<"PERCENT" | "FIXED_AMOUNT">("PERCENT");
-  const [newVoucherValue, setNewVoucherValue] = useState<number>(10);
-  const [newVoucherMonths, setNewVoucherMonths] = useState<number>(3);
-  const [newVoucherLimit, setNewVoucherLimit] = useState<number>(50);
-  const { requestClose: requestCloseVoucher } = useUnsavedEditor("voucher_modal", isVoucherModalOpen, JSON.stringify({ newVoucherCode, newVoucherType, newVoucherValue, newVoucherMonths, newVoucherLimit }), () => setIsVoucherModalOpen(false));
-  
-  const priceChanged = editingModuleId !== null && editPrice !== catalog.find((module) => module.id === editingModuleId)?.monthlyPrice;
-  const discountChanged = editingDiscountMonths !== null && discountPercentInput !== periodDiscounts.find((rule) => rule.durationMonths === editingDiscountMonths)?.discountPercent;
-  useUnsavedChanges("admin_pricing_inline", priceChanged || discountChanged);
-
-  // Handlers for Modules
-  const handleEditPrice = (mod: ModulePricingInfo) => {
-    setEditingModuleId(mod.id);
-    setEditPrice(mod.monthlyPrice);
-  };
-  const handleCancelEdit = () => {
-    setEditingModuleId(null);
-    setEditPrice(0);
-  };
-  const handleSavePrice = (modId: AppModule) => {
-    setCatalog((prev) => prev.map((m) => (m.id === modId ? { ...m, monthlyPrice: editPrice } : m)));
-    setEditingModuleId(null);
-    toast.success("Đã cập nhật giá gốc");
-  };
-
-  // Handlers for Discounts
-  const handleEditDiscount = (rule: PeriodDiscountRule) => {
-    setEditingDiscountMonths(rule.durationMonths);
-    setDiscountPercentInput(rule.discountPercent);
-  };
-  const handleSaveDiscount = (months: number) => {
-    setPeriodDiscounts((prev) => prev.map((r) => (r.durationMonths === months ? { ...r, discountPercent: discountPercentInput } : r)));
-    setEditingDiscountMonths(null);
-    toast.success("Đã cập nhật chiết khấu");
-  };
-
-  // Handlers for Vouchers
-  const handleCreateVoucherSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newVoucherCode.trim()) { toast.error("Vui lòng nhập mã"); return; }
-    const created: PromoVoucher = {
-      id: `v-${Date.now()}`,
-      code: newVoucherCode.trim().toUpperCase(),
-      discountType: newVoucherType,
-      discountValue: Number(newVoucherValue) || 10,
-      minContractMonths: Number(newVoucherMonths) || 1,
-      validUntil: "2026-12-31",
-      usageCount: 0,
-      maxUsage: Number(newVoucherLimit) || 100,
-      isActive: true,
-    };
-    setVouchers((prev) => [created, ...prev]);
-    setIsVoucherModalOpen(false);
-    setNewVoucherCode("");
-    toast.success(`Đã phát hành mã khuyến mại ${created.code}!`);
-  };
-  const handleToggleVoucher = (id: string, code: string, current: boolean) => {
-    setVouchers((prev) => prev.map((v) => (v.id === id ? { ...v, isActive: !current } : v)));
-    toast.info(`Đã ${current ? "tạm dừng" : "kích hoạt lại"} mã ${code}`);
-  };
-
-  // ==========================================
-  // SIMULATOR STATE
-  // ==========================================
-  const [simSelectedModules, setSimSelectedModules] = useState<AppModule[]>([AppModule.CORE_POS]);
-  const [simMonths, setSimMonths] = useState<number>(6);
-  const [simVoucherCode, setSimVoucherCode] = useState("");
-
-  const simulation = useMemo(() => {
-    let baseMo = 0;
-    simSelectedModules.forEach(id => {
-      baseMo += catalog.find(c => c.id === id)?.monthlyPrice || 0;
-    });
-    const subtotal = baseMo * simMonths;
-    const pDiscRule = periodDiscounts.find(p => p.durationMonths === simMonths);
-    const pDiscPercent = pDiscRule ? pDiscRule.discountPercent : 0;
-    const pDiscAmount = (subtotal * pDiscPercent) / 100;
-    const afterPeriod = subtotal - pDiscAmount;
-
-    let vDiscAmount = 0;
-    let vError = "";
-    const appliedV = vouchers.find(v => v.code === simVoucherCode.toUpperCase() && v.isActive);
-    if (simVoucherCode) {
-      if (!appliedV) {
-        vError = "Mã không hợp lệ hoặc đã hết hạn";
-      } else if (simMonths < appliedV.minContractMonths) {
-        vError = `Yêu cầu thuê tối thiểu ${appliedV.minContractMonths} tháng`;
-      } else {
-        if (appliedV.discountType === "PERCENT") {
-          vDiscAmount = (afterPeriod * appliedV.discountValue) / 100;
-        } else {
-          vDiscAmount = appliedV.discountValue;
-        }
-      }
-    }
-    
-    return {
-      baseMo,
-      subtotal,
-      pDiscPercent,
-      pDiscAmount,
-      vDiscAmount,
-      vError,
-      appliedVoucher: !vError ? appliedV : null,
-      total: Math.max(0, afterPeriod - vDiscAmount)
-    };
-  }, [catalog, periodDiscounts, vouchers, simSelectedModules, simMonths, simVoucherCode]);
-
-  return (
+new_jsx = """  return (
     <div className="space-y-6 animate-fadeIn pb-10">
       {/* HEADER TỐI GIẢN CHUẨN A2ORDER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -230,7 +76,7 @@ export const CmsAdminPricingManager: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-black text-ink-primary group-hover:text-brand-800 transition">{formatCurrency(mod.monthlyPrice)}</span>
-                        <button onClick={() => handleEditPrice(mod)} className="w-8 h-8 rounded-lg bg-white border border-surface-border text-ink-muted hover:text-brand-800 hover:border-brand-200 flex items-center justify-center transition"><Icon name="edit" size={14} /></button>
+                        <button onClick={() => handleEditPrice(mod)} className="w-8 h-8 rounded-lg bg-white border border-surface-border text-ink-muted hover:text-brand-800 hover:border-brand-200 flex items-center justify-center transition"><Icon name="edit2" size={14} /></button>
                       </div>
                     )}
                   </div>
@@ -259,7 +105,7 @@ export const CmsAdminPricingManager: React.FC = () => {
                       <span className={`text-lg font-black ${rule.discountPercent > 0 ? "text-emerald-600" : "text-ink-subtle"}`}>
                         {rule.discountPercent === 0 ? "0%" : `-${rule.discountPercent}%`}
                       </span>
-                      <Icon name="edit" size={12} className="text-surface-border group-hover:text-brand-800 opacity-0 group-hover:opacity-100 transition" />
+                      <Icon name="edit2" size={12} className="text-surface-border group-hover:text-brand-800 opacity-0 group-hover:opacity-100 transition" />
                     </div>
                   )}
                 </div>
@@ -456,3 +302,8 @@ export const CmsAdminPricingManager: React.FC = () => {
     </div>
   );
 };
+"""
+
+with open("apps/cms/src/features/cms/components/CmsAdminPricingManager.tsx", "w") as f:
+    f.write(content[:jsx_start] + new_jsx)
+
