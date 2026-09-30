@@ -43,6 +43,27 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
   return (
         <div className="space-y-4">
           <Panel variant="default" padding="lg">
+      {/* KHỐI THỐNG KÊ (MINI DASHBOARD) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4 animate-fadeIn">
+        {[
+          { label: "Quán Đang Hoạt Động", val: stores.filter(s => s.status === "ACTIVE").length, icon: "building", tone: "blue" },
+          { label: "Đang Bị Tạm Khóa", val: stores.filter(s => s.status === "SUSPENDED").length, icon: "shield", tone: "rose" },
+          { label: "Thiết Bị Mạng (POS/KDS)", val: stores.reduce((sum, s) => sum + s.activeDevices, 0), icon: "monitor", tone: "indigo" },
+        ].map((m, i) => (
+          <article key={i} className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,.035)] flex items-center justify-between">
+            <div>
+              <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">{m.label}</h4>
+              <p className={`text-2xl font-black tracking-tight ${m.tone === "rose" && m.val > 0 ? "text-rose-600" : "text-slate-900"}`}>
+                {m.val}
+              </p>
+            </div>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-${m.tone}-50 text-${m.tone}-600`}>
+              <Icon name={m.icon as any} size={20} />
+            </div>
+          </article>
+        ))}
+      </section>
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 mb-3">
               <div>
                 <h3 className="text-sm sm:text-base font-black text-ink-primary flex items-center gap-2">
