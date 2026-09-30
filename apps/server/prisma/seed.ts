@@ -1,31 +1,32 @@
 import { PrismaClient } from "@prisma/client";
-import { ALL_SCENARIOS } from "../src/mockData/businessScenariosData.js";
+import { DEFAULT_BUSINESS_SCENARIOS } from "../src/mockData/businessScenariosData.js";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 [A2Order Prisma Seed] Bắt đầu gieo mầm dữ liệu mẫu F&B chuẩn...");
 
-  for (const scenario of ALL_SCENARIOS) {
-    const storeSlug = scenario.businessType.toLowerCase().replace(/_/g, "-");
+  const scenarios = Object.values(DEFAULT_BUSINESS_SCENARIOS);
+
+  for (const scenario of scenarios) {
+    const storeSlug = scenario.type.toLowerCase().replace(/_/g, "-");
     const storeId = `store-${storeSlug}`;
 
-    console.log(`  -> Tạo cửa hàng mẫu [${scenario.name}] (${scenario.businessType})...`);
+    console.log(`  -> Tạo cửa hàng mẫu [${scenario.businessName}] (${scenario.type})...`);
 
     // 1. Tạo Store
     const store = await prisma.store.upsert({
       where: { id: storeId },
       update: {
-        name: scenario.name,
-        businessType: scenario.businessType,
+        name: scenario.businessName,
+        slug: storeSlug,
         address: "79 Đường Hoa Sứ, Phường 7, Phú Nhuận, TP.HCM",
         phone: "0908889999",
       },
       create: {
         id: storeId,
-        name: scenario.name,
+        name: scenario.businessName,
         slug: storeSlug,
-        businessType: scenario.businessType,
         address: "79 Đường Hoa Sứ, Phường 7, Phú Nhuận, TP.HCM",
         phone: "0908889999",
         configVersion: "v1.0.0",
@@ -33,7 +34,7 @@ async function main() {
     });
 
     // 2. Tạo License
-    const licenseKey = `A2-PRO-${scenario.businessType}-2026`;
+    const licenseKey = `A2-PRO-${scenario.type}-2026`;
     await prisma.storeLicense.upsert({
       where: { storeId: store.id },
       update: {
@@ -55,7 +56,7 @@ async function main() {
       },
     });
 
-    // 3. Tạo Khu vực & Bàn (TableZone & DiningTable)
+    // 3. Tạo Khu vực & Bàn (TableZone & Table)
     const zone = await prisma.tableZone.upsert({
       where: { id: `zone-${storeSlug}-main` },
       update: { name: "Khu vực chính" },
@@ -67,26 +68,25 @@ async function main() {
       },
     });
 
-    for (let i = 0; i < scenario.tables.length; i++) {
-      const tableData = scenario.tables[i];
-      const tableId = `tbl-${storeSlug}-${i + 1}`;
-      await prisma.diningTable.upsert({
-        where: { id: tableId },
-        update: {
-          name: tableData.name,
-          capacity: tableData.capacity,
-          currentStatus: tableData.status,
-        },
-        create: {
-          id: tableId,
-          storeId: store.id,
-          zoneId: zone.id,
-          name: tableData.name,
-          capacity: tableData.capacity,
-          currentStatus: tableData.status,
-          sortOrder: i + 1,
-        },
-      });
+    if (scenario.defaultTables && scenario.defaultTables.length > 0) {
+      for (let i = 0; i < scenario.defaultTables.length; i++) {
+        const tableData = scenario.defaultTables[i];
+        const tableId = `tbl-${storeSlug}-${tableData.id}`;
+        await prisma.table.upsert({
+          where: { id: tableId },
+          update: {
+            name: tableData.name,
+            status: "EMPTY",
+          },
+          create: {
+            id: tableId,
+            storeId: store.id,
+            zoneId: zone.id,
+            name: tableData.name,
+            status: "EMPTY",
+          },
+        });
+      }
     }
 
     // 4. Tạo Danh mục (Category)
@@ -109,33 +109,28 @@ async function main() {
 
     // 5. Tạo Món ăn (MenuItem)
     for (const dish of scenario.dishes) {
-      const catId = categoryMap.get(dish.category) || undefined;
+      const catId = categoryMap.get(dish.category) || Array.from(categoryMap.values())[0];
+      if (!catId) continue;
+
+      const dishId = `dish-${storeSlug}-${dish.id}`;
       await prisma.menuItem.upsert({
-        where: { id: dish.id },
+        where: { id: dishId },
         update: {
           name: dish.name,
           price: dish.price,
-          unit: dish.unit,
-          imageUrl: dish.image,
-          isAvailable: dish.isAvailable,
-          currentStock: dish.stockQuantity,
-          preparationTimeMinutes: dish.prepTimeMinutes,
-          variantsJson: dish.variants ? JSON.stringify(dish.variants) : null,
-          customizationsJson: dish.customizationGroups ? JSON.stringify(dish.customizationGroups) : null,
+          image: dish.image || null,
+          isAvailable: dish.isAvailable ?? true,
+          station: dish.station || "KITCHEN",
         },
         create: {
-          id: dish.id,
+          id: dishId,
           storeId: store.id,
           categoryId: catId,
           name: dish.name,
           price: dish.price,
-          unit: dish.unit,
-          imageUrl: dish.image,
-          isAvailable: dish.isAvailable,
-          currentStock: dish.stockQuantity,
-          preparationTimeMinutes: dish.prepTimeMinutes,
-          variantsJson: dish.variants ? JSON.stringify(dish.variants) : null,
-          customizationsJson: dish.customizationGroups ? JSON.stringify(dish.customizationGroups) : null,
+          image: dish.image || null,
+          isAvailable: dish.isAvailable ?? true,
+          station: dish.station || "KITCHEN",
         },
       });
     }
