@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 import {
   FnbDishItem,
   DishVariantOption,
@@ -192,6 +193,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
   const [newGroupName, setNewGroupName] = useState("");
   const [newOptionName, setNewOptionName] = useState("");
   const [newOptionPrice, setNewOptionPrice] = useState<number>(5000);
+  const { requestClose } = useUnsavedEditor("scenario_dish_modal", isOpen, JSON.stringify({ selectedMajor, name, category, price, costPrice, station, image, description, variants, customizationGroups, newVarName, newVarPrice, newGroupName, newOptionName, newOptionPrice }), onClose);
 
   // Filter categories by selected major category
   const filteredCategories = categories.filter((c) => c.majorType === selectedMajor);
@@ -365,7 +367,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
         {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
-          onClick={onClose}
+          onClick={requestClose}
         />
 
         {/* Modal Container */}
@@ -389,7 +391,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="p-2 text-ink-muted hover:text-ink-primary hover:bg-white rounded-xl transition-all"
             >
               <Icon name="x" className="w-4 h-4" />
@@ -767,7 +769,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
 
           {/* Footer Actions */}
           <div className="p-4 sm:p-5 border-t border-surface-border bg-surface-canvas flex items-center justify-end gap-2.5 shrink-0">
-            <Button type="button" variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={onClose}>
+            <Button type="button" variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={requestClose}>
               Hủy Bỏ
             </Button>
             <Button

@@ -16,7 +16,17 @@ export async function storeRoutes(fastify: FastifyInstance) {
   fastify.get("/", async (_request, reply) => {
     try {
       const stores = await storeRepository.getAll();
-      return { success: true, count: stores.length, data: stores };
+      const storesWithLiveDevices = stores.map((store) => {
+        const connections = getStoreTelemetryStats(store.id);
+        return {
+          ...store,
+          activeDevices: connections.length,
+          pingMs: connections.length
+            ? Math.round(connections.reduce((sum, connection) => sum + connection.latencyMs, 0) / connections.length)
+            : 0,
+        };
+      });
+      return { success: true, count: storesWithLiveDevices.length, data: storesWithLiveDevices };
     } catch (err: any) {
       return reply.status(500).send({ success: false, error: err.message });
     }
@@ -33,7 +43,17 @@ export async function storeRoutes(fastify: FastifyInstance) {
       if (!store) {
         return reply.status(404).send({ success: false, error: "Quán không tồn tại" });
       }
-      return { success: true, data: store };
+      const connections = getStoreTelemetryStats(storeId);
+      return {
+        success: true,
+        data: {
+          ...store,
+          activeDevices: connections.length,
+          pingMs: connections.length
+            ? Math.round(connections.reduce((sum, connection) => sum + connection.latencyMs, 0) / connections.length)
+            : 0,
+        },
+      };
     } catch (err: any) {
       return reply.status(500).send({ success: false, error: err.message });
     }
@@ -169,7 +189,7 @@ export async function storeRoutes(fastify: FastifyInstance) {
     const memoryUsage = process.memoryUsage();
 
     return {
-      systemHealth: "EXCELLENT",
+      systemHealth: telemetryStats.length > 0 ? "OPERATIONAL" : "NO_ACTIVE_CONNECTIONS",
       timestamp: new Date().toISOString(),
       serverMetrics: {
         uptimeSeconds: Math.floor(process.uptime()),
@@ -180,7 +200,7 @@ export async function storeRoutes(fastify: FastifyInstance) {
         activeConnectionsCount: telemetryStats.length,
         avgPingMs: telemetryStats.length > 0 
           ? Math.round(telemetryStats.reduce((sum, s) => sum + s.latencyMs, 0) / telemetryStats.length)
-          : 18,
+          : null,
         connections: telemetryStats,
       },
       tenantSummary: {

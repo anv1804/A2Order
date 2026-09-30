@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { InputProps } from "@/types";
@@ -12,9 +12,10 @@ export const Input: React.FC<InputProps> = ({
   disabled,
   ...props
 }) => {
+  const inputId = props.id || useId();
   return (
     <div className="w-full flex flex-col gap-1.5">
-      {label && <label className="text-xs font-semibold text-slate-700">{label}</label>}
+      {label && <label htmlFor={inputId} className="text-xs font-bold text-slate-700">{label}</label>}
       <div className="relative flex items-center">
         {leftIcon && (
           <span className="absolute left-3.5 text-slate-400 pointer-events-none flex items-center">
@@ -22,11 +23,12 @@ export const Input: React.FC<InputProps> = ({
           </span>
         )}
         <input
+          id={inputId}
           disabled={disabled}
           className={twMerge(
             clsx(
-              "w-full h-11 rounded-xl bg-white border border-slate-300 px-3.5 text-sm font-medium text-slate-900 transition-all",
-              "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+              "w-full h-11 rounded-xl bg-white border border-slate-200 px-3.5 text-sm font-medium text-slate-900 shadow-sm transition-all placeholder:text-slate-400",
+              "focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600",
               "disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed",
               leftIcon ? "pl-10" : "",
               rightIcon ? "pr-10" : "",

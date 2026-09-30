@@ -47,13 +47,13 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       {/* Dải nút điều hướng */}
       {totalPages > 1 && (
-        <div className="flex items-center gap-1">
+        <div className="flex max-w-full items-center gap-1">
           {/* Nút Trước */}
           <button
             type="button"
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`rounded-xl px-2.5 py-1.5 font-bold transition-all sm:px-3 ${
               currentPage <= 1
                 ? "text-ink-subtle bg-surface-canvas cursor-not-allowed opacity-50"
                 : "text-ink-secondary bg-white border border-surface-border hover:bg-surface-canvas hover:text-ink-primary shadow-xs"
@@ -62,7 +62,10 @@ export const Pagination: React.FC<PaginationProps> = ({
             ← Trước
           </button>
 
-          {/* Dải số trang */}
+          <span className="px-2 font-bold text-ink-secondary sm:hidden">{currentPage} / {totalPages}</span>
+
+          {/* Dải số trang trên màn hình rộng */}
+          <div className="hidden items-center gap-1 sm:flex">
           {pageNumbers[0] > 1 && (
             <>
               <button
@@ -105,13 +108,14 @@ export const Pagination: React.FC<PaginationProps> = ({
               </button>
             </>
           )}
+          </div>
 
           {/* Nút Sau */}
           <button
             type="button"
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage >= totalPages}
-            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+            className={`rounded-xl px-2.5 py-1.5 font-bold transition-all sm:px-3 ${
               currentPage >= totalPages
                 ? "text-ink-subtle bg-surface-canvas cursor-not-allowed opacity-50"
                 : "text-ink-secondary bg-white border border-surface-border hover:bg-surface-canvas hover:text-ink-primary shadow-xs"

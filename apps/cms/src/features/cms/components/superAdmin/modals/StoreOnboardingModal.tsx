@@ -1,8 +1,19 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { BusinessType, BUSINESS_TYPE_CONFIG, AppModule } from "@/types/cms.types";
 import { BUSINESS_SCENARIOS } from "@/data/businessScenarios";
 import { StoreScale, STORE_SCALE_CONFIGS } from "@a2order/shared";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
+
+const createInitialForm = () => ({
+  name: "", owner: "", phone: "", address: "",
+  businessType: "COFFEE_SHOP" as BusinessType,
+  scale: "STANDARD" as StoreScale,
+  modules: [...BUSINESS_TYPE_CONFIG.COFFEE_SHOP.suggestedModules],
+  tableCount: 12,
+  durationMonths: 12,
+  plan: "GROWTH" as "STARTER" | "GROWTH" | "PRO",
+});
 
 export interface StoreOnboardingModalProps {
   isOpen: boolean;
@@ -27,18 +38,12 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
   onSubmit,
 }) => {
   const [onboardStep, setOnboardStep] = useState<number>(1);
-  const [form, setForm] = useState({
-    name: "",
-    owner: "",
-    phone: "",
-    address: "",
-    businessType: "COFFEE_SHOP" as BusinessType,
-    scale: "STANDARD" as StoreScale,
-    modules: [...BUSINESS_TYPE_CONFIG.COFFEE_SHOP.suggestedModules],
-    tableCount: 12,
-    durationMonths: 12,
-    plan: "GROWTH" as "STARTER" | "GROWTH" | "PRO",
-  });
+  const [form, setForm] = useState(createInitialForm);
+  const { requestClose } = useUnsavedEditor("store_onboarding", isOpen, JSON.stringify({ onboardStep, form }), onClose);
+
+  useEffect(() => {
+    if (isOpen) { setOnboardStep(1); setForm(createInitialForm()); }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -69,10 +74,10 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
-        <div className="bg-white w-full max-w-3xl rounded-3xl shadow-elevated border border-surface-border animate-scaleUp overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white w-full max-w-3xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 animate-scaleUp overflow-hidden max-h-[95dvh] sm:max-h-[92dvh] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-surface-canvas shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50 shrink-0">
             <div>
               <h3 className="text-sm font-black text-ink-primary">
                 Đăng Ký Quán Thuê Mới
@@ -85,7 +90,7 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
             >
               <Icon name="x" className="w-4 h-4" />
@@ -95,7 +100,7 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
           <div className="overflow-y-auto flex-1">
             {/* STEP 1: Chọn loại hình & Quy mô */}
             {onboardStep === 1 && (
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
                 {/* 1. Loại hình kinh doanh */}
                 <div>
                   <h4 className="text-sm font-black text-ink-primary mb-1 flex items-center gap-1.5">

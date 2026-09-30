@@ -1,16 +1,188 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
+import bcrypt from "bcryptjs";
 import { OwnerLoginSchema, PinLoginSchema } from "@a2order/shared";
+import { prisma } from "../../core/database/prismaClient.js";
 
 export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  // Đăng nhập Chủ quán / Super Admin bằng Email & Password
+  /**
+   * 1. Đăng nhập Admin / Chủ quán bằng Email & Password
+   * POST /api/auth/login-owner
+   */
   fastify.post("/login-owner", async (request, reply) => {
-    // TODO: Triển khai kiểm tra mật khẩu & cấp token JWT
-    return { success: true, message: "Base auth ready" };
+    const parseResult = OwnerLoginSchema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        success: false,
+        message: parseResult.error.errors[0]?.message || "Dữ liệu đăng nhập không hợp lệ",
+      });
+    }
+
+    const { email, password } = parseResult.data;
+
+    try {
+      // 1. Tìm tài khoản trong bảng Staff theo email
+      const staff = await prisma.staff.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        include: {
+          store: true,
+        },
+      });
+
+      if (!staff || !staff.isActive) {
+        return reply.status(401).send({
+          success: false,
+          message: "Email hoặc mật khẩu không chính xác",
+        });
+      }
+
+      // 2. Kiểm tra mật khẩu (bcrypt hash)
+      let isMatch = false;
+      if (staff.passwordHash) {
+        isMatch = await bcrypt.compare(password, staff.passwordHash);
+      }
+
+      if (!isMatch) {
+        return reply.status(401).send({
+          success: false,
+          message: "Email hoặc mật khẩu không chính xác",
+        });
+      }
+
+      // 3. Cấp Token JWT
+      const tokenPayload = {
+        userId: staff.id,
+        name: staff.name,
+        email: staff.email,
+        role: staff.role,
+        storeId: staff.storeId,
+        storeName: staff.store?.name || null,
+      };
+
+      const token = (fastify as any).jwt.sign(tokenPayload, { expiresIn: "7d" });
+
+      return {
+        success: true,
+        message: "Đăng nhập thành công",
+        token,
+        user: {
+          id: staff.id,
+          name: staff.name,
+          email: staff.email,
+          role: staff.role,
+          storeId: staff.storeId,
+          storeName: staff.store?.name || null,
+        },
+      };
+    } catch (err: any) {
+      request.log.error(err);
+      return reply.status(500).send({
+        success: false,
+        message: "Lỗi máy chủ nội bộ khi xử lý đăng nhập",
+        error: err.message,
+      });
+    }
   });
 
-  // Đăng nhập Nhân viên bàn/bếp bằng mã Fast-PIN 4 số
+  /**
+   * 2. Lấy thông tin tài khoản hiện tại từ Token JWT (Dùng cho Remember Me / Refresh trang)
+   * GET /api/auth/me
+   */
+  fastify.get("/me", async (request, reply) => {
+    try {
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return reply.status(401).send({ success: false, message: "Chưa đăng nhập" });
+      }
+
+      const token = authHeader.split(" ")[1];
+      const decoded = (fastify as any).jwt.verify(token) as any;
+
+      if (!decoded || !decoded.userId) {
+        return reply.status(401).send({ success: false, message: "Token không hợp lệ" });
+      }
+
+      const staff = await prisma.staff.findUnique({
+        where: { id: decoded.userId },
+        include: { store: true },
+      });
+
+      if (!staff || !staff.isActive) {
+        return reply.status(401).send({ success: false, message: "Tài khoản không tồn tại hoặc đã bị khóa" });
+      }
+
+      return {
+        success: true,
+        user: {
+          id: staff.id,
+          name: staff.name,
+          email: staff.email,
+          role: staff.role,
+          storeId: staff.storeId,
+          storeName: staff.store?.name || null,
+        },
+      };
+    } catch (err: any) {
+      return reply.status(401).send({ success: false, message: "Phiên đăng nhập đã hết hạn" });
+    }
+  });
+
+  /**
+   * 3. Đăng nhập Nhân viên bàn/bếp bằng mã Fast-PIN 4 số
+   * POST /api/auth/login-pin
+   */
   fastify.post("/login-pin", async (request, reply) => {
-    // TODO: Triển khai xác thực PIN theo storeId + staffId
-    return { success: true, message: "Base PIN auth ready" };
+    const parseResult = PinLoginSchema.safeParse(request.body);
+    if (!parseResult.success) {
+      return reply.status(400).send({
+        success: false,
+        message: parseResult.error.errors[0]?.message || "Mã PIN không hợp lệ",
+      });
+    }
+
+    const { storeId, staffId, pinCode } = parseResult.data;
+
+    try {
+      const staff = await prisma.staff.findFirst({
+        where: { id: staffId, storeId, isActive: true },
+        include: { store: true },
+      });
+
+      if (!staff || staff.pinCode !== pinCode) {
+        return reply.status(401).send({
+          success: false,
+          message: "Mã PIN không chính xác",
+        });
+      }
+
+      const token = (fastify as any).jwt.sign(
+        {
+          userId: staff.id,
+          name: staff.name,
+          role: staff.role,
+          storeId: staff.storeId,
+          storeName: staff.store?.name || null,
+        },
+        { expiresIn: "12h" }
+      );
+
+      return {
+        success: true,
+        message: "Xác thực ca làm thành công",
+        token,
+        user: {
+          id: staff.id,
+          name: staff.name,
+          role: staff.role,
+          storeId: staff.storeId,
+          storeName: staff.store?.name || null,
+        },
+      };
+    } catch (err: any) {
+      return reply.status(500).send({
+        success: false,
+        message: "Lỗi xác thực PIN",
+        error: err.message,
+      });
+    }
   });
 };

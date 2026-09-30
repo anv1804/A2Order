@@ -112,10 +112,12 @@ export const ScenarioTemplateManager: React.FC = () => {
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = dish.name.toLowerCase().includes(q);
-        const matchCat = dish.category?.toLowerCase().includes(q);
-        const matchDesc = dish.description?.toLowerCase().includes(q);
-        if (!matchName && !matchCat && !matchDesc) return false;
+        const matchName = dish.name.toLocaleLowerCase("vi").includes(q);
+        const matchCat = dish.category?.toLocaleLowerCase("vi").includes(q);
+        const matchDesc = dish.description?.toLocaleLowerCase("vi").includes(q);
+        const priceText = `${dish.price} ${dish.price.toLocaleString("vi-VN")} ${dish.costPrice || ""} ${dish.costPrice?.toLocaleString("vi-VN") || ""}`;
+        const matchPrice = priceText.includes(q) || priceText.includes(q.replace(/\./g, ""));
+        if (!matchName && !matchCat && !matchDesc && !matchPrice) return false;
       }
 
       return true;
@@ -176,6 +178,23 @@ export const ScenarioTemplateManager: React.FC = () => {
     if (!confirmed) return;
 
     setCategories((prev) => prev.filter((c) => c.id !== cat.id));
+    if (count > 0) {
+      const hasGeneralCategory = activeCategories.some((category) => category.name === "Món Chung");
+      if (!hasGeneralCategory) {
+        setCategories((prev) => [...prev, {
+          id: `cat_general_${activeMajor.toLowerCase()}`,
+          name: "Món Chung",
+          majorType: activeMajor,
+          order: activeCategories.length + 1,
+        }]);
+      }
+      setDishes((prev) => prev.map((dish) => {
+        const dishMajor = dish.majorCategory || (dish.station === "KITCHEN" ? "FOOD" : dish.station === "DESSERT" ? "DESSERT" : "DRINK");
+        return dish.category === cat.name && dishMajor === activeMajor
+          ? { ...dish, category: "Món Chung" }
+          : dish;
+      }));
+    }
     if (selectedCategory === cat.name) {
       setSelectedCategory("ALL");
     }
@@ -237,7 +256,7 @@ export const ScenarioTemplateManager: React.FC = () => {
               Quản Trị Kịch Bản & Thực Đơn Mẫu F&B
             </h2>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
-              A2Order Core v2.5
+              {dishes.length} món mẫu
             </span>
           </div>
           <p className="text-xs text-ink-muted mt-1 leading-relaxed">
@@ -251,7 +270,7 @@ export const ScenarioTemplateManager: React.FC = () => {
         {/* ======================================================== */}
         {/* PANEL 1: MENU & DANH MỤC THỰC ĐƠN (CỘT TRÁI CỐ ĐỊNH)       */}
         {/* ======================================================== */}
-        <div className="w-full lg:w-80 xl:w-[340px] shrink-0 space-y-4">
+        <div className="hidden w-full shrink-0 space-y-4 lg:block lg:w-80 xl:w-[340px]">
           <div className="bg-white rounded-3xl border border-surface-border shadow-xs p-4 sm:p-5 space-y-4">
             {/* 1.1 Khung Chuyển Đổi 3 Trụ Cột Chính */}
             <div>
@@ -397,35 +416,66 @@ export const ScenarioTemplateManager: React.FC = () => {
           </div>
         </div>
 
+        {/* Bộ lọc gọn cho điện thoại: ưu tiên danh sách món, danh mục cuộn ngang */}
+        <section aria-label="Lọc kịch bản món mẫu" className="w-full space-y-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:hidden">
+          <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100 p-1">
+            {(Object.entries(FNB_MAJOR_CONFIG) as [FnbMajorCategory, typeof FNB_MAJOR_CONFIG[FnbMajorCategory]][]).map(([key, cfg]) => (
+              <button key={key} type="button" onClick={() => handleSwitchMajor(key)} className={`flex min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 py-2 text-[11px] font-bold transition ${activeMajor === key ? "bg-white text-emerald-950 shadow-sm" : "text-slate-500"}`}>
+                <Icon name={cfg.icon as any} size={14} />
+                <span className="truncate">{cfg.label}</span>
+                <span className="text-[9px] opacity-60">{countsByMajor[key]}</span>
+              </button>
+            ))}
+          </div>
+          <div className="no-scrollbar flex items-center gap-2 overflow-x-auto pb-0.5">
+            <button type="button" onClick={() => setSelectedCategory("ALL")} className={`shrink-0 rounded-full px-3 py-2 text-[11px] font-bold transition ${selectedCategory === "ALL" ? "bg-emerald-900 text-white" : "bg-slate-100 text-slate-600"}`}>
+              Tất cả <span className="ml-1 opacity-70">{countsByMajor[activeMajor]}</span>
+            </button>
+            {activeCategories.map((category) => (
+              <div key={category.id} className={`flex shrink-0 items-center rounded-full text-[11px] font-bold transition ${selectedCategory === category.name ? "bg-emerald-900 text-white" : "bg-slate-100 text-slate-600"}`}>
+                <button type="button" onClick={() => setSelectedCategory(category.name)} className="py-2 pl-3 pr-1.5">
+                  {category.name}<span className="ml-1.5 opacity-70">{categoryDishCount[category.name] || 0}</span>
+                </button>
+                <button type="button" onClick={() => handleDeleteCategory(category)} className="mr-1 rounded-full p-1.5 opacity-75 transition hover:bg-rose-100 hover:text-rose-700" aria-label={`Xóa danh mục ${category.name}`}>
+                  <Icon name="x" size={11} />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={() => handleOpenAddCategory(activeMajor)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-emerald-300 text-emerald-800" aria-label="Thêm danh mục">
+              <Icon name="plus" size={15} />
+            </button>
+          </div>
+        </section>
+
         {/* ======================================================== */}
         {/* PANEL 2: DANH SÁCH ĐỒ ĂN / MÓN ĂN (CỘT PHẢI LIỀN KHỐI)    */}
         {/* ======================================================== */}
-        <div className="flex-1 min-w-0 bg-white rounded-3xl border border-surface-border shadow-xs flex flex-col overflow-hidden">
+        <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-surface-border bg-white shadow-xs">
           {/* Header Panel 2: Tên danh mục đang xem + Toolbar hành động liền khối */}
-          <div className="p-4 sm:p-5 border-b border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
-            <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-col justify-between gap-3 border-b border-surface-border bg-white p-4 sm:flex-row sm:items-center sm:p-5">
+            <div className="flex min-w-0 items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 shrink-0">
                 <Icon name={FNB_MAJOR_CONFIG[activeMajor].icon as any} className="w-5 h-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-black text-ink-primary">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h3 className="min-w-0 truncate text-sm font-black text-ink-primary sm:text-base">
                     {selectedCategory === "ALL"
                       ? `Tất Cả Món ${FNB_MAJOR_CONFIG[activeMajor].label}`
                       : selectedCategory}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-brand-50 text-brand-900 border border-brand-200">
+                  <span className="shrink-0 rounded-full border border-brand-200 bg-brand-50 px-2 py-0.5 text-[10px] font-black text-brand-900">
                     {filteredDishes.length} món
                   </span>
                 </div>
-                <p className="text-xs text-ink-muted mt-0.5">
+                <p className="mt-0.5 truncate text-xs text-ink-muted">
                   Trụ cột: <span className="font-bold text-ink-primary">{FNB_MAJOR_CONFIG[activeMajor].label}</span> •{" "}
                   {selectedCategory === "ALL" ? "Toàn bộ nhóm món" : `Danh mục: ${selectedCategory}`}
                 </p>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-2.5">
               {/* Ô tìm kiếm món */}
               <div className="relative w-full sm:w-52">
                 <Icon
@@ -437,7 +487,7 @@ export const ScenarioTemplateManager: React.FC = () => {
                   placeholder="Tìm món, giá bán..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 pl-8 pr-7 rounded-xl border border-surface-border text-xs font-bold text-ink-primary bg-surface-canvas focus:bg-white focus:outline-none focus:border-brand-800 transition-all"
+                  className="w-full h-10 sm:h-8 pl-8 pr-7 rounded-xl border border-surface-border text-xs font-bold text-ink-primary bg-surface-canvas focus:bg-white focus:outline-none focus:border-brand-800 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -455,7 +505,7 @@ export const ScenarioTemplateManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setViewMode("GRID")}
-                  className={`p-1.5 rounded-lg text-xs transition-all ${
+                  className={`p-2 sm:p-1.5 rounded-lg text-xs transition-all ${
                     viewMode === "GRID"
                       ? "bg-white text-brand-900 shadow-xs font-bold"
                       : "text-ink-muted hover:text-ink-primary"
@@ -467,7 +517,7 @@ export const ScenarioTemplateManager: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setViewMode("LIST")}
-                  className={`p-1.5 rounded-lg text-xs transition-all ${
+                  className={`p-2 sm:p-1.5 rounded-lg text-xs transition-all ${
                     viewMode === "LIST"
                       ? "bg-white text-brand-900 shadow-xs font-bold"
                       : "text-ink-muted hover:text-ink-primary"
@@ -482,7 +532,7 @@ export const ScenarioTemplateManager: React.FC = () => {
               <Button
                 type="button"
                 size="sm"
-                className="rounded-xl bg-brand-900 text-white text-xs font-black gap-1.5 h-8 px-3.5 shadow-sm whitespace-nowrap"
+                className="rounded-xl bg-brand-900 text-white text-xs font-black gap-1.5 h-10 sm:h-8 px-3.5 shadow-sm whitespace-nowrap"
                 onClick={handleOpenAddDish}
               >
                 <Icon name="plus" className="w-3 h-3 text-white" />
@@ -514,7 +564,7 @@ export const ScenarioTemplateManager: React.FC = () => {
             </div>
           ) : viewMode === "GRID" ? (
             /* GRID VIEW: Lưới thẻ bên trong Card liền khối */
-            <div className="p-4 sm:p-5 flex-1 overflow-y-auto max-h-[calc(100vh-300px)] min-h-[400px] scrollbar-thin">
+            <div className="min-h-0 flex-1 overflow-y-auto p-3 scrollbar-thin sm:max-h-[calc(100dvh-300px)] sm:min-h-[320px] sm:p-5">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
                 {paginatedDishes.map((dish) => {
                   const margin =
@@ -625,8 +675,40 @@ export const ScenarioTemplateManager: React.FC = () => {
             </div>
           ) : (
             /* TABLE VIEW: Bảng Danh Sách Món Có Sticky Header Liền Khối */
-            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)] min-h-[400px] scrollbar-thin">
-              <table className="w-full text-left text-xs border-collapse">
+            <>
+              <div className="w-full min-w-0 shrink-0 p-3 sm:p-4 xl:hidden">
+                <div className="space-y-2.5">
+                  {paginatedDishes.map((dish) => (
+                    <article key={dish.id} className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-200 hover:shadow-md">
+                      <div className="flex items-start gap-3">
+                        {dish.image ? (
+                          <img src={dish.image} alt={dish.name} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-xl border border-slate-100 object-cover" />
+                        ) : (
+                          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800"><Icon name={FNB_MAJOR_CONFIG[activeMajor].icon as any} size={20} /></div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="min-w-0 line-clamp-2 text-sm font-extrabold leading-snug text-slate-900">{dish.name}</h4>
+                            {dish.isBestSeller && <span className="shrink-0 rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-800">Bán chạy</span>}
+                          </div>
+                          <p className="mt-1 line-clamp-1 text-[11px] text-slate-500">{dish.category}{dish.description ? ` · ${dish.description}` : ""}</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                            <span className="font-extrabold text-emerald-900">{dish.price.toLocaleString("vi-VN")} đ</span>
+                            <span className="text-slate-500">Giá vốn {dish.costPrice ? `${dish.costPrice.toLocaleString("vi-VN")} đ` : "—"}</span>
+                            <span className="text-slate-500">{dish.variants?.length ? `${dish.variants.length} size` : "1 size"}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2.5">
+                        <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl px-3 text-xs" onClick={() => handleOpenEditDish(dish)}><Icon name="edit" size={13} /><span className="ml-1">Sửa món</span></Button>
+                        <Button type="button" size="sm" variant="outline" className="h-8 rounded-xl border-rose-200 px-3 text-xs text-rose-700 hover:bg-rose-50" onClick={() => handleDeleteDish(dish)}><Icon name="trash" size={13} /><span className="ml-1">Xóa</span></Button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+              <div className="hidden flex-1 overflow-x-auto overflow-y-auto max-h-[calc(100vh-300px)] min-h-[400px] scrollbar-thin xl:block">
+              <table className="w-full min-w-[760px] text-left text-xs border-collapse">
                   <thead className="sticky top-0 z-20 bg-surface-canvas/95 backdrop-blur-xs border-b border-surface-border shadow-2xs">
                     <tr className="text-[11px] font-black text-ink-muted uppercase tracking-wider">
                       <th className="py-3 px-4">Món Mẫu</th>
@@ -700,6 +782,7 @@ export const ScenarioTemplateManager: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </>
           )}
 
           {/* Phân trang cố định ở chân cùng của Card Panel 2 */}

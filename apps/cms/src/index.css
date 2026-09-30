@@ -10,6 +10,66 @@
 body {
   touch-action: manipulation;
   overscroll-behavior-y: none;
+  background: #f6f8f7;
+  color: #17211d;
+}
+
+.cms-workspace {
+  --cms-ink: #17211d;
+  --cms-muted: #64716b;
+  --cms-line: #e5eae7;
+  color: var(--cms-ink);
+  font-feature-settings: "ss01" on, "cv11" on;
+}
+
+.cms-workspace input:not([type="checkbox"]):not([type="radio"]),
+.cms-workspace select,
+.cms-workspace textarea {
+  border-color: #dce4df;
+  border-radius: 0.75rem;
+  color: #17211d;
+}
+
+.cms-workspace input:not([type="checkbox"]):not([type="radio"]):focus,
+.cms-workspace select:focus,
+.cms-workspace textarea:focus {
+  border-color: #2e795e;
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(46, 121, 94, 0.1);
+}
+
+.cms-workspace table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.cms-workspace thead th {
+  color: #75817b;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+}
+
+.cms-workspace tbody tr {
+  transition: background-color 140ms ease;
+}
+
+.cms-workspace tbody tr:hover {
+  background-color: #f7faf8;
+}
+
+.cms-workspace :focus-visible {
+  outline: 2px solid rgba(46, 121, 94, 0.72);
+  outline-offset: 2px;
+}
+
+/* Giữ nguyên bề rộng nội dung khi danh sách hoặc bảng bắt đầu có thanh cuộn. */
+@media (min-width: 1024px) {
+  .cms-workspace main,
+  .cms-workspace [class*="overflow-y-auto"],
+  .cms-workspace [class*="overflow-x-auto"] {
+    scrollbar-gutter: stable;
+  }
 }
 
 @keyframes fadeIn {
@@ -22,7 +82,7 @@ body {
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes scaleUp {
@@ -37,7 +97,57 @@ body {
 }
 
 .animate-scaleUp {
-  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(72, 177, 130, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(72, 177, 130, 0);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 2.5s infinite;
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-dock {
+  background: rgba(18, 55, 42, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 }
 
 /* Tiện ích ẩn thanh cuộn ngang/dọc triệt để cho carousels và tabs */

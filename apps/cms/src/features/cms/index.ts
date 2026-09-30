@@ -2,6 +2,7 @@ export * from "./components/CmsDashboard.js";
 export * from "./components/CmsLayout.js";
 export * from "./components/CmsSidebar.js";
 export * from "./components/CmsTopNav.js";
+export * from "./components/CmsProfileView.js";
 export * from "./components/CmsMetricCards.js";
 export * from "./components/CmsTableManagement.js";
 export * from "./components/CmsMenuManagement.js";

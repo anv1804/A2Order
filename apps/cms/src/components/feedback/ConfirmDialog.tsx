@@ -12,6 +12,7 @@ export const ConfirmDialog: React.FC = () => {
       isOpen={confirmState.isOpen}
       onClose={() => closeConfirm(false)}
       maxWidth="sm"
+      priority
     >
       <div className="flex flex-col items-center text-center">
         <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3">

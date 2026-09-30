@@ -36,6 +36,7 @@ export interface ModalProps {
   description?: string;
   children: React.ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl";
+  priority?: boolean;
 }
 
 export interface DrawerProps {
@@ -86,4 +87,3 @@ export interface PaginationProps {
   onPageChange: (page: number) => void;
   className?: string;
 }
-

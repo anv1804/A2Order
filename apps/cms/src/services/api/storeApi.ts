@@ -1,5 +1,5 @@
 import { requestApi } from "./apiClient";
-import { TenantStoreRecord, SoftwareInvoiceRecord } from "@a2order/shared";
+import { TenantStoreRecord, SoftwareInvoiceRecord, AppModule } from "@a2order/shared";
 
 export const storeApi = {
   /**
@@ -19,7 +19,7 @@ export const storeApi = {
   /**
    * Đăng ký quán mới
    */
-  async createStore(data: Partial<TenantStoreRecord>): Promise<{ message: string; data: TenantStoreRecord }> {
+  async createStore(data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord> {
     return requestApi("/stores", {
       method: "POST",
       body: JSON.stringify(data),
@@ -72,11 +72,34 @@ export const storeApi = {
     });
   },
 
+  async revokeLicense(keyCode: string): Promise<any> {
+    return requestApi(`/licenses/${encodeURIComponent(keyCode)}/revoke`, { method: "POST" });
+  },
+
   /**
    * Lấy danh sách toàn bộ hóa đơn phần mềm
    */
   async getInvoices(): Promise<SoftwareInvoiceRecord[]> {
     return requestApi<SoftwareInvoiceRecord[]>("/licenses/invoices/all");
+  },
+
+  /** Confirm a subscription invoice and extend its license on the server. */
+  async confirmInvoicePayment(invoiceId: string): Promise<{ success: boolean; newEndDate: string; message: string }> {
+    return requestApi(`/licenses/invoice/${encodeURIComponent(invoiceId)}/confirm-payment`, {
+      method: "POST",
+    });
+  },
+
+  async createSubscriptionInvoice(data: {
+    storeId: string;
+    durationMonths: number;
+    amount: number;
+    enabledModules: AppModule[];
+  }): Promise<{ success: boolean; message: string; invoice: unknown }> {
+    return requestApi("/licenses/invoice/create", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   },
 
   /**

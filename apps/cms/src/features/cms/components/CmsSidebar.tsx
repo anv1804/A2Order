@@ -1,6 +1,5 @@
 import React from "react";
 import { Icon } from "@/components/ui";
-import { IconName } from "@/types";
 import { CmsSidebarProps, CmsSidebarMenuItem as MenuItem, CmsSidebarMenuGroup as MenuGroup } from "@/types/cms.types";
 
 export const CmsSidebar: React.FC<CmsSidebarProps> = ({
@@ -8,9 +7,11 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   onSelectMenu,
   onLogout,
   currentRole,
-  onChangeRole,
   enabledModules = [],
   onCloseMobileDrawer,
+  currentUser,
+  collapsed = false,
+  onToggleCollapse,
 }) => {
   // Nhóm Menu chuẩn nghiệp vụ F&B dành cho Chủ Quán
   const storeOwnerGroups: MenuGroup[] = [
@@ -18,17 +19,17 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       title: "VẬN HÀNH & BÁN HÀNG",
       items: [
         { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
-        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart", badge: "Cầm tay" },
-        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table", badge: "12+" },
-        { id: "kds", label: "Bếp Nấu (KDS)", icon: "kitchen", badge: "Live", requiredModule: "MODULE_KDS" as any },
-        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck", badge: "Hotline" },
+        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart" },
+        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table" },
+        { id: "kds", label: "Bếp Nấu (KDS)", icon: "kitchen", requiredModule: "MODULE_KDS" as any },
+        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
       ],
     },
     {
       title: "THỰC ĐƠN & KHO HÀNG",
       items: [
         { id: "menu", label: "Thực Đơn & Món Ăn", icon: "menu" },
-        { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart", badge: "Mới" },
+        { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart" },
       ],
     },
     {
@@ -83,8 +84,9 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     {
       title: "ĐỐI TÁC & THUÊ BAO",
       items: [
-        { id: "tenants", label: "Quản Lý Quán & Chuỗi", icon: "building", badge: "4" },
-        { id: "software_invoices", label: "Hóa Đơn & Thu Phí", icon: "fileText", badge: "3" },
+        { id: "tenants", label: "Quản Lý Quán & Chuỗi", icon: "building" },
+        { id: "license_manager", label: "Giấy Phép & License", icon: "key" },
+        { id: "software_invoices", label: "Hóa Đơn & Thu Phí", icon: "fileText" },
         { id: "pricing_config", label: "Bảng Giá Gói & Voucher", icon: "tag" },
       ],
     },
@@ -99,133 +101,79 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   const currentGroups = currentRole === "SUPER_ADMIN" ? superAdminGroups : filteredStoreOwnerGroups;
 
   return (
-    <aside className="w-full lg:w-72 h-full bg-white border-r border-surface-border flex flex-col justify-between p-5 select-none overflow-y-auto">
-      <div>
-        {/* Logo & Close Button (on mobile) */}
-        <div className="flex items-center justify-between mb-5 px-1">
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/logo-symbol.jpg"
-              alt="A2Order Logo"
-              className="w-9 h-9 rounded-xl object-cover shadow-sm ring-1 ring-white/10"
-            />
-            <div>
-              <span className="font-black text-xl tracking-tight text-ink-primary">A2Order</span>
-              <span className="block text-[10px] font-extrabold text-brand-700 tracking-wider">
-                {currentRole === "SUPER_ADMIN" ? "SUPER ADMIN" : "STORE CMS"}
-              </span>
-            </div>
-          </div>
-
-          {onCloseMobileDrawer && (
-            <button
-              onClick={onCloseMobileDrawer}
-              className="w-8 h-8 rounded-full bg-surface-muted hover:bg-slate-200 flex items-center justify-center text-ink-subtle hover:text-ink-primary transition-all lg:hidden"
-              title="Đóng menu"
-            >
-              <Icon name="x" size={16} />
+    <aside className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden bg-[#102d25] p-4 text-white transition-[width] duration-300 lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[280px]"}`}>
+      <div className="mb-5 flex shrink-0 items-center justify-between gap-3 px-1 pt-1">
+        <div className="flex min-w-0 items-center gap-3">
+          {collapsed && onToggleCollapse ? (
+            <button type="button" onClick={onToggleCollapse} aria-label="Mở rộng sidebar" title="Mở rộng sidebar" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
+              <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 rounded-2xl object-cover ring-1 ring-white/20" />
             </button>
-          )}
+          ) : <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 shrink-0 rounded-2xl object-cover ring-1 ring-white/20" />}
+          {!collapsed && <div className="min-w-0">
+            <span className="block truncate text-lg font-black tracking-tight">A2Order</span>
+            <span className="block text-[10px] font-semibold tracking-[.14em] text-emerald-200/70">WORKSPACE</span>
+          </div>}
         </div>
-
-        {/* Role Switcher Pill */}
-        <div className="mb-5 p-1 bg-surface-canvas rounded-2xl border border-surface-border flex text-[11px] font-bold">
-          <button
-            onClick={() => {
-              onChangeRole("STORE_OWNER");
-              onSelectMenu("dashboard");
-            }}
-            className={`flex-1 py-1.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
-              currentRole === "STORE_OWNER"
-                ? "bg-white text-brand-900 shadow-sm"
-                : "text-ink-muted hover:text-ink-primary"
-            }`}
-          >
-            <Icon name="store" className="w-3.5 h-3.5" />
-            <span>Chủ Quán</span>
+        {onToggleCollapse && !collapsed && <button type="button" onClick={onToggleCollapse} aria-label="Thu gọn sidebar" title="Thu gọn sidebar" className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-emerald-100 transition hover:bg-white/20 lg:flex"><Icon name="chevronLeft" size={17} /></button>}
+        {onCloseMobileDrawer && (
+          <button type="button" onClick={onCloseMobileDrawer} aria-label="Đóng menu" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white lg:hidden">
+            <Icon name="x" size={17} />
           </button>
+        )}
+      </div>
 
-          <button
-            onClick={() => {
-              onChangeRole("SUPER_ADMIN");
-              onSelectMenu("telemetry");
-            }}
-            className={`flex-1 py-1.5 rounded-xl flex items-center justify-center gap-1 transition-all ${
-              currentRole === "SUPER_ADMIN"
-                ? "bg-brand-900 text-white shadow-sm"
-                : "text-ink-muted hover:text-ink-primary"
-            }`}
-          >
-            <Icon name="shield" className="w-3.5 h-3.5" />
-            <span>Admin</span>
-          </button>
-        </div>
+      <div className={`mb-5 flex shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 ${collapsed ? "lg:justify-center lg:px-1" : ""}`} title={collapsed ? (currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng") : undefined}>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-300/20 text-emerald-200">
+          <Icon name={currentRole === "SUPER_ADMIN" ? "shield" : "store"} size={18} />
+        </span>
+        {!collapsed && <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-bold">{currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng"}</span>
+          <span className="mt-0.5 block truncate text-[10px] text-white/50">{currentRole === "SUPER_ADMIN" ? "Toàn quyền hệ thống" : currentUser?.storeName || "Không gian vận hành"}</span>
+        </span>}
+        {!collapsed && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(110,231,183,.1)]" />}
+      </div>
 
-        {/* Structured Menu Groups */}
-        <div className="space-y-4">
-          {currentGroups.map((group, gIdx) => (
-            <div key={gIdx} className="space-y-1">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-subtle px-2 mb-1 block">
-                {group.title}
-              </span>
+      <nav aria-label="Danh mục quản trị" className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin">
+        {currentGroups.map((group) => (
+          <div key={group.title}>
+            {collapsed ? <div className="mx-2 mb-2 border-t border-white/10" /> : <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-100/40">{group.title}</p>}
+            <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive = activeMenu === item.id;
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => onSelectMenu(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-2xl text-xs font-bold transition-all active:scale-98 ${
-                      isActive
-                        ? "bg-brand-50 text-brand-950 font-black shadow-xs border border-brand-200/60"
-                        : "text-ink-muted hover:bg-surface-canvas hover:text-ink-primary"
-                    }`}
+                    aria-current={isActive ? "page" : undefined}
+                    title={collapsed ? item.label : undefined}
+                    aria-label={collapsed ? item.label : undefined}
+                    className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold transition-all duration-200 active:scale-[.98] ${collapsed ? "lg:justify-center lg:px-0" : ""} ${isActive ? "bg-white text-[#12372a] shadow-[0_8px_24px_rgba(0,0,0,.16)]" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2 text-left">
-                      <Icon
-                        name={item.icon}
-                        className={`w-4 h-4 shrink-0 ${isActive ? "text-brand-900" : "text-ink-subtle"}`}
-                        size={17}
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-brand-900 text-white whitespace-nowrap shrink-0">
-                        {item.badge}
-                      </span>
-                    )}
+                    <Icon name={item.icon} size={17} className={`shrink-0 ${isActive ? "text-emerald-800" : "text-emerald-100/60 group-hover:text-emerald-200"}`} />
+                    {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
+                    {!collapsed && item.badge && <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black ${isActive ? "bg-emerald-100 text-emerald-900" : "bg-white/10 text-emerald-100"}`}>{item.badge}</span>}
+                    {!collapsed && isActive && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />}
                   </button>
                 );
               })}
             </div>
-          ))}
-
-          {/* Logout Action */}
-          <div className="pt-2 border-t border-surface-border">
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center gap-3 px-3.5 py-2 rounded-2xl text-xs font-bold text-ink-muted hover:bg-rose-50 hover:text-rose-600 transition-all"
-            >
-              <Icon name="logout" className="w-4 h-4 text-ink-subtle" />
-              <span>Đăng Xuất</span>
-            </button>
           </div>
-        </div>
-      </div>
+        ))}
+      </nav>
 
-      {/* Bottom Card: Bản quyền & Hỗ trợ kỹ thuật */}
-      <div className="p-4 rounded-3xl bg-brand-950 text-white relative overflow-hidden shadow-elevated mt-6 shrink-0">
-        <div className="absolute -right-4 -bottom-4 w-24 h-24 rounded-full bg-brand-800/30 blur-xl" />
-        <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center mb-2.5">
-          <Icon name="shield" className="w-4 h-4 text-emerald-400" />
-        </div>
-        <h4 className="text-xs font-extrabold leading-snug">
-          {currentRole === "SUPER_ADMIN" ? "A2Order Platform Cloud" : "Bản Quyền PRO 2026"}
-        </h4>
-        <p className="text-[10px] text-brand-200/80 mt-1 mb-2">
-          {currentRole === "SUPER_ADMIN"
-            ? "Phiên bản v2.4.0 • Uptime 99.98% • Hotline Kỹ Thuật: 1900 8866"
-            : "Còn 28 ngày thuê • Tự động gia hạn qua VietQR."}
-        </p>
+      <div className="mt-4 shrink-0 border-t border-white/10 pt-3">
+        <button type="button" onClick={() => onSelectMenu("profile")} aria-current={activeMenu === "profile" ? "page" : undefined} aria-label={collapsed ? "Hồ sơ cá nhân" : undefined} title={collapsed ? "Hồ sơ cá nhân" : undefined} className={`flex w-full items-center gap-3 rounded-2xl p-2 text-left transition ${collapsed ? "lg:justify-center lg:px-0" : ""} ${activeMenu === "profile" ? "bg-white text-[#12372a]" : "text-white hover:bg-white/10"}`}>
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${activeMenu === "profile" ? "bg-emerald-100 text-emerald-900" : "bg-emerald-300/20 text-emerald-100"}`}>{(currentUser?.name || "A").charAt(0).toUpperCase()}</span>
+          {!collapsed && <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-bold">{currentUser?.name || "Tài khoản quản trị"}</span>
+            <span className={`mt-0.5 block truncate text-[10px] ${activeMenu === "profile" ? "text-emerald-900/60" : "text-white/50"}`}>{currentUser?.email || "Xem hồ sơ"}</span>
+          </span>}
+          {!collapsed && <Icon name="arrowRight" size={15} className={activeMenu === "profile" ? "text-emerald-800" : "text-white/40"} />}
+        </button>
+        <button type="button" onClick={onLogout} aria-label="Đăng xuất" title={collapsed ? "Đăng xuất" : undefined} className={`mt-1 flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-white/60 transition hover:bg-white/10 hover:text-white ${collapsed ? "lg:justify-center lg:px-0" : ""}`}>
+          <Icon name="logout" size={16} /> {!collapsed && "Đăng xuất"}
+        </button>
       </div>
     </aside>
   );

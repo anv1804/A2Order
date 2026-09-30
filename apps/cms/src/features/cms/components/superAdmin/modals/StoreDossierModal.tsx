@@ -15,7 +15,6 @@ export interface StoreDossierModalProps {
   onCopyKey: (key: string) => void;
   onOpenRenewModal: (store: TenantStoreRecord) => void;
   onToggleModule: (storeId: string, moduleId: AppModule) => void;
-  onRevokeTerminal: (storeId: string, terminalId: string, terminalName: string) => void;
   onToggleStoreStatus: (store: TenantStoreRecord) => void;
   onImpersonateStore?: (store: TenantStoreRecord) => void;
   onViewInvoice: (invoice: SoftwareInvoiceRecord) => void;
@@ -28,7 +27,6 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
   onCopyKey,
   onOpenRenewModal,
   onToggleModule,
-  onRevokeTerminal,
   onToggleStoreStatus,
   onImpersonateStore,
   onViewInvoice,
@@ -39,10 +37,10 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
-        <div className="bg-white w-full max-w-3xl rounded-3xl shadow-elevated border border-surface-border animate-scaleUp overflow-hidden max-h-[92vh] flex flex-col">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
+        <div className="bg-white w-full max-w-3xl rounded-t-3xl sm:rounded-3xl shadow-elevated border border-surface-border animate-scaleUp overflow-hidden max-h-[96dvh] sm:max-h-[92dvh] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-surface-canvas shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-surface-border bg-surface-canvas shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-2xl shadow-xs">
                 {store.businessType && BUSINESS_TYPE_CONFIG[store.businessType]?.emoji
@@ -95,7 +93,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
           </div>
 
           {/* Dossier Body */}
-          <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5 overscroll-contain">
             {/* Card 1: Bản quyền & Gói thuê */}
             <div className="p-4 rounded-2xl bg-brand-50/60 border border-brand-200 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-brand-200/60 pb-2.5">
@@ -203,7 +201,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                     <span className="text-ink-muted">Đồng bộ gần nhất:</span>
                     <span className="font-bold text-emerald-700 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      {store.lastSync || "1 phút trước"}
+                      {store.lastSync || "Chưa ghi nhận"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -302,7 +300,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                     Thiết Bị Đang Đăng Nhập (Hardware Access Control)
                   </span>
                   <p className="text-[11px] text-ink-muted">
-                    Kiểm soát thiết bị theo License Key. Thu hồi máy để chống chia sẻ lậu bản quyền sang quán khác.
+                    Danh sách thiết bị đã nhận diện. Thao tác thu hồi cần dịch vụ quản lý thiết bị trên máy chủ.
                   </p>
                 </div>
                 <span className="text-[10px] text-ink-secondary font-bold bg-white border border-surface-border px-2.5 py-0.5 rounded-full shrink-0">
@@ -378,11 +376,11 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => onRevokeTerminal(store.id, term.id, term.name)}
-                          className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition-colors shadow-xs"
-                          title="Ngắt kết nối và thu hồi thiết bị này"
+                          disabled
+                          className="px-2.5 py-1 rounded-xl text-[11px] font-bold text-slate-400 bg-slate-50 border border-slate-200 cursor-not-allowed"
+                          title="Máy chủ chưa hỗ trợ thu hồi thiết bị"
                         >
-                          Thu Hồi
+                          Chưa hỗ trợ
                         </button>
                       </div>
                     </div>

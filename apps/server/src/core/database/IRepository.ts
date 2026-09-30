@@ -65,6 +65,7 @@ export interface ILicenseRepository {
   getByKeyCode(keyCode: string): Promise<LicenseRecord | null>;
   create(data: Omit<LicenseRecord, "id">): Promise<LicenseRecord>;
   renew(keyCode: string, durationMonths: number): Promise<LicenseRecord | null>;
+  revoke(keyCode: string): Promise<LicenseRecord | null>;
 }
 
 export interface IInvoiceRepository {

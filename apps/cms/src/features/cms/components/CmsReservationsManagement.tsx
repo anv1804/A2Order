@@ -412,7 +412,7 @@ export const CmsReservationsManagement: React.FC = () => {
       <div className="bg-white rounded-2xl border border-surface-border p-3 shadow-xs space-y-2.5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Ô Tìm Kiếm Thanh Thoát */}
-          <div className="relative flex-1 min-w-[260px] max-w-md">
+          <div className="relative w-full min-w-0 max-w-md lg:flex-1">
             <Icon name="search" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted/70" />
             <input
               type="text"
@@ -435,7 +435,7 @@ export const CmsReservationsManagement: React.FC = () => {
           </div>
 
           {/* Nhóm Bộ Lọc Thời Gian */}
-          <div className="flex items-center gap-1 p-1 bg-surface-canvas rounded-xl border border-surface-border/60 overflow-x-auto no-scrollbar">
+          <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-surface-border/60 bg-surface-canvas p-1 no-scrollbar sm:w-auto">
             {(
               [
                 { id: "ALL", label: "Tất cả ngày" },

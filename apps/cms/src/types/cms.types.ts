@@ -258,9 +258,12 @@ export interface CmsSidebarProps {
   onSelectMenu: (menu: string) => void;
   onLogout: () => void;
   currentRole: "STORE_OWNER" | "SUPER_ADMIN";
-  onChangeRole: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
+  onChangeRole?: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
   enabledModules?: AppModule[];
   onCloseMobileDrawer?: () => void;
+  currentUser?: { name: string; email?: string | null; storeName?: string | null } | null;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
 export interface CmsTopNavProps {
@@ -269,9 +272,11 @@ export interface CmsTopNavProps {
   avatarUrl?: string;
   onSearch?: (query: string) => void;
   onToggleMobileMenu?: () => void;
-  canGoBack?: boolean;
-  onBack?: () => void;
   activeMenuTitle?: string;
+  roleBadgeText?: string;
+  storeName?: string;
+  onOpenProfile?: () => void;
+  onOpenSearch?: () => void;
 }
 
 export interface CmsLayoutProps {
@@ -280,8 +285,9 @@ export interface CmsLayoutProps {
   activeMenu: string;
   onSelectMenu: (menu: string) => void;
   currentRole: "STORE_OWNER" | "SUPER_ADMIN";
-  onChangeRole: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
+  onChangeRole?: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
   enabledModules?: AppModule[];
+  currentUser?: { name: string; email?: string | null; storeName?: string | null } | null;
 }
 
 export interface CmsMetricCardsProps {
@@ -586,5 +592,3 @@ export interface WaiterTableOrder {
   totalAmount: number;
   isSplit?: boolean;
 }
-
-

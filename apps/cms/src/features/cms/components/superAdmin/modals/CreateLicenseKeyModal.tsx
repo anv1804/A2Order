@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 
 export interface CreateLicenseKeyModalProps {
   isOpen: boolean;
-  stores: Array<{ id: string; name: string; owner: string; phone: string }>;
+  stores: Array<{ id: string; name: string; owner: string; phone: string; licenseKey?: string }>;
   onClose: () => void;
   onSubmit: (licenseData: {
     storeId?: string;
@@ -24,6 +25,11 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
   const [plan, setPlan] = useState<"STARTER" | "GROWTH" | "PRO">("PRO");
   const [durationMonths, setDurationMonths] = useState<number>(12);
   const [maxDevices, setMaxDevices] = useState<number>(8);
+  const { requestClose } = useUnsavedEditor("create_license_key", isOpen, JSON.stringify({ storeId, plan, durationMonths, maxDevices }), onClose);
+
+  useEffect(() => {
+    if (isOpen) { setStoreId("UNASSIGNED"); setPlan("PRO"); setDurationMonths(12); setMaxDevices(8); }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -41,10 +47,10 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
-        <div className="bg-white w-full max-w-xl rounded-3xl shadow-elevated border border-surface-border animate-scaleUp overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white w-full max-w-xl rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 animate-scaleUp overflow-hidden max-h-[95dvh] sm:max-h-[90dvh] flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-surface-border bg-surface-canvas shrink-0">
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50 shrink-0">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900">
                 <Icon name="key" className="w-4 h-4" />
@@ -60,7 +66,7 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
             >
               <Icon name="x" className="w-4 h-4" />
@@ -68,7 +74,7 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-4 overscroll-contain">
             {/* Chọn Quán Áp Dụng */}
             <div>
               <label className="text-xs font-extrabold text-ink-muted mb-1 block">
@@ -81,13 +87,13 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
               >
                 <option value="UNASSIGNED">-- Chưa gán (Mã Key dự phòng, kích hoạt sau) --</option>
                 {stores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.owner} - {s.phone})
+                  <option key={s.id} value={s.id} disabled={Boolean(s.licenseKey && s.licenseKey !== "Chưa cấp")}>
+                    {s.name}{s.licenseKey && s.licenseKey !== "Chưa cấp" ? " · Đã có license" : ` (${s.owner} - ${s.phone})`}
                   </option>
                 ))}
               </select>
               <p className="text-[10px] text-ink-muted mt-1">
-                Nếu chưa gán quán, mã key có thể cung cấp cho quán đối tác tự nhập kích hoạt trên máy POS.
+                Key chưa gán được lưu làm dự phòng. Luồng tự kích hoạt từ POS hiện chưa được hỗ trợ.
               </p>
             </div>
 
@@ -224,7 +230,7 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
                 variant="outline"
                 size="sm"
                 className="rounded-xl text-xs"
-                onClick={onClose}
+                onClick={requestClose}
               >
                 Hủy
               </Button>

@@ -10,7 +10,7 @@ export const Badge: React.FC<BadgeProps> = ({
   size = "md",
   ...props
 }) => {
-  const baseClasses = "inline-flex items-center justify-center font-bold rounded-full select-none";
+  const baseClasses = "inline-flex items-center justify-center font-bold rounded-full select-none whitespace-nowrap";
 
   const sizeClasses = {
     sm: "px-2.5 py-0.5 text-[10px]",

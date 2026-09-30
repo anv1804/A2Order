@@ -4,13 +4,21 @@ import { toast } from "@/stores/notificationStore";
 import { StoreLandingPageData } from "@a2order/shared";
 
 import { CmsLandingPageEditorProps } from "@/types/cms.types";
+import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
+
+const LANDING_PAGE_STORAGE_KEY = "a2order_landing_page_editor";
 
 export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
   isUnlocked,
   onUpgradeClick,
 }) => {
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">("desktop");
-  const [pageData, setPageData] = useState<StoreLandingPageData>({
+  const [pageData, setPageData] = useState<StoreLandingPageData>(() => {
+    try {
+      const saved = localStorage.getItem(LANDING_PAGE_STORAGE_KEY);
+      if (saved) return JSON.parse(saved) as StoreLandingPageData;
+    } catch {}
+    return {
     storeId: "store-1",
     storeName: "Phở Bò Nam Định - Chi Nhánh 1",
     customDomain: "phobonamdinh.vn",
@@ -42,7 +50,10 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
         ],
       },
     ],
+    };
   });
+  const [savedPageData, setSavedPageData] = useState(() => JSON.stringify(pageData));
+  useUnsavedChanges("landing_page_editor", isUnlocked && JSON.stringify(pageData) !== savedPageData);
 
   // MÀN HÌNH KHÓA TRẢ PHÍ (PAYWALL) NẾU CHƯA THUÊ MODULE LANDING PAGE
   if (!isUnlocked) {
@@ -103,6 +114,8 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
   }
 
   const handleSave = () => {
+    localStorage.setItem(LANDING_PAGE_STORAGE_KEY, JSON.stringify(pageData));
+    setSavedPageData(JSON.stringify(pageData));
     toast.success("Đã lưu và xuất bản trang Landing Page thương hiệu thành công!");
   };
 

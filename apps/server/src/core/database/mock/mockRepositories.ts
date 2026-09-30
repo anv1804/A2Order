@@ -446,6 +446,13 @@ export class MockLicenseRepository implements ILicenseRepository {
     lic.status = "ACTIVE";
     return lic;
   }
+
+  async revoke(keyCode: string): Promise<LicenseRecord | null> {
+    const lic = mockDbState.licenses.find((license) => license.keyCode === keyCode);
+    if (!lic) return null;
+    lic.status = "REVOKED";
+    return lic;
+  }
 }
 
 // ==========================================

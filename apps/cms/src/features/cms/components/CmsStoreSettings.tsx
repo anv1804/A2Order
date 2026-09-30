@@ -3,7 +3,14 @@ import { AppModule, APP_MODULE_CATALOG } from "@a2order/shared";
 import { Panel, Button, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { CmsStoreSettingsProps } from "@/types/cms.types";
-import { usePersistentState } from "@/hooks/usePersistentState";
+import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
+
+const readSetting = (key: string, fallback: string) => {
+  try {
+    const saved = localStorage.getItem(`a2order_${key}`);
+    return saved === null ? fallback : JSON.parse(saved) as string;
+  } catch { return fallback; }
+};
 
 export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   enabledModules = [AppModule.CORE_POS],
@@ -11,20 +18,32 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"store_info" | "modules_license">("store_info");
 
-  // Tab 1: Store info state with persistent storage
-  const [storeName, setStoreName] = usePersistentState("store_settings_name", "Phở Bò Nam Định - Chi Nhánh 1");
-  const [phone, setPhone] = usePersistentState("store_settings_phone", "0912 345 678");
-  const [address, setAddress] = usePersistentState("store_settings_address", "Số 88 Phố Trần Thái Tông, Cầu Giấy, Hà Nội");
-  const [bankBin, setBankBin] = usePersistentState("store_settings_bankBin", "970415"); // VietinBank Napas
-  const [bankAccount, setBankAccount] = usePersistentState("store_settings_bankAccount", "113366668888");
-  const [bankOwnerName, setBankOwnerName] = usePersistentState("store_settings_bankOwnerName", "NGUYEN THANH AN");
-  const [vatRate, setVatRate] = usePersistentState("store_settings_vatRate", "8");
+  const [storeName, setStoreName] = useState(() => readSetting("store_settings_name", "Phở Bò Nam Định - Chi Nhánh 1"));
+  const [phone, setPhone] = useState(() => readSetting("store_settings_phone", "0912 345 678"));
+  const [address, setAddress] = useState(() => readSetting("store_settings_address", "Số 88 Phố Trần Thái Tông, Cầu Giấy, Hà Nội"));
+  const [bankBin, setBankBin] = useState(() => readSetting("store_settings_bankBin", "970415"));
+  const [bankAccount, setBankAccount] = useState(() => readSetting("store_settings_bankAccount", "113366668888"));
+  const [bankOwnerName, setBankOwnerName] = useState(() => readSetting("store_settings_bankOwnerName", "NGUYEN THANH AN"));
+  const [vatRate, setVatRate] = useState(() => readSetting("store_settings_vatRate", "8"));
+  const currentStoreInfo = JSON.stringify({ storeName, phone, address, bankBin, bankAccount, bankOwnerName, vatRate });
+  const [savedStoreInfo, setSavedStoreInfo] = useState(currentStoreInfo);
 
   // Tab 2: Modules state
   const [selectedModules, setSelectedModules] = useState<AppModule[]>(enabledModules);
   const [durationMonths, setDurationMonths] = useState<number>(6);
+  const modulesChanged = [...selectedModules].sort().join("|") !== [...enabledModules].sort().join("|");
+  useUnsavedChanges("store_settings", currentStoreInfo !== savedStoreInfo || modulesChanged);
 
   const handleSaveStoreInfo = () => {
+    const fields: Record<string, string> = { storeName, phone, address, bankBin, bankAccount, bankOwnerName, vatRate };
+    const keys: Record<string, string> = { storeName: "store_settings_name", phone: "store_settings_phone", address: "store_settings_address", bankBin: "store_settings_bankBin", bankAccount: "store_settings_bankAccount", bankOwnerName: "store_settings_bankOwnerName", vatRate: "store_settings_vatRate" };
+    try {
+      Object.entries(fields).forEach(([field, value]) => localStorage.setItem(`a2order_${keys[field]}`, JSON.stringify(value)));
+    } catch {
+      toast.error("Không thể lưu cấu hình trên thiết bị này.");
+      return;
+    }
+    setSavedStoreInfo(currentStoreInfo);
     toast.success("Đã lưu cấu hình tài khoản VietQR và thông tin quán thành công!");
   };
 

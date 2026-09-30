@@ -75,6 +75,10 @@ DATABASE_URL="postgresql://postgres:password@localhost:5432/a2order_db?schema=pu
 
 # 3. TẮT CHẾ ĐỘ MOCK -> BẬT CHẾ ĐỘ PRISMA THẬT
 USE_MOCK_DB=false
+
+# 4. Tài khoản Super Admin được tạo khi chạy seed
+SUPER_ADMIN_SEED_EMAIL="admin@example.com"
+SUPER_ADMIN_SEED_PASSWORD="thay-bang-mat-khau-rieng"
 ```
 
 ### Bước 3: Đồng bộ lược đồ bảng vào Database (Prisma Migration)

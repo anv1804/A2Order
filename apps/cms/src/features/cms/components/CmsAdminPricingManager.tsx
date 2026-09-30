@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon } from "@/components/ui";
-import { toast } from "@/stores/notificationStore";
+import { toast, confirmDialog } from "@/stores/notificationStore";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 import {
   APP_MODULE_CATALOG,
   AppModule,
@@ -11,13 +14,15 @@ import {
 } from "@a2order/shared";
 
 export const CmsAdminPricingManager: React.FC = () => {
-  const [catalog, setCatalog] = useState<ModulePricingInfo[]>(APP_MODULE_CATALOG);
+  const [catalog, setCatalog] = usePersistentState<ModulePricingInfo[]>("admin_module_catalog", APP_MODULE_CATALOG);
   const [editingModuleId, setEditingModuleId] = useState<AppModule | null>(null);
   const [editPrice, setEditPrice] = useState<number>(0);
 
-  const [periodDiscounts, setPeriodDiscounts] = useState<PeriodDiscountRule[]>(DEFAULT_PERIOD_DISCOUNTS);
+  const [periodDiscounts, setPeriodDiscounts] = usePersistentState<PeriodDiscountRule[]>("admin_period_discounts", DEFAULT_PERIOD_DISCOUNTS);
+  const [editingDiscountMonths, setEditingDiscountMonths] = useState<number | null>(null);
+  const [discountPercentInput, setDiscountPercentInput] = useState(0);
 
-  const [vouchers, setVouchers] = useState<PromoVoucher[]>([
+  const [vouchers, setVouchers] = usePersistentState<PromoVoucher[]>("admin_vouchers", [
     {
       id: "v1",
       code: "A2CHAOBAN",
@@ -49,6 +54,37 @@ export const CmsAdminPricingManager: React.FC = () => {
   const [newVoucherValue, setNewVoucherValue] = useState<number>(10);
   const [newVoucherMonths, setNewVoucherMonths] = useState<number>(3);
   const [newVoucherLimit, setNewVoucherLimit] = useState<number>(50);
+  const { requestClose: requestCloseVoucher } = useUnsavedEditor("voucher_modal", isVoucherModalOpen, JSON.stringify({ newVoucherCode, newVoucherType, newVoucherValue, newVoucherMonths, newVoucherLimit }), () => setIsVoucherModalOpen(false));
+  const priceChanged = editingModuleId !== null && editPrice !== catalog.find((module) => module.id === editingModuleId)?.monthlyPrice;
+  const discountChanged = editingDiscountMonths !== null && discountPercentInput !== periodDiscounts.find((rule) => rule.durationMonths === editingDiscountMonths)?.discountPercent;
+  useUnsavedChanges("admin_pricing_inline", priceChanged);
+  useUnsavedChanges("admin_discount_inline", discountChanged);
+
+  const handleSaveDiscount = () => {
+    if (!Number.isFinite(discountPercentInput) || discountPercentInput < 0 || discountPercentInput > 100) {
+      toast.error("Chiết khấu phải từ 0% đến 100%.");
+      return;
+    }
+    setPeriodDiscounts((rules) => rules.map((rule) => rule.durationMonths === editingDiscountMonths ? { ...rule, discountPercent: discountPercentInput } : rule));
+    setEditingDiscountMonths(null);
+    toast.success("Đã cập nhật chiết khấu kỳ hạn.");
+  };
+
+  const handleCancelDiscount = async () => {
+    if (discountChanged) {
+      const discard = await confirmDialog({ title: "Bỏ chiết khấu đang sửa?", message: "Tỷ lệ mới chưa được lưu.", confirmText: "Bỏ thay đổi", cancelText: "Tiếp tục sửa", variant: "warning" });
+      if (!discard) return;
+    }
+    setEditingDiscountMonths(null);
+  };
+
+  const handleCancelPrice = async () => {
+    if (priceChanged) {
+      const discard = await confirmDialog({ title: "Bỏ giá đang chỉnh sửa?", message: "Mức giá mới chưa được lưu.", confirmText: "Bỏ thay đổi", cancelText: "Tiếp tục sửa", variant: "warning" });
+      if (!discard) return;
+    }
+    setEditingModuleId(null);
+  };
 
   const handleStartEdit = (mod: ModulePricingInfo) => {
     setEditingModuleId(mod.id);
@@ -60,7 +96,7 @@ export const CmsAdminPricingManager: React.FC = () => {
       prev.map((m) => (m.id === modId ? { ...m, monthlyPrice: editPrice } : m))
     );
     setEditingModuleId(null);
-    toast.success("Đã cập nhật giá thuê module trên toàn nền tảng thành công!");
+    toast.success("Đã lưu giá thuê module trong cấu hình quản trị.");
   };
 
   const handleCreateVoucherSubmit = (e: React.FormEvent) => {
@@ -170,11 +206,13 @@ export const CmsAdminPricingManager: React.FC = () => {
                           className="w-24 h-8 px-2 rounded-xl bg-white border border-brand-800 text-xs font-bold text-ink-primary text-right"
                         />
                         <button
+                          type="button"
                           onClick={() => handleSavePrice(mod.id)}
                           className="w-8 h-8 rounded-xl bg-brand-900 text-white flex items-center justify-center hover:bg-brand-950 transition-all shadow-sm"
                         >
                           <Icon name="check" className="w-4 h-4" />
                         </button>
+                        <button type="button" onClick={handleCancelPrice} aria-label="Hủy sửa giá" className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-200"><Icon name="x" size={15} /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -210,10 +248,17 @@ export const CmsAdminPricingManager: React.FC = () => {
               {periodDiscounts.map((rule) => (
                 <div
                   key={rule.durationMonths}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-surface-canvas text-xs font-bold"
+                  className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-canvas text-xs font-bold"
                 >
                   <span className="text-ink-primary">{rule.durationMonths} tháng</span>
-                  <span
+                  {editingDiscountMonths === rule.durationMonths ? (
+                    <span className="flex items-center gap-1.5">
+                      <input type="number" min={0} max={100} value={discountPercentInput} onChange={(event) => setDiscountPercentInput(Number(event.target.value))} aria-label={`Chiết khấu ${rule.durationMonths} tháng`} className="h-8 w-16 rounded-lg border border-slate-200 bg-white px-2 text-right text-xs font-bold" />
+                      <span className="text-slate-500">%</span>
+                      <button type="button" onClick={handleSaveDiscount} aria-label="Lưu chiết khấu" className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-900 text-white"><Icon name="check" size={14} /></button>
+                      <button type="button" onClick={handleCancelDiscount} aria-label="Hủy sửa chiết khấu" className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200"><Icon name="x" size={14} /></button>
+                    </span>
+                  ) : <span className="flex items-center gap-2"><span
                     className={`px-2 py-0.5 rounded-md ${
                       rule.discountPercent > 0
                         ? "bg-emerald-100 text-emerald-800 font-black"
@@ -221,7 +266,7 @@ export const CmsAdminPricingManager: React.FC = () => {
                     }`}
                   >
                     {rule.discountPercent > 0 ? `Giảm ${rule.discountPercent}%` : "Nguyên giá"}
-                  </span>
+                  </span><button type="button" onClick={() => { setEditingDiscountMonths(rule.durationMonths); setDiscountPercentInput(rule.discountPercent); }} aria-label={`Sửa chiết khấu ${rule.durationMonths} tháng`} className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-200 hover:text-slate-800"><Icon name="edit" size={13} /></button></span>}
                 </div>
               ))}
             </div>
@@ -295,7 +340,7 @@ export const CmsAdminPricingManager: React.FC = () => {
                 </div>
               </div>
               <button
-                onClick={() => setIsVoucherModalOpen(false)}
+                onClick={requestCloseVoucher}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted hover:text-ink-primary"
               >
                 <Icon name="x" className="w-4 h-4" />
@@ -385,7 +430,7 @@ export const CmsAdminPricingManager: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="rounded-full text-xs"
-                  onClick={() => setIsVoucherModalOpen(false)}
+                  onClick={requestCloseVoucher}
                 >
                   Hủy
                 </Button>

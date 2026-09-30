@@ -74,6 +74,9 @@ import {
   Cake,
   Utensils,
   List,
+  Home,
+  User,
+  Heart,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -154,6 +157,9 @@ const iconMap: Record<IconName, LucideIcon> = {
   utensils: Utensils,
   grid: LayoutGrid,
   list: List,
+  home: Home,
+  user: User,
+  heart: Heart,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

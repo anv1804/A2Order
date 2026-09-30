@@ -24,6 +24,15 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.post("/", async (request, reply) => {
     try {
       const body = request.body as any;
+      if (!body?.keyCode || !body?.plan || !body?.maxDevices || !body?.durationMonths) {
+        return reply.status(400).send({ success: false, error: "Thiếu mã key, gói, số thiết bị hoặc thời hạn." });
+      }
+      if (body.storeId) {
+        const existingLicense = await prisma.storeLicense.findUnique({ where: { storeId: body.storeId } });
+        if (existingLicense) {
+          return reply.status(409).send({ success: false, error: "Cửa hàng đã có license. Hãy tạo key dự phòng chưa gán." });
+        }
+      }
       const created = await licenseRepository.create(body);
       return { success: true, data: created };
     } catch (err: any) {
@@ -42,6 +51,18 @@ export async function licenseRoutes(fastify: FastifyInstance) {
       const renewed = await licenseRepository.renew(keyCode, durationMonths || 12);
       if (!renewed) return reply.status(404).send({ success: false, error: "License not found" });
       return { success: true, data: renewed };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /** Thu hồi giấy phép và ngắt quyền sử dụng mã license. */
+  fastify.post("/:keyCode/revoke", async (request, reply) => {
+    const { keyCode } = request.params as { keyCode: string };
+    try {
+      const revoked = await licenseRepository.revoke(keyCode);
+      if (!revoked) return reply.status(404).send({ success: false, error: "License not found" });
+      return { success: true, data: revoked };
     } catch (err: any) {
       return reply.status(500).send({ success: false, error: err.message });
     }
@@ -100,7 +121,7 @@ export async function licenseRoutes(fastify: FastifyInstance) {
     const enabledModules = license.enabledModules ? (license.enabledModules.split(",") as AppModule[]) : [AppModule.CORE_POS];
 
     return {
-      storeId: license.storeId,
+      storeId,
       licenseKey: license.licenseKey,
       planType: license.planType,
       enabledModules,
@@ -219,39 +240,46 @@ export async function licenseRoutes(fastify: FastifyInstance) {
   fastify.post("/invoice/:invoiceId/confirm-payment", async (request, reply) => {
     const { invoiceId } = request.params as { invoiceId: string };
 
-    const invoice = await prisma.softwareInvoice.findUnique({
-      where: { id: invoiceId },
-      include: { license: true },
+    const result = await prisma.$transaction(async (transaction) => {
+      const invoice = await transaction.softwareInvoice.findUnique({
+        where: { id: invoiceId },
+        include: { license: true },
+      });
+      if (!invoice) return null;
+
+      // Chỉ chuyển PENDING sang PAID một lần để retry không cộng hạn nhiều lần.
+      const claimed = await transaction.softwareInvoice.updateMany({
+        where: { id: invoiceId, status: InvoiceStatus.PENDING },
+        data: { status: InvoiceStatus.PAID, paidAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        const latest = await transaction.softwareInvoice.findUnique({
+          where: { id: invoiceId },
+          include: { license: true },
+        });
+        if (!latest || latest.status !== InvoiceStatus.PAID) {
+          throw new Error("Hóa đơn không ở trạng thái chờ thanh toán.");
+        }
+        return { endDate: latest.license.endDate, alreadyPaid: true };
+      }
+
+      const now = new Date();
+      const newEnd = new Date(Math.max(invoice.license.endDate.getTime(), now.getTime()));
+      newEnd.setMonth(newEnd.getMonth() + invoice.durationMonths);
+      const updatedLicense = await transaction.storeLicense.update({
+        where: { id: invoice.license.id },
+        data: { endDate: newEnd, status: LicenseStatus.ACTIVE },
+      });
+      return { endDate: updatedLicense.endDate, alreadyPaid: false };
     });
 
-    if (!invoice) {
-      return reply.status(404).send({ error: "Invoice not found" });
-    }
-
-    await prisma.softwareInvoice.update({
-      where: { id: invoiceId },
-      data: {
-        status: InvoiceStatus.PAID,
-        paidAt: new Date(),
-      },
-    });
-
-    const currentEnd = new Date(invoice.license.endDate);
-    const newEnd = currentEnd > new Date() ? currentEnd : new Date();
-    newEnd.setMonth(newEnd.getMonth() + invoice.durationMonths);
-
-    const updatedLicense = await prisma.storeLicense.update({
-      where: { id: invoice.license.id },
-      data: {
-        endDate: newEnd,
-        status: LicenseStatus.ACTIVE,
-      },
-    });
-
+    if (!result) return reply.status(404).send({ error: "Invoice not found" });
     return {
       success: true,
-      message: "Đã gia hạn thành công giấy phép thuê phần mềm!",
-      newEndDate: updatedLicense.endDate,
+      message: result.alreadyPaid
+        ? "Hóa đơn đã được xác nhận trước đó."
+        : "Đã gia hạn thành công giấy phép thuê phần mềm!",
+      newEndDate: result.endDate,
     };
   });
 }

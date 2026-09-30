@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 
 export interface LicenseModalProps {
   store: {
@@ -24,6 +25,14 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
 }) => {
   const [selectedPlan, setSelectedPlan] = useState<"STARTER" | "GROWTH" | "PRO">("PRO");
   const [selectedDuration, setSelectedDuration] = useState<number>(12);
+  const { requestClose } = useUnsavedEditor("license_modal", Boolean(store), JSON.stringify({ selectedPlan, selectedDuration }), onClose);
+
+  useEffect(() => {
+    if (store) {
+      setSelectedPlan(store.plan === "STARTER" || store.plan === "GROWTH" ? store.plan : "PRO");
+      setSelectedDuration(12);
+    }
+  }, [store?.id]);
 
   if (!store) return null;
 
@@ -49,8 +58,8 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
-        <div className="bg-white w-full max-w-lg rounded-3xl shadow-elevated p-6 space-y-4 border border-surface-border animate-scaleUp">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl shadow-2xl p-4 pb-6 sm:p-6 space-y-4 border border-slate-200 animate-scaleUp max-h-[94dvh] overflow-y-auto">
           <div className="flex items-center justify-between border-b border-surface-border pb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-brand-50 flex items-center justify-center">
@@ -65,7 +74,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
             >
               <Icon name="x" className="w-4 h-4" />
@@ -170,7 +179,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
               variant="outline"
               size="sm"
               className="rounded-xl text-xs"
-              onClick={onClose}
+              onClick={requestClose}
             >
               Hủy
             </Button>

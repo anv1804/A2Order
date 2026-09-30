@@ -73,7 +73,10 @@ export type IconName =
   | "cake"
   | "utensils"
   | "grid"
-  | "list";
+  | "list"
+  | "home"
+  | "user"
+  | "heart";
 
 export interface IconProps {
   name: IconName;

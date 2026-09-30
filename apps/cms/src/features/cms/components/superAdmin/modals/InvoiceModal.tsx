@@ -17,8 +17,8 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
-        <div className="bg-white w-full max-w-sm rounded-3xl shadow-elevated p-6 space-y-4 border border-surface-border animate-scaleUp text-center">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-ink-primary/60 backdrop-blur-md animate-fadeIn">
+        <div className="bg-white w-full max-w-sm rounded-t-3xl sm:rounded-3xl shadow-elevated p-4 sm:p-6 space-y-4 border border-surface-border animate-scaleUp text-center max-h-[95dvh] overflow-y-auto overscroll-contain">
           <div className="flex items-center justify-between border-b border-surface-border pb-3">
             <h3 className="text-sm font-black text-ink-primary uppercase">
               HÓA ĐƠN THUÊ PHẦN MỀM SAAS
@@ -40,7 +40,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
           {/* QR VietQR thanh toán cước thuê */}
           <div className="p-4 bg-surface-canvas rounded-2xl border border-surface-border flex flex-col items-center">
-            <div className="w-44 h-44 bg-white p-2 rounded-xl border border-surface-border shadow-sm flex items-center justify-center">
+            <div className="w-40 h-40 sm:w-44 sm:h-44 bg-white p-2 rounded-xl border border-surface-border shadow-sm flex items-center justify-center">
               <img
                 src={`https://api.vietqr.io/image/970422-0912345678-qM0v76X.jpg?amount=${invoice.finalAmount}&addInfo=${encodeURIComponent(
                   invoice.invoiceCode

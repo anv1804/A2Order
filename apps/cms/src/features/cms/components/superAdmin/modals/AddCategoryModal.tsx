@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { FnbCategoryTemplate, FnbMajorCategory, FNB_MAJOR_CONFIG } from "@a2order/shared";
+import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 
 export interface AddCategoryModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const { requestClose } = useUnsavedEditor("category_modal", isOpen, JSON.stringify({ majorType, name, description }), onClose);
 
   useEffect(() => {
     if (isOpen) {
@@ -54,7 +56,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
         {/* Backdrop */}
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
-          onClick={onClose}
+          onClick={requestClose}
         />
 
         {/* Modal Dialog */}
@@ -72,7 +74,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="p-1.5 rounded-xl text-ink-muted hover:text-ink-primary hover:bg-surface-canvas transition-colors"
             >
               <Icon name="x" className="w-4 h-4" />
@@ -153,7 +155,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
 
             {/* Footer Buttons */}
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-surface-border">
-              <Button type="button" variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={onClose}>
+              <Button type="button" variant="outline" size="sm" className="rounded-xl font-bold text-xs" onClick={requestClose}>
                 Hủy Bỏ
               </Button>
               <Button

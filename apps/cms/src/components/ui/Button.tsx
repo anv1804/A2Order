@@ -12,21 +12,21 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    "inline-flex items-center justify-center font-bold rounded-2xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none select-none";
+    "inline-flex items-center justify-center gap-2 font-bold rounded-xl transition-all duration-150 active:scale-[.98] disabled:opacity-50 disabled:pointer-events-none select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2";
 
   const sizeClasses = {
-    sm: "h-9 px-3.5 text-xs rounded-xl",
-    md: "h-11 px-5 text-sm rounded-2xl",
-    lg: "h-13 px-6 text-base rounded-2xl",
-    xl: "h-14 px-8 text-lg font-extrabold rounded-3xl",
+    sm: "min-h-9 px-3 text-xs",
+    md: "min-h-10 px-4 text-sm",
+    lg: "min-h-11 px-5 text-sm",
+    xl: "min-h-12 px-6 text-base font-extrabold",
   };
 
   const variantClasses = {
-    primary: "bg-brand-800 hover:bg-brand-900 text-white shadow-card hover:shadow-elevated",
-    secondary: "bg-surface-muted hover:bg-slate-200 text-ink-primary",
-    danger: "bg-rose-600 hover:bg-rose-700 text-white shadow-card",
-    ghost: "bg-transparent text-ink-muted hover:bg-surface-muted hover:text-ink-primary",
-    outline: "border border-surface-border bg-white text-ink-primary hover:bg-surface-muted",
+    primary: "bg-brand-800 hover:bg-brand-900 text-white shadow-sm hover:shadow-md",
+    secondary: "bg-slate-100 hover:bg-slate-200 text-slate-800",
+    danger: "bg-rose-600 hover:bg-rose-700 text-white shadow-sm",
+    ghost: "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    outline: "border border-slate-200 bg-white text-slate-800 shadow-sm hover:bg-slate-50 hover:border-slate-300",
   };
 
   return (

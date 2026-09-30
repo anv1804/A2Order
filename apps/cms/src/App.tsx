@@ -1,12 +1,14 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { CmsLayout } from "@/features/cms/components/CmsLayout";
-import { UnifiedAuthModal } from "@/features/auth/components/UnifiedAuthModal";
+import { AdminLoginPage } from "@/features/auth";
 import { GlobalFeedback } from "@/components/feedback";
 import { LoadingScreen, CmsPageSkeleton } from "@/components/ui";
-import { toast } from "@/stores/notificationStore";
-import { StaffMember } from "@/types";
+import { toast, confirmDialog } from "@/stores/notificationStore";
+import { hasUnsavedChanges, useUnsavedChangesStore } from "@/stores/unsavedChangesStore";
+import { AuthUser } from "@/types";
 import { AppModule } from "@a2order/shared";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { API_BASE_URL } from "@/services/api/apiClient";
 
 // Tải bất đồng bộ (Lazy-load & Code-splitting) các phân hệ CMS để giảm tải bundle và hiển thị Skeleton tức thì
 const CmsDashboard = lazy(() => import("@/features/cms").then((m) => ({ default: m.CmsDashboard })));
@@ -60,38 +62,178 @@ const CmsPromotionsManagement = lazy(() =>
 const CmsHardwareSettings = lazy(() =>
   import("@/features/cms/components/CmsHardwareSettings").then((m) => ({ default: m.CmsHardwareSettings }))
 );
+const CmsProfileView = lazy(() =>
+  import("@/features/cms/components/CmsProfileView").then((m) => ({ default: m.CmsProfileView }))
+);
 
-const MOCK_STAFF: StaffMember[] = [
-  { id: "s1", name: "Nguyễn Thành An", role: "Chủ quán" },
-  { id: "s2", name: "Admin Hệ Thống", role: "Super Admin" },
-  { id: "s3", name: "Chị Lan", role: "Thu ngân" },
-];
+const AUTH_TOKEN_KEY = "a2order_auth_token";
+const AUTH_USER_KEY = "a2order_auth_user";
 
 export const App: React.FC = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [currentRole, setCurrentRole] = usePersistentState<"STORE_OWNER" | "SUPER_ADMIN">("currentRole", "STORE_OWNER");
-  const [activeMenu, setActiveMenu] = usePersistentState<string>("activeMenu", "reservations");
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentRole, setCurrentRole] = usePersistentState<"STORE_OWNER" | "SUPER_ADMIN">("currentRole", "SUPER_ADMIN");
+  const [activeMenu, setActiveMenu] = usePersistentState<string>("activeMenu", "telemetry");
   const [enabledModules, setEnabledModules] = usePersistentState<AppModule[]>("enabledModules", [
     AppModule.CORE_POS,
     AppModule.MODULE_KDS,
     AppModule.MODULE_QR_ORDER,
     AppModule.MODULE_ADVANCED_ANALYTICS,
+    AppModule.MODULE_LANDING_PAGE,
   ]);
+  const confirmingNavigation = useRef(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, []);
 
-  if (isLoading) {
+  // Kiểm tra phiên đăng nhập đã lưu (Remember Me)
+  useEffect(() => {
+    const verifySavedAuth = async () => {
+      const savedToken = localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
+      const savedUserStr = localStorage.getItem(AUTH_USER_KEY) || sessionStorage.getItem(AUTH_USER_KEY);
+
+      if (!savedToken) {
+        setIsInitializing(false);
+        return;
+      }
+
+      try {
+        if (savedUserStr) {
+          const parsed = JSON.parse(savedUserStr);
+          setCurrentUser(parsed);
+          if (parsed.role === "SUPER_ADMIN") {
+            setCurrentRole("SUPER_ADMIN");
+          }
+        }
+
+        // Xác thực token qua backend thật
+        const res = await fetch(`${API_BASE_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${savedToken}`,
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.user) {
+            setCurrentUser(data.user);
+            if (data.user.role === "SUPER_ADMIN") {
+              setCurrentRole("SUPER_ADMIN");
+            }
+          }
+        } else {
+          // Token không còn hợp lệ -> Xóa bộ nhớ
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(AUTH_USER_KEY);
+          sessionStorage.removeItem(AUTH_TOKEN_KEY);
+          sessionStorage.removeItem(AUTH_USER_KEY);
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.warn("Không thể kết nối xác thực server:", err);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    verifySavedAuth();
+  }, []);
+
+  const handleLoginSuccess = (user: AuthUser, token: string, rememberMe: boolean) => {
+    setCurrentUser(user);
+
+    if (rememberMe) {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    } else {
+      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+      sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+    }
+
+    if (user.role === "SUPER_ADMIN") {
+      setCurrentRole("SUPER_ADMIN");
+      setActiveMenu("telemetry");
+      toast.success(`Chào mừng Super Admin ${user.name}! Đã kết nối trung tâm điều hành SaaS A2Order.`);
+    } else {
+      setCurrentRole("STORE_OWNER");
+      setActiveMenu("dashboard");
+      toast.success(`Đăng nhập thành công: ${user.name}`);
+    }
+  };
+
+  const confirmLeaveUnsaved = async () => {
+    if (!hasUnsavedChanges()) return true;
+    if (confirmingNavigation.current) return false;
+    confirmingNavigation.current = true;
+    try {
+      const discard = await confirmDialog({
+        title: "Bạn có thay đổi chưa lưu",
+        message: "Rời màn hình lúc này sẽ bỏ các thay đổi đang chỉnh sửa.",
+        confirmText: "Rời màn hình",
+        cancelText: "Tiếp tục chỉnh sửa",
+        variant: "warning",
+      });
+      if (discard) useUnsavedChangesStore.getState().clearAll();
+      return discard;
+    } finally {
+      confirmingNavigation.current = false;
+    }
+  };
+
+  const navigateMenu = async (menu: string) => {
+    if (menu === activeMenu) return;
+    if (!(await confirmLeaveUnsaved())) return;
+    setActiveMenu(menu);
+  };
+
+  const handleLogout = async () => {
+    if (confirmingNavigation.current) return;
+    confirmingNavigation.current = true;
+    const confirmed = await confirmDialog({
+      title: "Đăng xuất khỏi A2Order?",
+      message: hasUnsavedChanges()
+        ? "Bạn đang có thay đổi chưa lưu. Đăng xuất sẽ bỏ các thay đổi này."
+        : "Phiên quản trị trên thiết bị này sẽ kết thúc.",
+      confirmText: "Đăng xuất",
+      cancelText: "Ở lại",
+      variant: "warning",
+    });
+    confirmingNavigation.current = false;
+    if (!confirmed) return;
+    useUnsavedChangesStore.getState().clearAll();
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
+    setCurrentUser(null);
+    toast.info("Đã đăng xuất khỏi tài khoản quản trị.");
+  };
+
+  if (isInitializing) {
     return (
       <LoadingScreen
-        message="Đang khởi tạo A2Order CMS..."
-        subMessage="Tải thông số hạ tầng, cấu hình quán và bản quyền phần mềm"
+        message="Đang khởi tạo A2Order Platform..."
+        subMessage="Xác thực thông tin phiên làm việc và bảo mật"
       />
+    );
+  }
+
+  // Nếu chưa đăng nhập: Hiển thị giao diện Đăng Nhập Quản Trị toàn màn hình
+  if (!currentUser) {
+    return (
+      <>
+        <GlobalFeedback />
+        <AdminLoginPage onLoginSuccess={handleLoginSuccess} />
+      </>
     );
   }
 
@@ -103,11 +245,13 @@ export const App: React.FC = () => {
 
       <CmsLayout
         activeMenu={activeMenu}
-        onSelectMenu={setActiveMenu}
-        onLogout={() => setIsAuthModalOpen(true)}
+        onSelectMenu={navigateMenu}
+        onLogout={handleLogout}
         currentRole={currentRole}
         enabledModules={enabledModules}
-        onChangeRole={(role) => {
+        currentUser={currentUser}
+        onChangeRole={async (role) => {
+          if (!(await confirmLeaveUnsaved())) return;
           setCurrentRole(role);
           if (role === "SUPER_ADMIN") {
             setActiveMenu("telemetry");
@@ -118,7 +262,9 @@ export const App: React.FC = () => {
         }}
       >
         <Suspense fallback={<CmsPageSkeleton />}>
-          {currentRole === "SUPER_ADMIN" ? (
+          {activeMenu === "profile" ? (
+            <CmsProfileView user={currentUser} currentRole={currentRole} onLogout={handleLogout} />
+          ) : currentRole === "SUPER_ADMIN" ? (
             activeMenu === "pricing_config" ? (
               <CmsAdminPricingManager />
             ) : activeMenu === "scenarios" ? (
@@ -137,14 +283,15 @@ export const App: React.FC = () => {
                     : "telemetry"
                 }
                 onTabChange={(tab) => {
-                  if (tab === "telemetry") setActiveMenu("telemetry");
-                  else if (tab === "tenants") setActiveMenu("tenants");
-                  else if (tab === "licenses") setActiveMenu("license_manager");
-                  else if (tab === "invoices") setActiveMenu("software_invoices");
-                  else if (tab === "audit") setActiveMenu("audit_logs");
-                  else if (tab === "scenarios") setActiveMenu("scenarios");
+                  if (tab === "telemetry") navigateMenu("telemetry");
+                  else if (tab === "tenants") navigateMenu("tenants");
+                  else if (tab === "licenses") navigateMenu("license_manager");
+                  else if (tab === "invoices") navigateMenu("software_invoices");
+                  else if (tab === "audit") navigateMenu("audit_logs");
+                  else if (tab === "scenarios") navigateMenu("scenarios");
                 }}
-                onImpersonateStore={(store) => {
+                onImpersonateStore={async (store) => {
+                  if (!(await confirmLeaveUnsaved())) return;
                   setCurrentRole("STORE_OWNER");
                   setActiveMenu("dashboard");
                   toast.success(`Đã truy cập quản trị quán: ${store.name} (Chế độ hỗ trợ kỹ thuật)`);
@@ -153,7 +300,7 @@ export const App: React.FC = () => {
             )
           ) : (
             <>
-              {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={setActiveMenu} />}
+              {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} />}
               {activeMenu === "staff_order" && <CmsStaffOrderView />}
               {activeMenu === "tables" && <CmsTableManagement />}
               {activeMenu === "menu" && <CmsMenuManagement />}
@@ -166,7 +313,7 @@ export const App: React.FC = () => {
               {activeMenu === "landing_page" && (
                 <CmsLandingPageEditor
                   isUnlocked={isLandingPageUnlocked}
-                  onUpgradeClick={() => setActiveMenu("settings")}
+                  onUpgradeClick={() => navigateMenu("settings")}
                 />
               )}
               {activeMenu === "team" && <CmsStaffManagement />}
@@ -181,29 +328,6 @@ export const App: React.FC = () => {
           )}
         </Suspense>
       </CmsLayout>
-
-      <UnifiedAuthModal
-        isOpen={isAuthModalOpen}
-        staffList={MOCK_STAFF}
-        onPinSubmit={(staffId) => {
-          const staff = MOCK_STAFF.find((s) => s.id === staffId);
-          toast.success(`Nhân viên ${staff?.name || ""} vào ca thành công!`);
-          setIsAuthModalOpen(false);
-        }}
-        onAdminLogin={(email) => {
-          if (email.includes("superadmin") || email.includes("admin")) {
-            setCurrentRole("SUPER_ADMIN");
-            setActiveMenu("telemetry");
-            toast.success("Đăng nhập Super Admin thành công! Đã kết nối trung tâm điều hành SaaS F&B.");
-          } else {
-            setCurrentRole("STORE_OWNER");
-            setActiveMenu("dashboard");
-            toast.success("Đăng nhập Chủ Quán thành công!");
-          }
-          setIsAuthModalOpen(false);
-        }}
-        onClose={() => setIsAuthModalOpen(false)}
-      />
     </>
   );
 };

@@ -32,6 +32,23 @@ const ScenarioTemplateManager = React.lazy(() =>
   import("./superAdmin/ScenarioTemplateManager").then((m) => ({ default: m.ScenarioTemplateManager }))
 );
 
+const downloadCsv = (filename: string, headers: string[], rows: unknown[][]) => {
+  const escapeCell = (value: unknown) => {
+    let text = String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+  const csv = [headers, ...rows].map((row) => row.map(escapeCell).join(",")).join("\r\n");
+  const blobUrl = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(blobUrl);
+};
+
 export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   subView: initialSubView = "telemetry",
   onTabChange,
@@ -62,8 +79,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   }, [initialSubView]);
 
   const handleSwitchTab = (tab: "tenants" | "licenses" | "invoices" | "telemetry" | "audit" | "scenarios") => {
-    setActiveTab(tab);
-    onTabChange?.(tab);
+    if (onTabChange) onTabChange(tab);
+    else setActiveTab(tab);
   };
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -72,7 +89,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const [storeSearch, setStoreSearch] = useState("");
   const [storeStatusFilter, setStoreStatusFilter] = useState<string>("ALL");
   const [tenantPage, setTenantPage] = useState(1);
-  const TENANT_PAGE_SIZE = 4;
+  const TENANT_PAGE_SIZE = 10;
 
   // Modal xem chi tiết toàn diện hồ sơ quán thuê
   const [viewingStoreDetails, setViewingStoreDetails] = useState<TenantStoreRecord | null>(null);
@@ -82,24 +99,24 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const [stores, setStores] = useState<TenantStoreRecord[]>(INITIAL_STORES);
   const [invoices, setInvoices] = useState<SoftwareInvoiceRecord[]>(INITIAL_INVOICES);
   const [auditLogs, setAuditLogs] = useState<SystemAuditLogRecord[]>(INITIAL_AUDIT_LOGS);
+  const [connectedSources, setConnectedSources] = useState<string[]>([]);
 
   // Thử đồng bộ dữ liệu từ Server API khi mount
   useEffect(() => {
     storeApi
       .getStores()
       .then((serverStores) => {
-        if (serverStores && serverStores.length > 0) {
-          setStores(serverStores);
-        }
+        setStores(serverStores || []);
+        setConnectedSources((sources) => [...new Set([...sources, "stores"])]);
       })
       .catch(() => {});
 
     storeApi
       .getLicenses()
       .then((serverLicenses) => {
-        if (serverLicenses && serverLicenses.length > 0) {
-          setLicenses(
-            serverLicenses.map((l) => ({
+        setConnectedSources((sources) => [...new Set([...sources, "licenses"])]);
+        setLicenses(
+          (serverLicenses || []).map((l) => ({
               id: l.id,
               keyCode: l.keyCode,
               storeName: l.storeName,
@@ -111,18 +128,16 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
               expiresAt: l.expiresAt,
               status: l.status,
               modules: [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
-            }))
-          );
-        }
+          }))
+        );
       })
       .catch(() => {});
 
     storeApi
       .getInvoices()
       .then((serverInvoices) => {
-        if (serverInvoices && serverInvoices.length > 0) {
-          setInvoices(serverInvoices);
-        }
+        setInvoices(serverInvoices || []);
+        setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
       })
       .catch(() => {});
   }, []);
@@ -130,15 +145,17 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const [licenseSearch, setLicenseSearch] = useState("");
   const [licenseStatusFilter, setLicenseStatusFilter] = useState("ALL");
   const [licensePage, setLicensePage] = useState(1);
-  const LICENSE_PAGE_SIZE = 4;
+  const LICENSE_PAGE_SIZE = 10;
 
   // Modal tạo license key mới
   const [isCreateLicenseModalOpen, setIsCreateLicenseModalOpen] = useState(false);
 
   // Bộ lọc & Phân trang Hóa đơn
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<string>("ALL");
+  const [invoiceSearch, setInvoiceSearch] = useState("");
   const [invoicePage, setInvoicePage] = useState(1);
-  const INVOICE_PAGE_SIZE = 4;
+  const INVOICE_PAGE_SIZE = 10;
+  const [confirmingInvoiceId, setConfirmingInvoiceId] = useState<string | null>(null);
 
   // Modal Cấp Mới / Gia Hạn License Key
   const [licenseTargetStore, setLicenseTargetStore] = useState<TenantStoreRecord | null>(null);
@@ -166,7 +183,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     return filteredLicenses.slice(start, start + LICENSE_PAGE_SIZE);
   }, [filteredLicenses, licensePage]);
 
-  const handleGenerateLicenseKeySubmit = (data: {
+  const handleGenerateLicenseKeySubmit = async (data: {
     storeId?: string;
     storeName?: string;
     plan: "STARTER" | "GROWTH" | "PRO";
@@ -206,7 +223,39 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           : [AppModule.CORE_POS, AppModule.MODULE_QR_ORDER],
     };
 
-    setLicenses((prev) => [newKey, ...prev]);
+    let savedKey = newKey;
+    if (connectedSources.includes("licenses")) {
+      if (data.storeId) {
+        toast.error("Quán này đã có license. Tạo key dự phòng chưa gán, sau đó gán khi có luồng chuyển license.");
+        return;
+      }
+      try {
+        const created = await storeApi.createLicense({
+          keyCode,
+          plan: data.plan,
+          maxDevices: data.maxDevices,
+          durationMonths: data.durationMonths,
+          issuedAt: now.toLocaleDateString("vi-VN"),
+          expiresAt: expDate.toLocaleDateString("vi-VN"),
+          status: "UNASSIGNED",
+        });
+        savedKey = {
+          ...newKey,
+          id: created.id || newKey.id,
+          keyCode: created.keyCode || keyCode,
+          storeName: created.storeName,
+          storeId: created.storeId,
+          status: created.status || "UNASSIGNED",
+          issuedAt: created.issuedAt || newKey.issuedAt,
+          expiresAt: created.expiresAt || newKey.expiresAt,
+        };
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể cấp license trên máy chủ.");
+        return;
+      }
+    }
+
+    setLicenses((prev) => [savedKey, ...prev]);
 
     if (targetStore) {
       setStores((prev) =>
@@ -229,9 +278,9 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       {
         id: `aud-${Date.now()}`,
         timestamp: "Vừa xong",
-        actor: "Super Admin",
+        actor: "Quản trị viên",
         actorRole: "SUPER_ADMIN",
-        ipAddress: "127.0.0.1",
+        ipAddress: "Chưa ghi nhận",
         action: "GENERATE_LICENSE_KEY",
         storeName: data.storeName || "Standalone Key",
         details: `Cấp License Key ${keyCode} (${data.plan}, ${data.durationMonths} tháng, max ${data.maxDevices} máy)`,
@@ -241,7 +290,11 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     ]);
 
     setIsCreateLicenseModalOpen(false);
-    toast.success(`Đã cấp License Key ${keyCode} thành công!`);
+    toast[connectedSources.includes("licenses") ? "success" : "info"](
+      connectedSources.includes("licenses")
+        ? `Đã lưu License Key ${keyCode} trên máy chủ.`
+        : `Đã tạo ${keyCode} trong dữ liệu xem trước; chưa lưu lên máy chủ.`
+    );
   };
 
   const handleCopyKey = (key: string) => {
@@ -259,23 +312,76 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     });
     if (!ok) return;
 
+    if (connectedSources.includes("licenses")) {
+      try {
+        await storeApi.revokeLicense(lic.keyCode);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể thu hồi license trên máy chủ.");
+        return;
+      }
+    }
+
     setLicenses((prev) =>
       prev.map((l) => (l.id === lic.id ? { ...l, status: "REVOKED" } : l))
     );
-    toast.warning(`Đã thu hồi License Key ${lic.keyCode}`);
+    toast[connectedSources.includes("licenses") ? "success" : "info"](
+      connectedSources.includes("licenses")
+        ? `Đã thu hồi License Key ${lic.keyCode}.`
+        : `Đã mô phỏng thu hồi ${lic.keyCode} trong dữ liệu xem trước.`
+    );
   };
 
   // Refresh Telemetry
-  const handleRefreshTelemetry = () => {
+  const handleRefreshTelemetry = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast.success("Đã đồng bộ chỉ số doanh thu SaaS và trạng thái kết nối các quán!");
-    }, 400);
+    const results = await Promise.allSettled([
+      storeApi.getStores(),
+      storeApi.getLicenses(),
+      storeApi.getInvoices(),
+    ]);
+    let refreshed = 0;
+    const [storeResult, licenseResult, invoiceResult] = results;
+    const sources: string[] = [];
+    if (storeResult.status === "fulfilled") {
+      setStores(storeResult.value || []);
+      sources.push("stores");
+      refreshed += 1;
+    }
+    if (licenseResult.status === "fulfilled") {
+      setLicenses((licenseResult.value || []).map((license) => ({
+        id: license.id,
+        keyCode: license.keyCode,
+        storeName: license.storeName,
+        storeId: license.storeId,
+        plan: license.plan || "PRO",
+        maxDevices: license.maxDevices || 4,
+        durationMonths: license.durationMonths || 12,
+        issuedAt: license.issuedAt,
+        expiresAt: license.expiresAt,
+        status: license.status,
+        modules: license.modules || [AppModule.CORE_POS],
+      })));
+      sources.push("licenses");
+      refreshed += 1;
+    }
+    if (invoiceResult.status === "fulfilled") {
+      setInvoices(invoiceResult.value || []);
+      sources.push("invoices");
+      refreshed += 1;
+    }
+    setConnectedSources(sources);
+    setIsRefreshing(false);
+    if (refreshed === results.length) toast.success("Dữ liệu đối tác, license và hóa đơn đã được cập nhật.");
+    else if (refreshed > 0) toast.warning(`Đã cập nhật ${refreshed}/3 nguồn dữ liệu. Một số dịch vụ chưa phản hồi.`);
+    else toast.error("Không thể kết nối máy chủ để làm mới dữ liệu.");
   };
 
   // Xác nhận thanh toán hóa đơn cước
   const handleConfirmInvoice = async (inv: SoftwareInvoiceRecord) => {
+    if (!connectedSources.includes("invoices")) {
+      toast.error("Máy chủ chưa kết nối. Không thể xác nhận thanh toán trên dữ liệu xem trước.");
+      return;
+    }
     const ok = await confirmDialog({
       title: "Xác Nhận Đã Nhận Tiền Thuê?",
       message: `Xác nhận đã nhận đủ ${inv.finalAmount.toLocaleString("vi-VN")} đ cước thuê phần mềm của ${inv.storeName}? Hệ thống sẽ tự động kích hoạt License Key cho quán.`,
@@ -284,6 +390,18 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       variant: "primary",
     });
     if (!ok) return;
+
+    setConfirmingInvoiceId(inv.id);
+    let confirmedPayment: { success: boolean; newEndDate: string; message: string };
+    try {
+      confirmedPayment = await storeApi.confirmInvoicePayment(inv.id);
+      if (!confirmedPayment.success) throw new Error(confirmedPayment.message || "Không thể xác nhận hóa đơn.");
+    } catch (error) {
+      setConfirmingInvoiceId(null);
+      toast.error(error instanceof Error ? error.message : "Không thể xác nhận thanh toán. Vui lòng thử lại.");
+      return;
+    }
+    const renewedEndDate = new Date(confirmedPayment.newEndDate);
 
     setInvoices((prev) =>
       prev.map((i) => (i.id === inv.id ? { ...i, status: "PAID", paidAt: "Vừa xong" } : i))
@@ -296,19 +414,20 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           ? {
               ...s,
               status: "ACTIVE",
-              daysLeft: s.daysLeft + inv.durationMonths * 30,
-              licenseKey: `A2-${s.plan}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+              daysLeft: Math.max(0, Math.ceil((renewedEndDate.getTime() - Date.now()) / 86400000)),
+              expiresAt: renewedEndDate.toLocaleDateString("vi-VN"),
             }
           : s
       )
     );
 
     toast.success(`Đã xác nhận thanh toán hóa đơn ${inv.invoiceCode}! License Key đã gia hạn thêm ${inv.durationMonths} tháng.`);
+    setConfirmingInvoiceId(null);
     setViewingInvoice(null);
   };
 
   // Lưu cấp / gia hạn License Key từ modal
-  const handleSaveLicense = (payload: {
+  const handleSaveLicense = async (payload: {
     storeId: string;
     plan: "STARTER" | "GROWTH" | "PRO";
     durationMonths: number;
@@ -317,27 +436,9 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     const store = stores.find((s) => s.id === payload.storeId);
     if (!store) return;
 
-    const newKey = `A2-${payload.plan}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // Cập nhật trạng thái quán
-    setStores((prev) =>
-      prev.map((s) =>
-        s.id === store.id
-          ? {
-              ...s,
-              plan: payload.plan,
-              status: "ACTIVE",
-              daysLeft: s.daysLeft + payload.durationMonths * 30,
-              licenseKey: newKey,
-            }
-          : s
-      )
-    );
-
-    // Tự động tạo hóa đơn thuê phần mềm mới
     const newInvoice: SoftwareInvoiceRecord = {
       id: `inv-${Date.now()}`,
-      invoiceCode: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceCode: `INV-PREVIEW-${Math.floor(1000 + Math.random() * 9000)}`,
       storeId: store.id,
       storeName: store.name,
       plan: `Gói ${payload.plan === "STARTER" ? "Quán Nhỏ (STARTER)" : payload.plan === "GROWTH" ? "Quán Vừa (GROWTH)" : "Chuỗi Chuyên Nghiệp (PRO)"}`,
@@ -350,9 +451,27 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       createdAt: "Vừa xong",
     };
 
-    setInvoices((prev) => [newInvoice, ...prev]);
-    toast.success(`Đã cấp License Key mới [${newKey}] cho ${store.name} và tạo hóa đơn thuê phần mềm!`);
-    setLicenseTargetStore(null);
+    if (!connectedSources.includes("invoices")) {
+      setInvoices((prev) => [newInvoice, ...prev]);
+      toast.info("Hóa đơn đã tạo trong dữ liệu xem trước; license chưa được gia hạn trên máy chủ.");
+      setLicenseTargetStore(null);
+      return;
+    }
+
+    try {
+      await storeApi.createSubscriptionInvoice({
+        storeId: store.id,
+        durationMonths: payload.durationMonths,
+        amount: payload.finalAmount,
+        enabledModules: store.modules,
+      });
+      const latestInvoices = await storeApi.getInvoices();
+      setInvoices(latestInvoices || []);
+      toast.success(`Đã lập hóa đơn gia hạn cho ${store.name}. License sẽ được gia hạn sau khi xác nhận thanh toán.`);
+      setLicenseTargetStore(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể lập hóa đơn gia hạn.");
+    }
   };
 
   // Tạm khóa / Mở khóa quán
@@ -370,6 +489,17 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     if (!ok) return;
 
     const newStatus = isSuspending ? "SUSPENDED" : "ACTIVE";
+    if (!connectedSources.includes("stores")) {
+      toast.error("Máy chủ chưa kết nối. Không thể thay đổi trạng thái quán trên dữ liệu xem trước.");
+      return;
+    }
+    try {
+      await storeApi.updateStore(store.id, { status: newStatus });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật trạng thái quán.");
+      return;
+    }
+
     setStores((prev) =>
       prev.map((s) => (s.id === store.id ? { ...s, status: newStatus } : s))
     );
@@ -380,7 +510,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   };
 
   // Bật / Tắt module tính năng (Feature Flags) cho quán
-  const handleToggleStoreModule = (storeId: string, modId: AppModule) => {
+  const handleToggleStoreModule = async (storeId: string, modId: AppModule) => {
     if (modId === AppModule.CORE_POS) {
       toast.warning("Module Vận Hành Bàn & Đơn (Core POS) là module lõi bắt buộc, không thể tắt!");
       return;
@@ -393,6 +523,17 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       : [...store.modules, modId];
 
     const updatedStore = { ...store, modules: updatedModules };
+    if (!connectedSources.includes("stores")) {
+      toast.error("Máy chủ chưa kết nối. Không thể lưu module trên dữ liệu xem trước.");
+      return;
+    }
+    try {
+      await storeApi.updateStore(storeId, { modules: updatedModules });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật module cho cửa hàng.");
+      return;
+    }
+
     setStores((prev) => prev.map((s) => (s.id === storeId ? updatedStore : s)));
     if (viewingStoreDetails?.id === storeId) {
       setViewingStoreDetails(updatedStore);
@@ -409,9 +550,9 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       id: `a-${Date.now()}`,
       action: "MODULE_CONFIG_CHANGE",
       storeName: store.name,
-      actor: "superadmin@a2order.vn",
+      actor: "Quản trị viên",
       actorRole: "SUPER_ADMIN",
-      ipAddress: "14.225.24.12",
+      ipAddress: "Chưa ghi nhận",
       timestamp: "Vừa xong",
       details: `${exists ? "Vô hiệu hóa" : "Kích hoạt"} module ${modName} (Feature Flag cấp quyền)`,
       status: "SUCCESS",
@@ -419,50 +560,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     setAuditLogs((prev) => [newLog, ...prev]);
   };
 
-  // Thu hồi bản quyền thiết bị (Revoke Terminal)
-  const handleRevokeTerminal = async (storeId: string, terminalId: string, terminalName: string) => {
-    const ok = await confirmDialog({
-      title: `Thu Hồi Thiết Bị: ${terminalName}?`,
-      message: `Máy POS/KDS này sẽ bị ngắt kết nối và đăng xuất tức thì khỏi hệ thống của quán. Thao tác này giúp ngăn ngừa việc chia sẻ lậu License Key sang máy khác ngoài hợp đồng.`,
-      confirmText: "Thu Hồi & Đăng Xuất",
-      cancelText: "Hủy",
-      variant: "danger",
-    });
-    if (!ok) return;
-
-    const store = stores.find((s) => s.id === storeId);
-    if (!store) return;
-
-    const remainingTerminals = (store.terminals || []).filter((t) => t.id !== terminalId);
-    const updatedStore: TenantStoreRecord = {
-      ...store,
-      terminals: remainingTerminals,
-      activeDevices: remainingTerminals.filter((t) => t.status === "ONLINE").length,
-    };
-
-    setStores((prev) => prev.map((s) => (s.id === storeId ? updatedStore : s)));
-    if (viewingStoreDetails?.id === storeId) {
-      setViewingStoreDetails(updatedStore);
-    }
-
-    toast.success(`Đã thu hồi máy "${terminalName}". Thiết bị đã bị đăng xuất khỏi hệ thống.`);
-
-    const newLog: SystemAuditLogRecord = {
-      id: `a-${Date.now()}`,
-      action: "TERMINAL_REVOKE",
-      storeName: store.name,
-      actor: "superadmin@a2order.vn",
-      actorRole: "SUPER_ADMIN",
-      ipAddress: "14.225.24.12",
-      timestamp: "Vừa xong",
-      details: `Thu hồi bản quyền máy POS: ${terminalName} (ID: ${terminalId}) - ngắt kết nối tức thì`,
-      status: "WARNING",
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-  };
-
   // Tạo quán mới từ modal onboarding
-  const handleCreateNewStoreSubmit = (storeData: {
+  const handleCreateNewStoreSubmit = async (storeData: {
     name: string;
     owner: string;
     phone: string;
@@ -510,7 +609,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
     const newInvoice: SoftwareInvoiceRecord = {
       id: `inv-${Date.now()}`,
-      invoiceCode: `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      invoiceCode: `INV-PREVIEW-${Math.floor(1000 + Math.random() * 9000)}`,
       storeId: newId,
       storeName: name.trim(),
       plan: `Gói ${plan === "STARTER" ? "Quán Nhỏ (STARTER)" : plan === "GROWTH" ? "Quán Vừa (GROWTH)" : "Chuỗi Chuyên Nghiệp (PRO)"}`,
@@ -523,25 +622,54 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       createdAt: "Vừa xong",
     };
 
-    setStores((prev) => [newStore, ...prev]);
-    setInvoices((prev) => [newInvoice, ...prev]);
+    let savedStore = newStore;
+    let savedInvoice = false;
+    if (connectedSources.includes("stores")) {
+      try {
+        const createdStore = await storeApi.createStore(newStore);
+        savedStore = { ...newStore, ...createdStore, scale, businessType, modules };
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Không thể tạo cửa hàng trên máy chủ.");
+        return;
+      }
 
-    // Async lưu lên backend
-    storeApi.createStore(newStore).catch(() => {});
+      try {
+        await storeApi.createSubscriptionInvoice({
+          storeId: savedStore.id,
+          durationMonths,
+          amount: finalAmount,
+          enabledModules: modules,
+        });
+        const latestInvoices = await storeApi.getInvoices();
+        setInvoices(latestInvoices || []);
+        setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
+        savedInvoice = true;
+      } catch (error) {
+        toast.warning(`Cửa hàng đã tạo, nhưng hóa đơn chưa được lập: ${error instanceof Error ? error.message : "dịch vụ hóa đơn chưa sẵn sàng"}`);
+      }
+    } else {
+      setInvoices((prev) => [newInvoice, ...prev]);
+    }
+
+    setStores((prev) => [savedStore, ...prev]);
 
     // Seed kịch bản menu thực đơn & bàn mẫu cho quán mới
     const scenario = BUSINESS_SCENARIOS[businessType];
     if (scenario) {
       try {
-        localStorage.setItem(`store_${newId}_dishes`, JSON.stringify(scenario.dishes));
-        localStorage.setItem(`store_${newId}_tables`, JSON.stringify(scenario.defaultTables));
+        localStorage.setItem(`store_${savedStore.id}_dishes`, JSON.stringify(scenario.dishes));
+        localStorage.setItem(`store_${savedStore.id}_tables`, JSON.stringify(scenario.defaultTables));
         localStorage.setItem("menu_dishes_data", JSON.stringify(scenario.dishes));
       } catch (err) {
         console.error("Failed to seed scenario data:", err);
       }
     }
 
-    toast.success(`Đã đăng ký quán "${name}" thành công với License Key [${newKey}]!`);
+    if (connectedSources.includes("stores")) {
+      toast.success(savedInvoice ? `Đã tạo ${name} và lập hóa đơn thuê bao.` : `Đã tạo ${name}. Hãy kiểm tra hóa đơn để hoàn tất thiết lập thuê bao.`);
+    } else {
+      toast.info(`Đã tạo ${name} trong dữ liệu xem trước. Kết nối máy chủ để lưu thay đổi.`);
+    }
     setIsNewStoreModalOpen(false);
   };
 
@@ -568,6 +696,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   // Lọc hóa đơn cước
   const filteredInvoices = invoices.filter((inv) => {
     if (invoiceStatusFilter !== "ALL" && inv.status !== invoiceStatusFilter) return false;
+    if (invoiceSearch.trim()) {
+      const query = invoiceSearch.trim().toLocaleLowerCase("vi");
+      if (!`${inv.invoiceCode} ${inv.storeName} ${inv.plan}`.toLocaleLowerCase("vi").includes(query)) return false;
+    }
     return true;
   });
 
@@ -575,73 +707,57 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     (invoicePage - 1) * INVOICE_PAGE_SIZE,
     invoicePage * INVOICE_PAGE_SIZE
   );
+  const pendingInvoiceCount = invoices.filter((invoice) => invoice.status === "PENDING").length;
+  const unassignedLicenseCount = licenses.filter((license) => license.status === "UNASSIGNED").length;
+  const renewalCount = stores.filter((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED").length;
+  const pendingWorkCount = pendingInvoiceCount + unassignedLicenseCount + renewalCount;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Header Chuyên Nghiệp Theo Phân Hệ (Chuẩn SaaS F&B) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
+    <div className="space-y-5 sm:space-y-7 animate-fadeIn w-full max-w-full overflow-x-hidden">
+      {/* Header Phân Hệ: Desktop có tiêu đề & mô tả, Mobile ẩn hoàn toàn khi ở tab Tổng Quan (Telemetry) */}
+      <div className={`${activeTab === "telemetry" ? "hidden sm:flex" : "flex"} flex-wrap items-center justify-between gap-2.5`}>
+        <div className="hidden sm:block">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
-              {activeTab === "telemetry" && "Tổng Quan & Doanh Số Nền Tảng (SaaS Overview)"}
-              {activeTab === "tenants" && "Quản Lý Quán Thuê & Chuỗi F&B"}
-              {activeTab === "licenses" && "Kho License Key Bản Quyền (License Manager)"}
-              {activeTab === "scenarios" && "Quản Trị Kịch Bản & Thực Đơn Mẫu F&B"}
-              {activeTab === "invoices" && "Hóa Đơn Thuê & Thu Phí Dịch Vụ"}
-              {activeTab === "audit" && "Kiểm Toán Thao Tác & Giám Sát Hạ Tầng"}
+            <h2 className="text-xl font-black text-ink-primary tracking-tight">
+              {activeTab === "telemetry" && "Tổng Quan"}
+              {activeTab === "tenants" && "Chuỗi Quán"}
+              {activeTab === "licenses" && "License Key"}
+              {activeTab === "scenarios" && "Thực Đơn Mẫu"}
+              {activeTab === "invoices" && "Hóa Đơn"}
+              {activeTab === "audit" && "Kiểm Toán"}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
-              A2Order Core v2.4
+            <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
+              A2Order Admin
             </span>
           </div>
-          <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-            {activeTab === "telemetry" && "Chỉ số tài chính định kỳ (MRR/ARR), lưu lượng đơn hàng toàn hệ thống và theo dõi thuê bao khách hàng."}
-            {activeTab === "tenants" && "Quản lý hợp đồng đối tác, cấu hình phân quyền module tính năng và theo dõi thiết bị POS online."}
-            {activeTab === "licenses" && "Phát hành và quản lý mã License Key bản quyền cho các máy POS/KDS, quản lý key dự phòng chưa gán."}
-            {activeTab === "scenarios" && "Quản lý kho thực đơn mẫu, các biến thể size và nhóm topping đề xuất cho từng mô hình F&B. Độc lập 100% với dữ liệu các quán."}
-            {activeTab === "invoices" && "Theo dõi các kỳ cước thuê phần mềm, xác nhận thanh toán chuyển khoản VietQR tự động và xuất hóa đơn."}
-            {activeTab === "audit" && "Nhật ký kiểm toán thao tác quản trị và trạng thái sức khỏe các dịch vụ đám mây."}
+          <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+            {activeTab === "telemetry" && "Tổng quan đối tác, thiết bị và các công việc cần xử lý."}
+            {activeTab === "tenants" && "Quản lý hợp đồng đối tác, phân quyền module và giám sát thiết bị."}
+            {activeTab === "licenses" && "Phát hành và quản lý mã License Key bản quyền cho các máy POS/KDS."}
+            {activeTab === "scenarios" && "Kho thực đơn mẫu, các biến thể size và nhóm topping đề xuất."}
+            {activeTab === "invoices" && "Theo dõi các kỳ cước thuê phần mềm và xác nhận thanh toán."}
+            {activeTab === "audit" && "Nhật ký kiểm toán thao tác và trạng thái hạ tầng đám mây."}
           </p>
         </div>
 
+        {/* Nút tác vụ nhanh: Tinh gọn, hiện đại */}
         <div className="flex items-center gap-2 shrink-0">
-          {activeTab === "licenses" ? (
+          {activeTab === "tenants" ? (
             <Button
               size="sm"
-              className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap"
-              onClick={() => setIsCreateLicenseModalOpen(true)}
-            >
-              <Icon name="key" className="w-3.5 h-3.5 text-white" />
-              <span>Cấp License Key Mới</span>
-            </Button>
-          ) : activeTab === "scenarios" ? null : (
-            <Button
-              size="sm"
-              className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap"
+              className="inline-flex h-8 sm:h-9 px-3 rounded-full gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all"
               onClick={() => setIsNewStoreModalOpen(true)}
             >
               <Icon name="plus" className="w-3.5 h-3.5 text-white" />
-              <span>Đăng Ký Quán Mới</span>
+              <span>Thêm Quán</span>
             </Button>
-          )}
-
-          {activeTab === "telemetry" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl gap-1.5 text-xs bg-white text-ink-primary font-bold shadow-xs whitespace-nowrap"
-              onClick={() => toast.info("Đã xuất báo cáo doanh số SaaS định dạng Excel")}
-            >
-              <Icon name="download" className="w-3.5 h-3.5 text-brand-900" />
-              <span>Xuất Báo Cáo SaaS</span>
-            </Button>
-          )}
+          ) : null}
 
           {activeTab === "audit" && (
             <Button
               size="sm"
               variant="outline"
-              className="rounded-xl gap-1.5 text-xs bg-white text-ink-primary font-bold shadow-xs whitespace-nowrap"
+              className="h-8 sm:h-9 px-3 rounded-full gap-1.5 text-xs bg-white text-ink-primary font-bold shadow-xs whitespace-nowrap border-surface-border active:scale-95 transition-all"
               onClick={handleRefreshTelemetry}
               disabled={isRefreshing}
             >
@@ -652,9 +768,16 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         </div>
       </div>
 
+      {connectedSources.length < 3 && activeTab !== "telemetry" && (
+        <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-900 animate-fadeIn">
+          <Icon name="info" size={15} className="mt-0.5 shrink-0 text-amber-700" />
+          <p className="leading-relaxed"><strong>{connectedSources.length ? "Một phần dữ liệu chưa kết nối." : "Đang ở chế độ xem trước."}</strong> {connectedSources.length ? "Danh sách chỉ bao gồm các nguồn đã tải được; thao tác ghi cần máy chủ phản hồi." : "Các bản ghi minh họa không được lưu. Kết nối máy chủ để dùng dữ liệu và thao tác thật."}</p>
+        </div>
+      )}
+
       {/* Sub-Nav Switcher giữa Quán Thuê & Kho License Key */}
       {(activeTab === "tenants" || activeTab === "licenses") && (
-        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-surface-canvas rounded-2xl border border-surface-border max-w-full shadow-xs">
+        <div className="no-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
           <button
             type="button"
             onClick={() => handleSwitchTab("tenants")}
@@ -696,7 +819,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                   Quản lý gói tính năng theo quy mô, phân quyền module và giám sát thiết bị POS online
                 </p>
               </div>
-              <span className="text-xs font-bold text-ink-muted shrink-0">Khớp {filteredStores.length} / {stores.length} quán</span>
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <span className="text-xs font-bold text-ink-muted shrink-0">{filteredStores.length} / {stores.length} quán</span>
+                <button type="button" onClick={() => downloadCsv("a2order-doi-tac.csv", ["Tên quán", "Chủ quán", "Số điện thoại", "Địa chỉ", "Gói", "Trạng thái", "Ngày hết hạn", "License"], filteredStores.map((store) => [store.name, store.owner, store.phone, store.address, store.plan, store.status, store.expiresAt, store.licenseKey]))} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"><Icon name="download" size={14} />Xuất CSV</button>
+              </div>
             </div>
 
             {/* Thanh tìm kiếm & Lọc trạng thái quán */}
@@ -712,25 +838,26 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                       setTenantPage(1);
                     }}
                     placeholder="Tìm tên quán, chủ quán, SĐT, key..."
-                    className="w-full h-8 pl-8 pr-3 rounded-xl border border-surface-border text-xs font-bold text-ink-primary bg-white focus:outline-none focus:border-brand-800"
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-white focus:outline-none focus:border-brand-800"
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1">
                   {[
                     { id: "ALL", label: "Tất Cả", count: stores.length },
-                    { id: "ACTIVE", label: "🟢 Hoạt Động", count: stores.filter((s) => s.status === "ACTIVE").length },
-                    { id: "EXPIRING_SOON", label: "⏳ Sắp Hạn", count: stores.filter((s) => s.status === "EXPIRING_SOON").length },
-                    { id: "EXPIRED", label: "⚠️ Hết Hạn", count: stores.filter((s) => s.status === "EXPIRED").length },
-                    { id: "SUSPENDED", label: "🔒 Khóa", count: stores.filter((s) => s.status === "SUSPENDED").length },
+                    { id: "ACTIVE", label: "Hoạt Động", count: stores.filter((s) => s.status === "ACTIVE").length },
+                    { id: "EXPIRING_SOON", label: "Sắp Hạn", count: stores.filter((s) => s.status === "EXPIRING_SOON").length },
+                    { id: "EXPIRED", label: "Hết Hạn", count: stores.filter((s) => s.status === "EXPIRED").length },
+                    { id: "SUSPENDED", label: "Tạm Khóa", count: stores.filter((s) => s.status === "SUSPENDED").length },
                   ].map((st) => (
                     <button
                       key={st.id}
+                      type="button"
                       onClick={() => {
                         setStoreStatusFilter(st.id);
                         setTenantPage(1);
                       }}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                      className={`px-3 py-2 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                         storeStatusFilter === st.id
                           ? "bg-brand-900 text-white shadow-sm"
                           : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary"
@@ -1064,15 +1191,18 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                 </p>
               </div>
 
-              <Button
-                size="sm"
-                className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shrink-0 whitespace-nowrap shadow-sm"
-                onClick={() => setIsCreateLicenseModalOpen(true)}
-              >
-                <Icon name="plus" className="w-3.5 h-3.5" />
-                <span className="sm:hidden">+ Sinh Key Mới</span>
-                <span className="hidden sm:inline">+ Sinh License Key Mới</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => downloadCsv("a2order-license.csv", ["Mã license", "Cửa hàng", "Gói", "Thiết bị tối đa", "Thời hạn (tháng)", "Ngày cấp", "Ngày hết hạn", "Trạng thái"], filteredLicenses.map((license) => [license.keyCode, license.storeName || "", license.plan, license.maxDevices, license.durationMonths, license.issuedAt, license.expiresAt, license.status]))} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"><Icon name="download" size={14} />Xuất CSV</button>
+                <Button
+                  size="sm"
+                  className="rounded-xl gap-1.5 text-xs bg-brand-900 text-white font-bold shrink-0 whitespace-nowrap shadow-sm"
+                  onClick={() => setIsCreateLicenseModalOpen(true)}
+                >
+                  <Icon name="plus" className="w-3.5 h-3.5" />
+                  <span className="sm:hidden">Sinh Key</span>
+                  <span className="hidden sm:inline">Sinh License Key</span>
+                </Button>
+              </div>
             </div>
 
             {/* Filter bar */}
@@ -1088,26 +1218,27 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                       setLicensePage(1);
                     }}
                     placeholder="Tìm theo mã key, tên quán..."
-                    className="w-full h-8 pl-8 pr-3 rounded-xl border border-surface-border text-xs font-bold text-ink-primary bg-white focus:outline-none focus:border-brand-800"
+                    className="w-full h-10 pl-9 pr-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-white focus:outline-none focus:border-brand-800"
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-wrap">
+                <div className="no-scrollbar flex min-w-0 items-center gap-1.5 overflow-x-auto pb-1">
                   {[
                     { id: "ALL", label: "Tất Cả", count: licenses.length },
-                    { id: "ACTIVE", label: "🟢 Đang Dùng", count: licenses.filter((l) => l.status === "ACTIVE").length },
-                    { id: "UNASSIGNED", label: "⚪ Chưa Gán", count: licenses.filter((l) => l.status === "UNASSIGNED").length },
-                    { id: "EXPIRING_SOON", label: "⏳ Sắp Hạn", count: licenses.filter((l) => l.status === "EXPIRING_SOON").length },
-                    { id: "EXPIRED", label: "⚠️ Hết Hạn", count: licenses.filter((l) => l.status === "EXPIRED").length },
-                    { id: "REVOKED", label: "🚫 Thu Hồi", count: licenses.filter((l) => l.status === "REVOKED").length },
+                    { id: "ACTIVE", label: "Đang Dùng", count: licenses.filter((l) => l.status === "ACTIVE").length },
+                    { id: "UNASSIGNED", label: "Chưa Gán", count: licenses.filter((l) => l.status === "UNASSIGNED").length },
+                    { id: "EXPIRING_SOON", label: "Sắp Hạn", count: licenses.filter((l) => l.status === "EXPIRING_SOON").length },
+                    { id: "EXPIRED", label: "Hết Hạn", count: licenses.filter((l) => l.status === "EXPIRED").length },
+                    { id: "REVOKED", label: "Thu Hồi", count: licenses.filter((l) => l.status === "REVOKED").length },
                   ].map((st) => (
                     <button
                       key={st.id}
+                      type="button"
                       onClick={() => {
                         setLicenseStatusFilter(st.id);
                         setLicensePage(1);
                       }}
-                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                      className={`px-3 py-2 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                         licenseStatusFilter === st.id
                           ? "bg-brand-900 text-white shadow-sm"
                           : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary"
@@ -1384,8 +1515,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                 </p>
               </div>
 
-              {/* Lọc trạng thái hóa đơn */}
-              <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button type="button" onClick={() => downloadCsv("a2order-hoa-don.csv", ["Mã hóa đơn", "Tên quán", "Gói", "Thời hạn (tháng)", "Tạm tính", "Giảm giá", "Thành tiền", "Trạng thái", "Ngày tạo"], filteredInvoices.map((invoice) => [invoice.invoiceCode, invoice.storeName, invoice.plan, invoice.durationMonths, invoice.subTotal, invoice.discountAmount, invoice.finalAmount, invoice.status, invoice.createdAt]))} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-bold text-slate-600 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"><Icon name="download" size={14} />Xuất CSV</button>
+                {/* Lọc trạng thái hóa đơn */}
+              <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1">
                 {[
                   { id: "ALL", label: "Tất Cả", count: invoices.length },
                   { id: "PAID", label: "Đã Thu", count: invoices.filter((i) => i.status === "PAID").length },
@@ -1393,11 +1526,12 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                 ].map((st) => (
                   <button
                     key={st.id}
+                    type="button"
                     onClick={() => {
                       setInvoiceStatusFilter(st.id);
                       setInvoicePage(1);
                     }}
-                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+                    className={`px-3 py-2 rounded-full text-[11px] font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                       invoiceStatusFilter === st.id
                         ? "bg-brand-900 text-white shadow-sm"
                         : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
@@ -1410,6 +1544,12 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                   </button>
                 ))}
               </div>
+              </div>
+            </div>
+
+            <div className="relative mb-4 w-full sm:max-w-sm">
+              <Icon name="search" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input type="search" value={invoiceSearch} onChange={(event) => { setInvoiceSearch(event.target.value); setInvoicePage(1); }} placeholder="Tìm mã hóa đơn, tên quán, gói..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:bg-white" />
             </div>
 
             {/* Desktop Table View (>= lg) */}
@@ -1489,9 +1629,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleConfirmInvoice(inv)}
-                                className="px-3 py-1 rounded-xl text-xs font-bold bg-brand-900 text-white hover:bg-brand-950 transition-all shadow-sm"
+                                disabled={confirmingInvoiceId === inv.id}
+                                className="px-3 py-1 rounded-xl text-xs font-bold bg-brand-900 text-white hover:bg-brand-950 transition-all shadow-sm disabled:cursor-wait disabled:opacity-60"
                               >
-                                Duyệt Đã Nhận Tiền
+                                {confirmingInvoiceId === inv.id ? "Đang xác nhận…" : "Xác nhận đã thu"}
                               </button>
                             )}
                           </div>
@@ -1577,9 +1718,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleConfirmInvoice(inv)}
-                            className="flex-1 py-1.5 rounded-xl text-xs font-bold bg-brand-900 text-white hover:bg-brand-950 transition-all shadow-sm text-center"
+                            disabled={confirmingInvoiceId === inv.id}
+                            className="flex-1 py-1.5 rounded-xl text-xs font-bold bg-brand-900 text-white hover:bg-brand-950 transition-all shadow-sm text-center disabled:cursor-wait disabled:opacity-60"
                           >
-                            Duyệt Đã Thu
+                            {confirmingInvoiceId === inv.id ? "Đang xác nhận…" : "Xác nhận đã thu"}
                           </button>
                         )}
                       </div>
@@ -1602,242 +1744,85 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
       {/* PHÂN HỆ: TỔNG QUAN NỀN TẢNG & DOANH SỐ SAAS */}
       {activeTab === "telemetry" && (
-        <div className="space-y-6">
-          {/* 4 Thẻ KPI Doanh Số & Quy Mô SaaS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-            <Panel variant="featured" padding="sm" className="p-3.5 sm:p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-brand-200">Doanh Thu Định Kỳ (MRR)</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-                  <Icon name="banknote" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-300" />
+        <div className="space-y-5 sm:space-y-6 animate-fadeIn">
+          <section className="relative isolate overflow-hidden rounded-[28px] bg-[#102d24] px-5 py-6 text-white shadow-[0_20px_55px_rgba(16,45,36,.18)] sm:px-8 sm:py-8">
+            <div className="absolute -right-16 -top-24 -z-10 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
+            <div className="absolute bottom-[-90px] left-[42%] -z-10 h-48 w-48 rounded-full bg-teal-300/10 blur-3xl" />
+            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <div className="max-w-xl">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-wide text-emerald-100">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 pulse-glow" /> TRUNG TÂM ĐIỀU HÀNH
                 </div>
+                <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Chào mừng trở lại</h2>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-emerald-50/75">Theo dõi đối tác, thiết bị và các khoản cần xử lý từ một nơi.</p>
+                <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-white/65"><Icon name={connectedSources.length === 3 ? "checkCircle" : "info"} size={12} />{connectedSources.length === 3 ? "Đã đồng bộ 3 nguồn" : connectedSources.length ? `Đã kết nối ${connectedSources.length}/3 nguồn` : "Dữ liệu xem trước · Chưa kết nối máy chủ"}</span>
               </div>
-              <div className="my-1 sm:my-2">
-                <span className="text-xl sm:text-3xl font-black tracking-tight text-white">18.450.000</span>
-                <span className="text-xs text-brand-200 ml-1">đ/tháng</span>
-              </div>
-              <div className="flex flex-wrap items-center justify-between gap-1 text-[10px] sm:text-[11px] font-bold text-emerald-300">
-                <span>+12.8% vs tháng trước</span>
-                <span className="text-brand-200 font-normal">ARR: 221.4M</span>
-              </div>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-ink-muted">Cơ Sở Hoạt Động</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center shrink-0">
-                  <Icon name="building" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-800" />
-                </div>
-              </div>
-              <div className="my-1 sm:my-2">
-                <span className="text-2xl sm:text-3xl font-black text-ink-primary tracking-tight">42</span>
-                <span className="text-[10px] sm:text-xs text-ink-muted ml-1">điểm bán</span>
-              </div>
-              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
-                Tỷ lệ duy trì: 96.2%
-              </span>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-ink-muted">Cảnh Báo Hết Hạn (&lt; 7 ngày)</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                  <Icon name="alertCircle" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" />
-                </div>
-              </div>
-              <div className="my-1 sm:my-2">
-                <span className="text-2xl sm:text-3xl font-black text-amber-700 tracking-tight">3</span>
-                <span className="text-[10px] sm:text-xs text-ink-muted ml-1">quán cần gọi</span>
-              </div>
-              <span className="text-[10px] sm:text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
-                1 quán hết hạn hôm nay
-              </span>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-ink-muted">Giao Dịch Hôm Nay</span>
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-surface-muted flex items-center justify-center shrink-0">
-                  <Icon name="activity" className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600" />
-                </div>
-              </div>
-              <div className="my-1 sm:my-2">
-                <span className="text-2xl sm:text-3xl font-black text-ink-primary tracking-tight">4.820</span>
-                <span className="text-[10px] sm:text-xs text-ink-muted ml-1">đơn hàng</span>
-              </div>
-              <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">
-                GMV xử lý: 342.500.000 đ
-              </span>
-            </Panel>
-          </div>
-
-          {/* 2 Khối Doanh Số & Chăm Sóc Khách Hàng */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Phân Bổ Gói Cước Thuê Bao */}
-            <Panel variant="default" padding="lg">
-              <div className="flex flex-col xl:flex-row xl:items-center justify-between items-start mb-4 border-b border-surface-border pb-3 gap-1">
-                <h3 className="font-black text-sm sm:text-base text-ink-primary flex items-center gap-2">
-                  <Icon name="chart" className="w-4 h-4 text-brand-900" />
-                  <span>Cơ Cấu Thuê Bao & Phân Bổ Gói Cước</span>
-                </h3>
-                <span className="text-xs font-bold text-ink-muted">Cập nhật lúc 14:00</span>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <div className="flex flex-col xl:flex-row xl:items-end justify-between text-xs font-bold mb-1 gap-1">
-                    <span className="text-purple-900">Chuỗi Chuyên Nghiệp (PRO - 599k/tháng)</span>
-                    <span className="font-black text-ink-primary">8 quán • 4.792.000 đ (26%)</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-surface-muted rounded-full overflow-hidden">
-                    <div className="w-[26%] h-full bg-purple-600 rounded-full" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex flex-col xl:flex-row xl:items-end justify-between text-xs font-bold mb-1 gap-1">
-                    <span className="text-blue-900">Quán Vừa Tăng Trưởng (GROWTH - 399k/tháng)</span>
-                    <span className="font-black text-ink-primary">18 quán • 7.182.000 đ (39%)</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-surface-muted rounded-full overflow-hidden">
-                    <div className="w-[39%] h-full bg-blue-600 rounded-full" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex flex-col xl:flex-row xl:items-end justify-between text-xs font-bold mb-1 gap-1">
-                    <span className="text-emerald-900">Quán Nhỏ Tiết Kiệm (STARTER - 199k/tháng)</span>
-                    <span className="font-black text-ink-primary">16 quán • 3.184.000 đ (17%)</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-surface-muted rounded-full overflow-hidden">
-                    <div className="w-[17%] h-full bg-emerald-600 rounded-full" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex flex-col xl:flex-row xl:items-end justify-between text-xs font-bold mb-1 gap-1">
-                    <span className="text-brand-900">Dịch Vụ Add-on (Module KDS, Kế Toán, Web)</span>
-                    <span className="font-black text-ink-primary">3.292.000 đ (18%)</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-surface-muted rounded-full overflow-hidden">
-                    <div className="w-[18%] h-full bg-brand-800 rounded-full" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-surface-border flex items-center justify-between text-xs text-ink-muted">
-                <span>Tỷ lệ chuyển đổi (Trial-to-Paid): <strong className="text-emerald-700">68.5%</strong></span>
-                <span className="font-bold text-brand-900 cursor-pointer hover:underline" onClick={() => onTabChange?.("pricing_config")}>
-                  Quản lý bảng giá &rarr;
-                </span>
-              </div>
-            </Panel>
-
-            {/* Quán Cần CSKH Gọi Gia Hạn Gấp */}
-            <Panel variant="default" padding="lg">
-              <div className="flex flex-col xl:flex-row xl:items-center justify-between items-start mb-4 border-b border-surface-border pb-3 gap-1">
-                <h3 className="font-black text-sm sm:text-base text-ink-primary flex items-center gap-2">
-                  <Icon name="phone" className="w-4 h-4 text-amber-600" />
-                  <span>Quán Cần CSKH Chăm Sóc Gấp (&lt; 7 ngày)</span>
-                </h3>
-                <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                  3 đối tác
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {stores
-                  .filter((s) => s.status === "EXPIRING_SOON" || s.status === "EXPIRED")
-                  .map((store) => (
-                    <div
-                      key={store.id}
-                      className="p-3 rounded-2xl bg-surface-canvas border border-surface-border flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <strong className="text-ink-primary font-black">{store.name}</strong>
-                          <span
-                            className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold ${
-                              store.status === "EXPIRED"
-                                ? "bg-rose-100 text-rose-800"
-                                : "bg-amber-100 text-amber-800"
-                            }`}
-                          >
-                            {store.status === "EXPIRED" ? "Đã hết hạn" : `Còn ${store.daysLeft} ngày`}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-ink-muted mt-0.5">
-                          {store.owner} • <a href={`tel:${store.phone}`} className="text-brand-900 font-bold hover:underline">{store.phone}</a> • Gói {store.plan}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setLicenseTargetStore(store)}
-                          className="px-2.5 py-1 rounded-xl text-xs font-bold bg-brand-900 text-white hover:bg-black shadow-xs whitespace-nowrap"
-                        >
-                          Gia Hạn
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-
-              <div className="mt-4 pt-3 border-t border-surface-border flex items-center justify-between text-xs text-ink-muted">
-                <span>Chính sách: Khách gia hạn 1 năm tặng thêm 2 tháng.</span>
-                <span className="font-bold text-brand-900 cursor-pointer hover:underline" onClick={() => onTabChange?.("tenants")}>
-                  Xem tất cả quán &rarr;
-                </span>
-              </div>
-            </Panel>
-          </div>
-
-          {/* Trạng Thái Hệ Thống Đám Mây (SLA 99.9%) */}
-          <Panel variant="default" padding="lg">
-            <h3 className="font-black text-base text-ink-primary flex items-center gap-2 mb-3">
-              <Icon name="shield" className="w-4 h-4 text-brand-900" />
-              <span>Trạng Thái Cụm Hạ Tầng Nền Tảng (A2Order Cloud SLA 99.9%)</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-              <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-ink-primary">API Gateway & Load Balancer</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <div className="font-black text-emerald-700 text-xs">SLA 99.99% • 14ms</div>
-                <span className="text-[10px] text-ink-muted block">Cụm máy chủ Hà Nội & TP.HCM</span>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-ink-primary">Realtime Sync (KDS & POS)</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <div className="font-black text-emerald-700 text-xs">WebSocket Connected</div>
-                <span className="text-[10px] text-ink-muted block">Không độ trễ đơn hàng</span>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-ink-primary">Cổng Thanh Toán VietQR</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <div className="font-black text-emerald-700 text-xs">Sẵn Sàng 100%</div>
-                <span className="text-[10px] text-ink-muted block">Tự động đối soát biến động số dư</span>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-ink-primary">Cloud CDN Menu & Ảnh Món</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </div>
-                <div className="font-black text-emerald-700 text-xs">Edge Cache Tốc Độ Cao</div>
-                <span className="text-[10px] text-ink-muted block">Tải ảnh tức thì trên mobile</span>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={handleRefreshTelemetry} disabled={isRefreshing} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:cursor-wait disabled:opacity-60"><Icon name="refresh" size={14} className={isRefreshing ? "animate-spin" : ""} />{isRefreshing ? "Đang cập nhật" : "Làm mới"}</button>
+                <button type="button" onClick={() => setIsNewStoreModalOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-extrabold text-[#12372a] shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"><Icon name="plus" size={15} />Thêm đối tác</button>
+                <button type="button" onClick={() => handleSwitchTab("tenants")} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white transition hover:bg-white/15"><Icon name="building" size={15} />Danh sách quán</button>
               </div>
             </div>
-          </Panel>
+          </section>
+
+          <section aria-label="Chỉ số nền tảng" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+            {[
+              { label: "Tổng đối tác", value: stores.length, detail: `${stores.filter((s) => s.status === "ACTIVE").length} đang hoạt động`, icon: "building" as const, tone: "emerald" },
+              { label: "Thiết bị trực tuyến", value: stores.reduce((sum, store) => sum + store.activeDevices, 0), detail: "POS, KDS và tablet", icon: "activity" as const, tone: "blue" },
+              { label: "Cần gia hạn", value: stores.filter((s) => s.status === "EXPIRING_SOON" || s.status === "EXPIRED").length, detail: "Sắp hạn hoặc đã hết hạn", icon: "clock" as const, tone: "amber" },
+              { label: "Hóa đơn chờ", value: invoices.filter((invoice) => invoice.status === "PENDING").length, detail: "Đang chờ đối soát", icon: "fileText" as const, tone: "violet" },
+            ].map((metric, index) => {
+              const tones: Record<string, string> = {
+                emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+                blue: "bg-blue-50 text-blue-700 ring-blue-100",
+                amber: "bg-amber-50 text-amber-700 ring-amber-100",
+                violet: "bg-violet-50 text-violet-700 ring-violet-100",
+              };
+              return (
+                <article key={metric.label} style={{ animationDelay: `${index * 65}ms` }} className="animate-slideUp rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,.035)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_14px_30px_rgba(15,23,42,.08)] sm:rounded-3xl sm:p-5">
+                  <div className="flex items-start justify-between gap-2"><span className="text-[11px] font-bold text-slate-500 sm:text-xs">{metric.label}</span><span className={`flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${tones[metric.tone]}`}><Icon name={metric.icon} size={17} /></span></div>
+                  <p className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{metric.value.toLocaleString("vi-VN")}</p>
+                  <p className="mt-1 text-[10px] font-medium text-slate-500 sm:text-xs">{metric.detail}</p>
+                </article>
+              );
+            })}
+          </section>
+
+          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_.8fr]">
+            <Panel variant="default" padding="lg" className="rounded-3xl border-slate-200/80 shadow-[0_4px_18px_rgba(15,23,42,.035)]">
+              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                <div><h3 className="text-sm font-black text-slate-900 sm:text-base">Đối tác cần quan tâm</h3><p className="mt-1 text-xs text-slate-500">Các cửa hàng sắp hết hạn hoặc đã hết hạn</p></div>
+                <button type="button" onClick={() => handleSwitchTab("tenants")} className="shrink-0 rounded-xl px-3 py-2 text-[11px] font-extrabold text-emerald-800 transition hover:bg-emerald-50">Xem tất cả <span aria-hidden="true">→</span></button>
+              </div>
+              <div className="space-y-2">
+                {stores.filter((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED").slice(0, 5).map((store) => (
+                  <button type="button" key={store.id} onClick={() => setViewingStoreDetails(store)} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-transparent bg-slate-50/80 p-3 text-left transition hover:border-emerald-100 hover:bg-emerald-50/60">
+                    <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-emerald-800 shadow-sm">{store.name.slice(0, 1)}</span><span className="min-w-0"><span className="block truncate text-xs font-extrabold text-slate-800">{store.name}</span><span className="mt-1 block truncate text-[10px] text-slate-500">{store.owner} · {store.plan}</span></span></span>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold ${store.status === "EXPIRED" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"}`}>{store.status === "EXPIRED" ? "Đã hết hạn" : `${store.daysLeft} ngày`}</span>
+                  </button>
+                ))}
+                {!stores.some((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED") && <div className="rounded-2xl bg-emerald-50 px-4 py-7 text-center"><span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-700"><Icon name="checkCircle" size={20} /></span><p className="mt-2 text-xs font-bold text-emerald-900">Tất cả đối tác đều đang hoạt động tốt</p></div>}
+              </div>
+            </Panel>
+
+            <Panel variant="default" padding="lg" className="rounded-3xl border-slate-200/80 shadow-[0_4px_18px_rgba(15,23,42,.035)]">
+              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                <div><h3 className="text-sm font-black text-slate-900 sm:text-base">Công việc đang chờ</h3><p className="mt-1 text-xs text-slate-500">Những mục cần xử lý tiếp theo</p></div>
+                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-800">{pendingWorkCount} việc</span>
+              </div>
+              {pendingInvoiceCount > 0 && <button type="button" onClick={() => handleSwitchTab("invoices")} className="group mb-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-amber-200 hover:bg-amber-50/60">
+                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Icon name="fileText" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">Hóa đơn chờ đối soát</span><span className="mt-1 block text-[10px] text-slate-500">{pendingInvoiceCount} hóa đơn cần xác nhận thanh toán</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-amber-700">→</span>
+              </button>}
+              {unassignedLicenseCount > 0 && <button type="button" onClick={() => handleSwitchTab("licenses")} className="group mb-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/60">
+                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Icon name="key" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">License chưa gán</span><span className="mt-1 block text-[10px] text-slate-500">{unassignedLicenseCount} key cần gán cửa hàng</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-700">→</span>
+              </button>}
+              {renewalCount > 0 && <button type="button" onClick={() => handleSwitchTab("tenants")} className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-rose-200 hover:bg-rose-50/60">
+                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700"><Icon name="clock" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">Đối tác cần gia hạn</span><span className="mt-1 block text-[10px] text-slate-500">{renewalCount} quán sắp hạn hoặc đã hết hạn</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-rose-700">→</span>
+              </button>}
+              {pendingWorkCount === 0 && <div className="rounded-2xl bg-emerald-50 px-4 py-7 text-center text-xs font-bold text-emerald-900"><Icon name="checkCircle" size={20} className="mx-auto mb-2" />Không có công việc tồn đọng</div>}
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-[10px] leading-relaxed text-slate-500"><strong className="text-slate-700">Nguồn dữ liệu:</strong> chỉ số được tổng hợp từ danh sách quán, license và hóa đơn hiện có.</div>
+            </Panel>
+          </section>
         </div>
       )}
 
@@ -1855,9 +1840,10 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
                 Theo dõi minh bạch mọi thao tác gia hạn license, cấp quyền, cấu hình và bảo mật
               </p>
             </div>
+            <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wide text-amber-800">Dữ liệu minh họa</span>
           </div>
 
-          <div className="divide-y divide-surface-border">
+          <div className="divide-y divide-slate-100">
             {auditLogs.map((log) => (
               <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div>
@@ -1936,7 +1922,6 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           setLicenseTargetStore(target);
         }}
         onToggleModule={handleToggleStoreModule}
-        onRevokeTerminal={handleRevokeTerminal}
         onToggleStoreStatus={handleToggleStoreStatus}
         onImpersonateStore={onImpersonateStore}
         onViewInvoice={(inv) => setViewingInvoice(inv)}
@@ -1944,5 +1929,3 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     </div>
   );
 };
-
-

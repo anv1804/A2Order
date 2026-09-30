@@ -2,6 +2,7 @@ import {
   BusinessType,
   BusinessScenarioTemplate,
   FnbDishItem,
+  AppModule,
   TenantStoreRecord,
   SoftwareInvoiceRecord,
 } from "@a2order/shared";
@@ -15,6 +16,18 @@ import {
 } from "../IRepository.js";
 import { prisma } from "../prismaClient.js";
 import { DEFAULT_BUSINESS_SCENARIOS } from "../../../mockData/businessScenariosData.js";
+
+const getStoreAdminStatus = (
+  storeStatus: string,
+  license: { status: string; endDate: Date } | null
+): TenantStoreRecord["status"] => {
+  if (storeStatus === "SUSPENDED" || license?.status === "SUSPENDED") return "SUSPENDED";
+  if (!license || license.status === "REVOKED") return "EXPIRED";
+  const daysLeft = Math.ceil((license.endDate.getTime() - Date.now()) / 86400000);
+  if (daysLeft <= 0 || license.status === "EXPIRED") return "EXPIRED";
+  if (daysLeft <= 7 || license.status === "EXPIRING_SOON") return "EXPIRING_SOON";
+  return "ACTIVE";
+};
 
 // ==========================================
 // 1. PRISMA SCENARIO REPOSITORY
@@ -82,20 +95,20 @@ export class PrismaStoreRepository implements IStoreRepository {
     return stores.map((s) => ({
       id: s.id,
       name: s.name,
-      owner: s.bankOwnerName || "Chủ Quán",
+      owner: s.bankOwnerName || "Chưa cập nhật",
       phone: s.phone || "",
       address: s.address || "",
       tableCount: s._count.tables,
-      licenseKey: s.license?.licenseKey || "A2-DEMO",
+      licenseKey: s.license?.licenseKey || "Chưa cấp",
       plan: (s.license?.planType as any) || "STARTER",
-      status: (s.status as any) || "ACTIVE",
+      status: getStoreAdminStatus(s.status, s.license),
       activatedAt: s.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: s.license?.endDate ? s.license.endDate.toLocaleDateString("vi-VN") : "",
-      daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 30,
-      pingMs: 20,
-      activeDevices: 1,
+      daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 0,
+      pingMs: 0,
+      activeDevices: 0,
       configVer: s.configVersion,
-      modules: [],
+      modules: s.license?.enabledModules ? (s.license.enabledModules.split(",") as AppModule[]) : [],
     }));
   }
 
@@ -112,49 +125,70 @@ export class PrismaStoreRepository implements IStoreRepository {
     return {
       id: s.id,
       name: s.name,
-      owner: s.bankOwnerName || "Chủ Quán",
+      owner: s.bankOwnerName || "Chưa cập nhật",
       phone: s.phone || "",
       address: s.address || "",
       tableCount: s._count.tables,
-      licenseKey: s.license?.licenseKey || "A2-DEMO",
+      licenseKey: s.license?.licenseKey || "Chưa cấp",
       plan: (s.license?.planType as any) || "STARTER",
-      status: (s.status as any) || "ACTIVE",
+      status: getStoreAdminStatus(s.status, s.license),
       activatedAt: s.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: s.license?.endDate ? s.license.endDate.toLocaleDateString("vi-VN") : "",
-      daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 30,
-      pingMs: 20,
-      activeDevices: 1,
+      daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 0,
+      pingMs: 0,
+      activeDevices: 0,
       configVer: s.configVersion,
-      modules: [],
+      modules: s.license?.enabledModules ? (s.license.enabledModules.split(",") as AppModule[]) : [],
     };
   }
 
   async create(data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord> {
     const slug = (data.name || "store").toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
-    const created = await prisma.store.create({
-      data: {
-        name: data.name || "Quán Mới",
-        slug,
-        phone: data.phone,
-        address: data.address,
-        status: data.status || "ACTIVE",
-        configVersion: data.configVer || "v1.0.0",
-      },
+    const planType = data.plan || "STARTER";
+    const licenseKey = data.licenseKey || `A2-${planType}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    const created = await prisma.$transaction(async (transaction) => {
+      const store = await transaction.store.create({
+        data: {
+          name: data.name || "Quán Mới",
+          slug,
+          phone: data.phone,
+          address: data.address,
+          bankOwnerName: data.owner,
+          status: data.status || "ACTIVE",
+          configVersion: data.configVer || "v1.0.0",
+        },
+      });
+      const pendingPaymentExpiry = new Date();
+      await transaction.storeLicense.create({
+        data: {
+          storeId: store.id,
+          licenseKey,
+          planType,
+          enabledModules: (data.modules || []).join(","),
+          // Chưa mở license cho đến khi hóa đơn đầu tiên được xác nhận.
+          status: "EXPIRED",
+          startDate: pendingPaymentExpiry,
+          endDate: pendingPaymentExpiry,
+          maxTables: data.tableCount || 30,
+          maxStaff: 20,
+        },
+      });
+      return store;
     });
 
     return {
       id: created.id,
       name: created.name,
-      owner: data.owner || "Chủ Quán",
+      owner: data.owner || "Chưa cập nhật",
       phone: created.phone || "",
       address: created.address || "",
       tableCount: data.tableCount || 0,
-      licenseKey: data.licenseKey || "A2-DEMO",
-      plan: data.plan || "STARTER",
-      status: "ACTIVE",
+      licenseKey,
+      plan: planType,
+      status: "EXPIRED",
       activatedAt: created.createdAt.toLocaleDateString("vi-VN"),
-      expiresAt: new Date(Date.now() + 30 * 86400000).toLocaleDateString("vi-VN"),
-      daysLeft: 30,
+      expiresAt: new Date().toLocaleDateString("vi-VN"),
+      daysLeft: 0,
       pingMs: 0,
       activeDevices: 0,
       configVer: created.configVersion,
@@ -172,6 +206,28 @@ export class PrismaStoreRepository implements IStoreRepository {
         status: data.status,
       },
     });
+
+    if (data.modules) {
+      const planType = data.plan || "STARTER";
+      const endDate = new Date(Date.now() + Math.max(data.daysLeft || 30, 1) * 86400000);
+      await prisma.storeLicense.upsert({
+        where: { storeId: id },
+        update: {
+          enabledModules: data.modules.join(","),
+          ...(data.plan ? { planType: data.plan } : {}),
+        },
+        create: {
+          storeId: id,
+          licenseKey: data.licenseKey || `A2-${planType}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+          planType,
+          enabledModules: data.modules.join(","),
+          status: "ACTIVE",
+          endDate,
+          maxTables: data.tableCount || 30,
+          maxStaff: 20,
+        },
+      });
+    }
     return this.getById(updated.id);
   }
 
@@ -323,14 +379,16 @@ export class PrismaLicenseRepository implements ILicenseRepository {
     return licenses.map((l) => ({
       id: l.id,
       keyCode: l.licenseKey,
-      storeId: l.storeId,
+      storeId: l.storeId || undefined,
       storeName: l.store?.name,
       plan: l.planType,
       maxDevices: l.maxTables,
       durationMonths: 12,
       issuedAt: l.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: l.endDate.toLocaleDateString("vi-VN"),
-      status: (l.status as any) || "ACTIVE",
+      status: l.status === "UNASSIGNED" && l.endDate < new Date()
+        ? "EXPIRED"
+        : (l.status as any) || "ACTIVE",
     }));
   }
 
@@ -344,26 +402,31 @@ export class PrismaLicenseRepository implements ILicenseRepository {
     return {
       id: l.id,
       keyCode: l.licenseKey,
-      storeId: l.storeId,
+      storeId: l.storeId || undefined,
       storeName: l.store?.name,
       plan: l.planType,
       maxDevices: l.maxTables,
       durationMonths: 12,
       issuedAt: l.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: l.endDate.toLocaleDateString("vi-VN"),
-      status: (l.status as any) || "ACTIVE",
+      status: l.status === "UNASSIGNED" && l.endDate < new Date()
+        ? "EXPIRED"
+        : (l.status as any) || "ACTIVE",
     };
   }
 
   async create(data: Omit<LicenseRecord, "id">): Promise<LicenseRecord> {
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + (data.durationMonths || 12));
     const created = await prisma.storeLicense.create({
       data: {
-        storeId: data.storeId || "unknown",
+        ...(data.storeId ? { storeId: data.storeId } : {}),
         licenseKey: data.keyCode,
         planType: data.plan,
+        enabledModules: "CORE_POS",
         maxTables: data.maxDevices,
-        endDate: new Date(Date.now() + (data.durationMonths || 12) * 30 * 86400000),
-        status: data.status,
+        endDate,
+        status: data.storeId ? data.status : "UNASSIGNED",
       },
       include: { store: true },
     });
@@ -371,14 +434,14 @@ export class PrismaLicenseRepository implements ILicenseRepository {
     return {
       id: created.id,
       keyCode: created.licenseKey,
-      storeId: created.storeId,
+      storeId: created.storeId || undefined,
       storeName: created.store?.name,
       plan: created.planType,
       maxDevices: created.maxTables,
       durationMonths: data.durationMonths,
       issuedAt: created.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: created.endDate.toLocaleDateString("vi-VN"),
-      status: (created.status as any) || "ACTIVE",
+      status: (created.status as any) || "UNASSIGNED",
     };
   }
 
@@ -399,7 +462,7 @@ export class PrismaLicenseRepository implements ILicenseRepository {
     return {
       id: updated.id,
       keyCode: updated.licenseKey,
-      storeId: updated.storeId,
+      storeId: updated.storeId || undefined,
       storeName: updated.store?.name,
       plan: updated.planType,
       maxDevices: updated.maxTables,
@@ -407,6 +470,28 @@ export class PrismaLicenseRepository implements ILicenseRepository {
       issuedAt: updated.createdAt.toLocaleDateString("vi-VN"),
       expiresAt: updated.endDate.toLocaleDateString("vi-VN"),
       status: "ACTIVE",
+    };
+  }
+
+  async revoke(keyCode: string): Promise<LicenseRecord | null> {
+    const license = await prisma.storeLicense.findUnique({ where: { licenseKey: keyCode } });
+    if (!license) return null;
+    const revoked = await prisma.storeLicense.update({
+      where: { licenseKey: keyCode },
+      data: { status: "REVOKED" },
+      include: { store: true },
+    });
+    return {
+      id: revoked.id,
+      keyCode: revoked.licenseKey,
+      storeId: revoked.storeId || undefined,
+      storeName: revoked.store?.name,
+      plan: revoked.planType,
+      maxDevices: revoked.maxTables,
+      durationMonths: 12,
+      issuedAt: revoked.createdAt.toLocaleDateString("vi-VN"),
+      expiresAt: revoked.endDate.toLocaleDateString("vi-VN"),
+      status: "REVOKED",
     };
   }
 }
@@ -424,8 +509,8 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
     return invoices.map((inv) => ({
       id: inv.id,
       invoiceCode: inv.invoiceCode,
-      storeId: inv.license.storeId,
-      storeName: inv.license.store.name,
+      storeId: inv.license.storeId || "",
+      storeName: inv.license.store?.name || "License dự phòng",
       plan: inv.license.planType,
       durationMonths: inv.durationMonths,
       subTotal: inv.amount,
@@ -449,8 +534,8 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
     return {
       id: inv.id,
       invoiceCode: inv.invoiceCode,
-      storeId: inv.license.storeId,
-      storeName: inv.license.store.name,
+      storeId: inv.license.storeId || "",
+      storeName: inv.license.store?.name || "License dự phòng",
       plan: inv.license.planType,
       durationMonths: inv.durationMonths,
       subTotal: inv.amount,
@@ -491,8 +576,8 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
     return {
       id: created.id,
       invoiceCode: created.invoiceCode,
-      storeId: created.license.storeId,
-      storeName: created.license.store.name,
+      storeId: created.license.storeId || "",
+      storeName: created.license.store?.name || data.storeName || "License dự phòng",
       plan: created.license.planType,
       durationMonths: created.durationMonths,
       subTotal: created.amount,
@@ -518,8 +603,8 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
     return {
       id: updated.id,
       invoiceCode: updated.invoiceCode,
-      storeId: updated.license.storeId,
-      storeName: updated.license.store.name,
+      storeId: updated.license.storeId || "",
+      storeName: updated.license.store?.name || "License dự phòng",
       plan: updated.license.planType,
       durationMonths: updated.durationMonths,
       subTotal: updated.amount,

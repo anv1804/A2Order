@@ -1,5 +1,7 @@
+import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import fastifyJwt from "@fastify/jwt";
 import { initSocketServer } from "./core/websocket/socketServer.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { tableRoutes } from "./modules/table/table.routes.js";
@@ -19,6 +21,10 @@ const fastify = Fastify({
 async function main() {
   await fastify.register(cors, {
     origin: "*",
+  });
+
+  await fastify.register(fastifyJwt, {
+    secret: process.env.JWT_SECRET || "a2order-secret-production-key-2026",
   });
 
   await fastify.register(authRoutes, { prefix: "/api/auth" });
