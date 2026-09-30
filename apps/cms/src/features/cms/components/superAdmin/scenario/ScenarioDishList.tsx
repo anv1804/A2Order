@@ -151,68 +151,54 @@ export const ScenarioDishList: React.FC<Props> = ({
             ))}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="border-b-2 border-surface-border">
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider">Món Mẫu</th>
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider">Danh Mục</th>
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider text-right">Giá Bán Đề Xuất</th>
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider text-right">Giá Vốn</th>
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider text-center">Quy cách & Size</th>
-                  <th className="pb-3 px-2 text-[10px] font-black text-ink-muted uppercase tracking-wider text-center">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border">
-                {paginatedDishes.map((dish) => (
-                  <tr key={dish.id} className="group hover:bg-surface-canvas/50 transition-colors">
-                    <td className="py-3 px-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 shrink-0 bg-surface-canvas rounded-xl overflow-hidden border border-surface-border">
-                          {dish.image ? (
-                            <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Icon name="utensils" className="w-4 h-4 text-ink-subtle" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 max-w-[200px] sm:max-w-[250px]">
-                          <p className="font-bold text-xs text-ink-primary truncate group-hover:text-brand-900 transition-colors">{dish.name}</p>
-                          <p className="text-[10px] text-ink-muted truncate mt-0.5">{dish.description}</p>
-                        </div>
+          <div className="space-y-3">
+            {paginatedDishes.map((dish) => (
+              <div key={dish.id} className="group p-3 sm:p-4 rounded-2xl border border-surface-border bg-white hover:border-brand-300 transition-all flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 shadow-sm">
+                <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                  <div className="w-12 h-12 shrink-0 bg-surface-canvas rounded-xl overflow-hidden border border-surface-border">
+                    {dish.image ? (
+                      <img src={dish.image} alt={dish.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Icon name="utensils" className="w-5 h-5 text-ink-subtle" />
                       </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <span className="text-[11px] font-bold text-ink-secondary">{dish.category}</span>
-                    </td>
-                    <td className="py-3 px-2 text-right">
-                      <span className="font-black text-sm text-ink-primary">{dish.price.toLocaleString("vi-VN")} đ</span>
-                    </td>
-                    <td className="py-3 px-2 text-right">
-                      <span className="text-[11px] font-medium text-ink-muted">
-                        {dish.costPrice ? `${dish.costPrice.toLocaleString("vi-VN")} đ` : "-"}
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-xs sm:text-sm text-ink-primary truncate group-hover:text-brand-900 transition-colors">{dish.name}</p>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px] sm:text-[11px]">
+                      <span className="font-bold text-ink-secondary">{dish.category}</span>
+                      <span className="text-ink-subtle hidden sm:inline">•</span>
+                      <span className="text-ink-muted line-clamp-1">{dish.description || "Không có mô tả"}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-surface-border">
+                  <div className="text-left sm:text-right">
+                    <p className="font-black text-sm text-brand-900">{dish.price.toLocaleString("vi-VN")} đ</p>
+                    <p className="text-[10px] text-ink-muted">
+                      Vốn: {dish.costPrice ? `${dish.costPrice.toLocaleString("vi-VN")} đ` : "-"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {dish.variants && dish.variants.length > 1 && (
+                      <span className="hidden sm:inline-flex text-[10px] font-bold text-ink-muted bg-surface-canvas px-2 py-1 rounded-full border border-surface-border">
+                        {dish.variants.length} size
                       </span>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <span className="text-[10px] font-bold text-ink-muted bg-surface-canvas px-2 py-1 rounded-full border border-surface-border">
-                        {dish.variants && dish.variants.length > 1 ? `${dish.variants.length} size` : "1 size chuẩn"}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-center">
-                      <div className="flex items-center justify-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleEditDish(dish)} className="p-1.5 text-ink-muted hover:text-brand-800 rounded-lg hover:bg-surface-border transition">
-                          <Icon name="edit" size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteDish(dish)} className="p-1.5 text-ink-muted hover:text-rose-600 rounded-lg hover:bg-rose-50 transition">
-                          <Icon name="trash" size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => handleEditDish(dish)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border text-ink-secondary hover:text-brand-800 hover:border-brand-800 transition bg-white shadow-sm">
+                        <Icon name="edit" size={14} />
+                      </button>
+                      <button onClick={() => handleDeleteDish(dish)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-surface-border text-ink-secondary hover:text-rose-600 hover:border-rose-600 transition bg-white shadow-sm hover:bg-rose-50">
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
