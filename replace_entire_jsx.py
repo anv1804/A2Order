@@ -1,41 +1,11 @@
-import React from "react";
-import { Icon, Button } from "@/components/ui";
-import { FnbDishItem, FnbMajorCategory, FNB_MAJOR_CONFIG } from "@a2order/shared";
+import re
 
-interface Props {
-  activeMajor: FnbMajorCategory;
-  selectedCategory: string;
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  viewMode: "GRID" | "LIST";
-  setViewMode: (v: "GRID" | "LIST") => void;
-  filteredDishes: FnbDishItem[];
-  currentPage: number;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-  handleOpenAddDish: () => void;
-}
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioDishList.tsx", "r") as f:
+    content = f.read()
 
-export const ScenarioDishList: React.FC<Props> = ({
-  activeMajor,
-  selectedCategory,
-  searchQuery,
-  setSearchQuery,
-  viewMode,
-  setViewMode,
-  filteredDishes,
-  currentPage,
-  handleEditDish,
-  handleDeleteDish,
-  handleOpenAddDish,
-}) => {
-  const PAGE_SIZE = 9;
-  const majorConfig = FNB_MAJOR_CONFIG[activeMajor];
-  
-  // Lấy dữ liệu trang hiện tại
-  const paginatedDishes = filteredDishes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+jsx_start = content.find("  return (\n    <div className=\"flex-1")
 
-  return (
+new_jsx = """  return (
     <div className="flex-1 bg-white rounded-3xl border border-surface-border shadow-sm flex flex-col min-h-[600px] overflow-hidden">
       {/* Header */}
       <div className="p-4 sm:p-5 border-b border-surface-border flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-canvas/30">
@@ -228,3 +198,8 @@ export const ScenarioDishList: React.FC<Props> = ({
     </div>
   );
 };
+"""
+
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioDishList.tsx", "w") as f:
+    f.write(content[:jsx_start] + new_jsx)
+
