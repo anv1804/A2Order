@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CmsSidebar } from "./CmsSidebar";
 import { CmsTopNav } from "./CmsTopNav";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 import { Icon } from "@/components/ui";
 import { IconName } from "@/types";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -90,6 +91,7 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
 
   return (
     <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-[#f6f8f7] font-sans text-ink-primary">
+      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} searchQuery={searchQuery} setSearchQuery={setSearchQuery} matchingNavigation={matchingNavigation} onSelect={onSelectMenu} />
       {/* 1. Desktop Fixed Left Sidebar */}
       <div className="hidden lg:block h-full shrink-0 z-30">
         <CmsSidebar

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { SaasDashboard } from "./superAdmin/SaasDashboard";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import {
@@ -1743,87 +1744,20 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       )}
 
       {/* PHÂN HỆ: TỔNG QUAN NỀN TẢNG & DOANH SỐ SAAS */}
+      {/* TAB: TỔNG QUAN HỆ THỐNG */}
       {activeTab === "telemetry" && (
-        <div className="space-y-5 sm:space-y-6 animate-fadeIn">
-          <section className="relative isolate overflow-hidden rounded-[28px] bg-[#102d24] px-5 py-6 text-white shadow-[0_20px_55px_rgba(16,45,36,.18)] sm:px-8 sm:py-8">
-            <div className="absolute -right-16 -top-24 -z-10 h-72 w-72 rounded-full bg-emerald-400/20 blur-3xl" />
-            <div className="absolute bottom-[-90px] left-[42%] -z-10 h-48 w-48 rounded-full bg-teal-300/10 blur-3xl" />
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-              <div className="max-w-xl">
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold tracking-wide text-emerald-100">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 pulse-glow" /> TRUNG TÂM ĐIỀU HÀNH
-                </div>
-                <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Chào mừng trở lại</h2>
-                <p className="mt-2 max-w-lg text-sm leading-relaxed text-emerald-50/75">Theo dõi đối tác, thiết bị và các khoản cần xử lý từ một nơi.</p>
-                <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-white/65"><Icon name={connectedSources.length === 3 ? "checkCircle" : "info"} size={12} />{connectedSources.length === 3 ? "Đã đồng bộ 3 nguồn" : connectedSources.length ? `Đã kết nối ${connectedSources.length}/3 nguồn` : "Dữ liệu xem trước · Chưa kết nối máy chủ"}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={handleRefreshTelemetry} disabled={isRefreshing} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3.5 text-xs font-bold text-white transition hover:bg-white/15 disabled:cursor-wait disabled:opacity-60"><Icon name="refresh" size={14} className={isRefreshing ? "animate-spin" : ""} />{isRefreshing ? "Đang cập nhật" : "Làm mới"}</button>
-                <button type="button" onClick={() => setIsNewStoreModalOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-white px-4 text-xs font-extrabold text-[#12372a] shadow-lg transition hover:-translate-y-0.5 hover:bg-emerald-50 active:translate-y-0"><Icon name="plus" size={15} />Thêm đối tác</button>
-                <button type="button" onClick={() => handleSwitchTab("tenants")} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 text-xs font-bold text-white transition hover:bg-white/15"><Icon name="building" size={15} />Danh sách quán</button>
-              </div>
-            </div>
-          </section>
-
-          <section aria-label="Chỉ số nền tảng" className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-            {[
-              { label: "Tổng đối tác", value: stores.length, detail: `${stores.filter((s) => s.status === "ACTIVE").length} đang hoạt động`, icon: "building" as const, tone: "emerald" },
-              { label: "Thiết bị trực tuyến", value: stores.reduce((sum, store) => sum + store.activeDevices, 0), detail: "POS, KDS và tablet", icon: "activity" as const, tone: "blue" },
-              { label: "Cần gia hạn", value: stores.filter((s) => s.status === "EXPIRING_SOON" || s.status === "EXPIRED").length, detail: "Sắp hạn hoặc đã hết hạn", icon: "clock" as const, tone: "amber" },
-              { label: "Hóa đơn chờ", value: invoices.filter((invoice) => invoice.status === "PENDING").length, detail: "Đang chờ đối soát", icon: "fileText" as const, tone: "violet" },
-            ].map((metric, index) => {
-              const tones: Record<string, string> = {
-                emerald: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-                blue: "bg-blue-50 text-blue-700 ring-blue-100",
-                amber: "bg-amber-50 text-amber-700 ring-amber-100",
-                violet: "bg-violet-50 text-violet-700 ring-violet-100",
-              };
-              return (
-                <article key={metric.label} style={{ animationDelay: `${index * 65}ms` }} className="animate-slideUp rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_4px_18px_rgba(15,23,42,.035)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_14px_30px_rgba(15,23,42,.08)] sm:rounded-3xl sm:p-5">
-                  <div className="flex items-start justify-between gap-2"><span className="text-[11px] font-bold text-slate-500 sm:text-xs">{metric.label}</span><span className={`flex h-9 w-9 items-center justify-center rounded-xl ring-1 ${tones[metric.tone]}`}><Icon name={metric.icon} size={17} /></span></div>
-                  <p className="mt-4 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">{metric.value.toLocaleString("vi-VN")}</p>
-                  <p className="mt-1 text-[10px] font-medium text-slate-500 sm:text-xs">{metric.detail}</p>
-                </article>
-              );
-            })}
-          </section>
-
-          <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_.8fr]">
-            <Panel variant="default" padding="lg" className="rounded-3xl border-slate-200/80 shadow-[0_4px_18px_rgba(15,23,42,.035)]">
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
-                <div><h3 className="text-sm font-black text-slate-900 sm:text-base">Đối tác cần quan tâm</h3><p className="mt-1 text-xs text-slate-500">Các cửa hàng sắp hết hạn hoặc đã hết hạn</p></div>
-                <button type="button" onClick={() => handleSwitchTab("tenants")} className="shrink-0 rounded-xl px-3 py-2 text-[11px] font-extrabold text-emerald-800 transition hover:bg-emerald-50">Xem tất cả <span aria-hidden="true">→</span></button>
-              </div>
-              <div className="space-y-2">
-                {stores.filter((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED").slice(0, 5).map((store) => (
-                  <button type="button" key={store.id} onClick={() => setViewingStoreDetails(store)} className="flex w-full items-center justify-between gap-3 rounded-2xl border border-transparent bg-slate-50/80 p-3 text-left transition hover:border-emerald-100 hover:bg-emerald-50/60">
-                    <span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-sm font-black text-emerald-800 shadow-sm">{store.name.slice(0, 1)}</span><span className="min-w-0"><span className="block truncate text-xs font-extrabold text-slate-800">{store.name}</span><span className="mt-1 block truncate text-[10px] text-slate-500">{store.owner} · {store.plan}</span></span></span>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold ${store.status === "EXPIRED" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"}`}>{store.status === "EXPIRED" ? "Đã hết hạn" : `${store.daysLeft} ngày`}</span>
-                  </button>
-                ))}
-                {!stores.some((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED") && <div className="rounded-2xl bg-emerald-50 px-4 py-7 text-center"><span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-white text-emerald-700"><Icon name="checkCircle" size={20} /></span><p className="mt-2 text-xs font-bold text-emerald-900">Tất cả đối tác đều đang hoạt động tốt</p></div>}
-              </div>
-            </Panel>
-
-            <Panel variant="default" padding="lg" className="rounded-3xl border-slate-200/80 shadow-[0_4px_18px_rgba(15,23,42,.035)]">
-              <div className="mb-4 flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
-                <div><h3 className="text-sm font-black text-slate-900 sm:text-base">Công việc đang chờ</h3><p className="mt-1 text-xs text-slate-500">Những mục cần xử lý tiếp theo</p></div>
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-extrabold text-amber-800">{pendingWorkCount} việc</span>
-              </div>
-              {pendingInvoiceCount > 0 && <button type="button" onClick={() => handleSwitchTab("invoices")} className="group mb-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-amber-200 hover:bg-amber-50/60">
-                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-700"><Icon name="fileText" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">Hóa đơn chờ đối soát</span><span className="mt-1 block text-[10px] text-slate-500">{pendingInvoiceCount} hóa đơn cần xác nhận thanh toán</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-amber-700">→</span>
-              </button>}
-              {unassignedLicenseCount > 0 && <button type="button" onClick={() => handleSwitchTab("licenses")} className="group mb-2 flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-blue-200 hover:bg-blue-50/60">
-                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700"><Icon name="key" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">License chưa gán</span><span className="mt-1 block text-[10px] text-slate-500">{unassignedLicenseCount} key cần gán cửa hàng</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-700">→</span>
-              </button>}
-              {renewalCount > 0 && <button type="button" onClick={() => handleSwitchTab("tenants")} className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-100 p-4 text-left transition hover:border-rose-200 hover:bg-rose-50/60">
-                <span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700"><Icon name="clock" size={18} /></span><span><span className="block text-xs font-extrabold text-slate-800">Đối tác cần gia hạn</span><span className="mt-1 block text-[10px] text-slate-500">{renewalCount} quán sắp hạn hoặc đã hết hạn</span></span></span><span className="text-lg text-slate-300 transition group-hover:translate-x-1 group-hover:text-rose-700">→</span>
-              </button>}
-              {pendingWorkCount === 0 && <div className="rounded-2xl bg-emerald-50 px-4 py-7 text-center text-xs font-bold text-emerald-900"><Icon name="checkCircle" size={20} className="mx-auto mb-2" />Không có công việc tồn đọng</div>}
-              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-[10px] leading-relaxed text-slate-500"><strong className="text-slate-700">Nguồn dữ liệu:</strong> chỉ số được tổng hợp từ danh sách quán, license và hóa đơn hiện có.</div>
-            </Panel>
-          </section>
-        </div>
+        <SaasDashboard
+          stores={stores}
+          invoices={invoices}
+          licenses={licenses}
+          auditLogs={auditLogs}
+          connectedSources={connectedSources}
+          isRefreshing={isRefreshing}
+          onRefresh={handleRefreshTelemetry}
+          onOpenNewStoreModal={() => setIsNewStoreModalOpen(true)}
+          onSwitchTab={handleSwitchTab}
+          onViewStoreDetails={setViewingStoreDetails}
+        />
       )}
 
       {/* TAB 4: NHẬT KÝ KIỂM TOÁN HỆ THỐNG (AUDIT TRAIL) */}

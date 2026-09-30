@@ -24,7 +24,7 @@ export type IconName =
   | "shield"
   | "building"
   | "store"
-  | "trending"
+  | "trending" | "trendingDown"
   | "flame"
   | "creditCard"
   | "sparkles"
