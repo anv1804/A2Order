@@ -1,114 +1,18 @@
-import React from "react";
-import { Icon, Button } from "@/components/ui";
-import { FnbDishItem, FnbMajorCategory, FNB_MAJOR_CONFIG } from "@a2order/shared";
+import re
 
-interface Props {
-  activeMajor: FnbMajorCategory;
-  selectedCategory: string;
-  searchQuery: string;
-  setSearchQuery: (q: string) => void;
-  viewMode: "GRID" | "LIST";
-  setViewMode: (v: "GRID" | "LIST") => void;
-  filteredDishes: FnbDishItem[];
-  currentPage: number;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-  handleOpenAddDish: () => void;
-}
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioDishList.tsx", "r") as f:
+    content = f.read()
 
-export const ScenarioDishList: React.FC<Props> = ({
-  activeMajor,
-  selectedCategory,
-  searchQuery,
-  setSearchQuery,
-  viewMode,
-  setViewMode,
-  filteredDishes,
-  currentPage,
-  handleEditDish,
-  handleDeleteDish,
-  handleOpenAddDish,
-}) => {
-  const PAGE_SIZE = 9;
-  const majorConfig = FNB_MAJOR_CONFIG[activeMajor];
-  
-  // Lấy dữ liệu trang hiện tại
-  const paginatedDishes = filteredDishes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+# Fix the header buttons (remove hidden sm:flex)
+header_start = content.find("<div className=\"flex items-center bg-surface-canvas p-0.5 rounded-xl border border-surface-border hidden sm:flex\">")
+if header_start != -1:
+    content = content[:header_start] + "<div className=\"flex items-center bg-surface-canvas p-0.5 rounded-xl border border-surface-border\">" + content[header_start+len("<div className=\"flex items-center bg-surface-canvas p-0.5 rounded-xl border border-surface-border hidden sm:flex\">"):]
 
-  return (
-    <div className="flex-1 bg-white rounded-3xl border border-surface-border shadow-sm flex flex-col min-h-[600px] overflow-hidden">
-      {/* Header */}
-      <div className="p-4 sm:p-5 border-b border-surface-border flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface-canvas/30">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-brand-50 flex items-center justify-center shrink-0 border border-brand-100">
-            <Icon name={majorConfig.icon as any} className="w-5 h-5 text-brand-800" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-ink-primary flex items-center gap-2">
-              {selectedCategory === "ALL" ? "Tất Cả Món" : selectedCategory}
-              <span className="px-2 py-0.5 rounded bg-brand-100 text-brand-900 text-[9px] font-bold">
-                {filteredDishes.length} món
-              </span>
-            </h3>
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              Trụ cột: {majorConfig.label} • {selectedCategory === "ALL" ? "Toàn bộ nhóm món" : "Lọc theo danh mục"}
-            </p>
-          </div>
-        </div>
+# Replace the Grid item
+grid_start = content.find("        ) : viewMode === \"GRID\" ? (\n          <div className=\"grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4\">\n            {paginatedDishes.map((dish) => (")
+grid_end = content.find("            ))}\n          </div>\n        ) : (")
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:w-auto">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-subtle" />
-            <input
-              type="text"
-              placeholder="Tìm món, giá bán..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 w-full sm:w-48 pl-9 pr-3 rounded-xl border border-surface-border bg-white text-xs font-medium text-ink-primary focus:border-brand-800 focus:outline-none transition-all placeholder:text-ink-subtle"
-            />
-          </div>
-          <div className="flex items-center bg-surface-canvas p-0.5 rounded-xl border border-surface-border">
-            <button
-              type="button"
-              onClick={() => setViewMode("GRID")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "GRID" ? "bg-white text-brand-900 shadow-sm font-bold" : "text-ink-subtle hover:text-ink-primary"
-              }`}
-            >
-              <Icon name="grid" size={14} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("LIST")}
-              className={`p-1.5 rounded-lg transition-all ${
-                viewMode === "LIST" ? "bg-white text-brand-900 shadow-sm font-bold" : "text-ink-subtle hover:text-ink-primary"
-              }`}
-            >
-              <Icon name="list" size={14} />
-            </button>
-          </div>
-          <Button
-            size="sm"
-            className="rounded-xl gap-1.5 bg-brand-900 text-white font-bold px-3 h-9"
-            onClick={handleOpenAddDish}
-          >
-            <Icon name="plus" size={14} />
-            <span>Thêm Món Mới</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 sm:p-5 bg-surface-canvas/10">
-        {filteredDishes.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-ink-muted py-12">
-            <div className="w-16 h-16 rounded-3xl bg-surface-muted flex items-center justify-center mb-3">
-              <Icon name="search" className="w-6 h-6 text-ink-subtle" />
-            </div>
-            <p className="text-sm font-bold text-ink-primary mb-1">Không tìm thấy món nào</p>
-            <p className="text-xs">Hãy thử đổi từ khóa tìm kiếm hoặc chọn danh mục khác</p>
-          </div>
-        ) : viewMode === "GRID" ? (
+new_grid = """        ) : viewMode === "GRID" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {paginatedDishes.map((dish) => (
               <div key={dish.id} className="group p-3 rounded-2xl border border-surface-border hover:border-brand-300 bg-white shadow-sm transition-all flex flex-col">
@@ -158,10 +62,12 @@ export const ScenarioDishList: React.FC<Props> = ({
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
+              </div>"""
+
+list_start = grid_end
+list_end = content.find("            ))}\n          </div>\n        )}\n      </div>")
+
+new_list = """        ) : (
           <div className="space-y-3">
             {paginatedDishes.map((dish) => (
               <div key={dish.id} className="group p-3 sm:p-4 rounded-2xl border border-surface-border bg-white hover:border-brand-300 transition-all shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -224,11 +130,8 @@ export const ScenarioDishList: React.FC<Props> = ({
                   </div>
                 </div>
 
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+              </div>"""
+
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioDishList.tsx", "w") as f:
+    f.write(content[:grid_start] + new_grid + new_list + content[list_end:])
+
