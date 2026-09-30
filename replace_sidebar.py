@@ -1,29 +1,11 @@
-import React from "react";
-import { Icon, Button } from "@/components/ui";
-import { FnbMajorCategory, FNB_MAJOR_CONFIG, FnbCategoryTemplate } from "@a2order/shared";
+import re
 
-interface Props {
-  activeMajor: FnbMajorCategory;
-  handleSwitchMajor: (major: FnbMajorCategory) => void;
-  countsByMajor: Record<FnbMajorCategory, number>;
-  activeCategories: FnbCategoryTemplate[];
-  selectedCategory: string;
-  setSelectedCategory: (cat: string) => void;
-  handleOpenAddCategory: (major: FnbMajorCategory) => void;
-  handleDeleteCategory: (cat: FnbCategoryTemplate) => void;
-}
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioSidebar.tsx", "r") as f:
+    content = f.read()
 
-export const ScenarioSidebar: React.FC<Props> = ({
-  activeMajor,
-  handleSwitchMajor,
-  countsByMajor,
-  activeCategories,
-  selectedCategory,
-  setSelectedCategory,
-  handleOpenAddCategory,
-  handleDeleteCategory,
-}) => {
-  return (
+jsx_start = content.find("  return (\n    <div className=\"w-full shrink-0 space-y-4 lg:w-80 xl:w-[340px]\">")
+
+new_jsx = """  return (
     <div className="w-full shrink-0 space-y-4 lg:w-72 xl:w-80">
       <div className="bg-white rounded-3xl border border-surface-border shadow-sm p-4 sm:p-5 space-y-5">
         
@@ -112,7 +94,7 @@ export const ScenarioSidebar: React.FC<Props> = ({
                     onClick={() => setSelectedCategory(category.name)}
                     className="flex-1 px-3 py-2 text-left text-[11px] transition-colors min-w-0 flex items-center gap-2"
                   >
-                    <Icon name="fileText" size={14} className={isSelected ? "text-brand-800" : "text-ink-subtle group-hover:text-ink-muted"} />
+                    <Icon name="folder" size={14} className={isSelected ? "text-brand-800" : "text-ink-subtle group-hover:text-ink-muted"} />
                     <span className={`truncate block ${isSelected ? "text-brand-900 font-extrabold" : "text-ink-secondary group-hover:text-ink-primary font-medium"}`}>
                       {category.name}
                     </span>
@@ -138,3 +120,8 @@ export const ScenarioSidebar: React.FC<Props> = ({
     </div>
   );
 };
+"""
+
+with open("apps/cms/src/features/cms/components/superAdmin/scenario/ScenarioSidebar.tsx", "w") as f:
+    f.write(content[:jsx_start] + new_jsx)
+

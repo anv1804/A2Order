@@ -1,367 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Button, Icon, Portal } from "@/components/ui";
-import { toast } from "@/stores/notificationStore";
-import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
-import {
-  FnbDishItem,
-  DishVariantOption,
-  DishCustomizationGroup,
-  FnbMajorCategory,
-  FnbCategoryTemplate,
-  FNB_MAJOR_CONFIG,
-} from "@a2order/shared";
+import re
 
-export interface CustomizationPreset {
-  label: string;
-  name: string;
-  type: "SINGLE" | "MULTIPLE";
-  required?: boolean;
-  options: { name: string; priceModifier?: number }[];
-}
+with open("apps/cms/src/features/cms/components/superAdmin/modals/ScenarioDishModal.tsx", "r") as f:
+    content = f.read()
 
-export const SMART_CUSTOMIZATION_PRESETS: Record<FnbMajorCategory, CustomizationPreset[]> = {
-  FOOD: [
-    {
-      label: "Hành Lá & Rau Thơm",
-      name: "Hành Lá & Rau Thơm",
-      type: "SINGLE",
-      required: false,
-      options: [
-        { name: "Nhiều hành lá" },
-        { name: "Hành lá vừa (Chuẩn vị)" },
-        { name: "Không lấy hành" },
-        { name: "Hành trần để riêng" },
-      ],
-    },
-    {
-      label: "Cấp Độ Cay / Ớt",
-      name: "Cấp Độ Cay",
-      type: "SINGLE",
-      required: true,
-      options: [
-        { name: "Không cay (Không ớt)" },
-        { name: "Ít cay (Hơi tê nhẹ)" },
-        { name: "Cay vừa (Chuẩn vị)" },
-        { name: "Cay nồng (Nhiều ớt)" },
-        { name: "Ớt tươi để riêng" },
-      ],
-    },
-    {
-      label: "Khẩu Vị Mặn / Nhạt",
-      name: "Khẩu Vị Nêm Nếm",
-      type: "SINGLE",
-      required: false,
-      options: [
-        { name: "Chuẩn vị vừa vặn" },
-        { name: "Thanh nhạt (Ít muối / mắm)" },
-        { name: "Đậm đà (Thêm nước mắm)" },
-        { name: "Nước trong ít mỡ" },
-      ],
-    },
-    {
-      label: "Tỏi & Tiêu Thơm",
-      name: "Gia Vị Tỏi & Tiêu",
-      type: "MULTIPLE",
-      required: false,
-      options: [
-        { name: "Nhiều tỏi phi giòn" },
-        { name: "Không lấy tỏi phi" },
-        { name: "Nhiều hạt tiêu thơm" },
-        { name: "Không cho tiêu" },
-      ],
-    },
-    {
-      label: "Món Ăn Kèm Thêm",
-      name: "Món Ăn Kèm Thêm",
-      type: "MULTIPLE",
-      required: false,
-      options: [
-        { name: "Thêm trứng ốp la", priceModifier: 10000 },
-        { name: "Thêm cơm nóng", priceModifier: 8000 },
-        { name: "Đĩa quẩy giòn (3 cái)", priceModifier: 10000 },
-        { name: "Nước canh nóng thêm", priceModifier: 5000 },
-      ],
-    },
-  ],
-  DRINK: [
-    {
-      label: "Lượng Đá",
-      name: "Lượng Đá",
-      type: "SINGLE",
-      required: true,
-      options: [
-        { name: "100% Đá (Đầy đủ ly chuẩn)" },
-        { name: "70% Đá" },
-        { name: "50% Ít đá" },
-        { name: "Không đá" },
-        { name: "Uống nóng" },
-      ],
-    },
-    {
-      label: "Mức Đường / Ngọt",
-      name: "Mức Đường",
-      type: "SINGLE",
-      required: true,
-      options: [
-        { name: "100% Đường chuẩn" },
-        { name: "70% Đường" },
-        { name: "50% Ít ngọt" },
-        { name: "30% Rất ít ngọt" },
-        { name: "0% Không đường" },
-      ],
-    },
-    {
-      label: "Topping Thêm",
-      name: "Topping Thêm",
-      type: "MULTIPLE",
-      required: false,
-      options: [
-        { name: "Trân châu đen dẻo", priceModifier: 6000 },
-        { name: "Kem cheese Macchiato", priceModifier: 10000 },
-        { name: "Pudding trứng béo", priceModifier: 8000 },
-        { name: "Thạch dừa giòn", priceModifier: 6000 },
-        { name: "Sốt cốt dừa tươi", priceModifier: 5000 },
-      ],
-    },
-  ],
-  DESSERT: [
-    {
-      label: "Độ Ngọt & Cốt Dừa",
-      name: "Độ Ngọt & Cốt Dừa",
-      type: "SINGLE",
-      required: false,
-      options: [
-        { name: "Ngọt vừa thanh mát (Chuẩn)" },
-        { name: "Ít ngọt" },
-        { name: "Thêm nước cốt dừa béo", priceModifier: 5000 },
-        { name: "Nhiều đá bào" },
-        { name: "Không lấy đá bào" },
-      ],
-    },
-    {
-      label: "Topping Tráng Miệng",
-      name: "Topping Tráng Miệng",
-      type: "MULTIPLE",
-      required: false,
-      options: [
-        { name: "Dừa khô giòn Bến Tre", priceModifier: 5000 },
-        { name: "Cơm dừa non tươi", priceModifier: 5000 },
-        { name: "Thạch khúc bạch phô mai", priceModifier: 8000 },
-        { name: "Hạt sen Huế ninh mềm", priceModifier: 8000 },
-        { name: "Hạt chia hữu cơ", priceModifier: 5000 },
-      ],
-    },
-  ],
-};
+jsx_start = content.find("  return (\n    <Portal>")
 
-export interface ScenarioDishModalProps {
-  isOpen: boolean;
-  majorType: FnbMajorCategory;
-  categories: FnbCategoryTemplate[];
-  initialDish?: FnbDishItem | null;
-  onClose: () => void;
-  onSave: (dishData: Omit<FnbDishItem, "id">, dishId?: string) => Promise<void>;
-  onOpenAddCategory?: (type: FnbMajorCategory) => void;
-}
-
-export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
-  isOpen,
-  majorType: initialMajorType,
-  categories,
-  initialDish,
-  onClose,
-  onSave,
-  onOpenAddCategory,
-}) => {
-  const [selectedMajor, setSelectedMajor] = useState<FnbMajorCategory>(initialMajorType);
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
-  const [price, setPrice] = useState(35000);
-  const [costPrice, setCostPrice] = useState(15000);
-  const [station, setStation] = useState<"KITCHEN" | "BAR" | "DESSERT">("BAR");
-  const [image, setImage] = useState("");
-  const [description, setDescription] = useState("");
-  const [variants, setVariants] = useState<DishVariantOption[]>([]);
-  const [customizationGroups, setCustomizationGroups] = useState<DishCustomizationGroup[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // New variant state
-  const [newVarName, setNewVarName] = useState("");
-  const [newVarPrice, setNewVarPrice] = useState<number>(10000);
-
-  // New customization group state
-  const [newGroupName, setNewGroupName] = useState("");
-  const [newOptionName, setNewOptionName] = useState("");
-  const [newOptionPrice, setNewOptionPrice] = useState<number>(5000);
-  const { requestClose } = useUnsavedEditor("scenario_dish_modal", isOpen, JSON.stringify({ selectedMajor, name, category, price, costPrice, station, image, description, variants, customizationGroups, newVarName, newVarPrice, newGroupName, newOptionName, newOptionPrice }), onClose);
-
-  // Filter categories by selected major category
-  const filteredCategories = categories.filter((c) => c.majorType === selectedMajor);
-
-  useEffect(() => {
-    if (initialDish) {
-      const derivedMajor: FnbMajorCategory =
-        initialDish.majorCategory ||
-        (initialDish.station === "KITCHEN" ? "FOOD" : initialDish.station === "DESSERT" ? "DESSERT" : "DRINK");
-      setSelectedMajor(derivedMajor);
-      setName(initialDish.name || "");
-      setCategory(initialDish.category || "");
-      setPrice(initialDish.price || 0);
-      setCostPrice(initialDish.costPrice || 0);
-      setStation(initialDish.station || FNB_MAJOR_CONFIG[derivedMajor].station);
-      setImage(initialDish.image || "");
-      setDescription(initialDish.description || "");
-      setVariants(initialDish.variants ? [...initialDish.variants] : []);
-      setCustomizationGroups(initialDish.customizationGroups ? [...initialDish.customizationGroups] : []);
-    } else {
-      setSelectedMajor(initialMajorType);
-      const defaultCat = filteredCategories[0]?.name || "Món Mới";
-      setName("");
-      setCategory(defaultCat);
-      setPrice(35000);
-      setCostPrice(15000);
-      setStation(FNB_MAJOR_CONFIG[initialMajorType].station);
-      setImage("https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=400&q=80");
-      setDescription("");
-      setVariants([
-        { id: "v1", name: "Size M (Vừa)", price: 35000 },
-        { id: "v2", name: "Size L (Lớn)", price: 45000 },
-      ]);
-      setCustomizationGroups([]);
-    }
-  }, [initialDish, isOpen, initialMajorType]);
-
-  // When major category changes, update station and select first category if needed
-  const handleSelectMajor = (type: FnbMajorCategory) => {
-    setSelectedMajor(type);
-    setStation(FNB_MAJOR_CONFIG[type].station);
-    const cats = categories.filter((c) => c.majorType === type);
-    if (cats.length > 0 && !cats.some((c) => c.name === category)) {
-      setCategory(cats[0].name);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  const handleAddVariant = () => {
-    if (!newVarName.trim()) return;
-    setVariants([
-      ...variants,
-      {
-        id: `var-${Date.now()}`,
-        name: newVarName.trim(),
-        price: Number(newVarPrice) || 0,
-      },
-    ]);
-    setNewVarName("");
-    setNewVarPrice(price + 10000);
-  };
-
-  const handleRemoveVariant = (id: string) => {
-    setVariants(variants.filter((v) => v.id !== id));
-  };
-
-  const handleAddCustomGroup = () => {
-    if (!newGroupName.trim()) return;
-    setCustomizationGroups([
-      ...customizationGroups,
-      {
-        id: `grp-${Date.now()}`,
-        name: newGroupName.trim(),
-        type: "MULTIPLE",
-        options: [],
-      },
-    ]);
-    setNewGroupName("");
-  };
-
-  const handleRemoveCustomGroup = (groupId: string) => {
-    setCustomizationGroups(customizationGroups.filter((g) => g.id !== groupId));
-  };
-
-  const handleAddOptionToGroup = (groupId: string) => {
-    if (!newOptionName.trim()) return;
-    setCustomizationGroups(
-      customizationGroups.map((g) => {
-        if (g.id !== groupId) return g;
-        return {
-          ...g,
-          options: [
-            ...g.options,
-            {
-              id: `opt-${Date.now()}`,
-              name: newOptionName.trim(),
-              priceModifier: Number(newOptionPrice) || 0,
-            },
-          ],
-        };
-      })
-    );
-    setNewOptionName("");
-    setNewOptionPrice(5000);
-  };
-
-  const handleRemoveOptionFromGroup = (groupId: string, optionId: string) => {
-    setCustomizationGroups(
-      customizationGroups.map((g) => {
-        if (g.id !== groupId) return g;
-        return {
-          ...g,
-          options: g.options.filter((o) => o.id !== optionId),
-        };
-      })
-    );
-  };
-
-  const handleApplyPreset = (preset: CustomizationPreset) => {
-    if (customizationGroups.some((g) => g.name.toLowerCase() === preset.name.toLowerCase())) {
-      toast.info(`Nhóm tùy chọn "${preset.name}" đã tồn tại trong món`);
-      return;
-    }
-    const newGroup: DishCustomizationGroup = {
-      id: `grp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      name: preset.name,
-      type: preset.type,
-      required: preset.required,
-      options: preset.options.map((opt) => ({
-        id: `opt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-        name: opt.name,
-        priceModifier: opt.priceModifier || 0,
-      })),
-    };
-    setCustomizationGroups([...customizationGroups, newGroup]);
-    toast.success(`Đã thêm nhanh nhóm "${preset.name}"!`);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-
-    setIsSaving(true);
-    try {
-      await onSave(
-        {
-          name: name.trim(),
-          category: category.trim() || filteredCategories[0]?.name || "Món Nổi Bật",
-          majorCategory: selectedMajor,
-          price: Number(price) || 0,
-          costPrice: Number(costPrice) || 0,
-          station,
-          isAvailable: true,
-          image: image.trim(),
-          description: description.trim(),
-          variants: variants.length > 0 ? variants : undefined,
-          customizationGroups: customizationGroups.length > 0 ? customizationGroups : undefined,
-        },
-        initialDish?.id
-      );
-      onClose();
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
+new_jsx = """  return (
     <Portal>
       <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4">
         {/* Backdrop */}
@@ -579,7 +223,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
                 <div className="bg-white p-4 sm:p-5 rounded-2xl border border-surface-border shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-surface-border pb-2">
                     <h4 className="font-extrabold text-xs text-ink-primary uppercase tracking-wider flex items-center gap-1.5">
-                      <Icon name="list" size={14} className="text-brand-800" /> Biến Thể Size Đề Xuất
+                      <Icon name="layers" size={14} className="text-brand-800" /> Biến Thể Size Đề Xuất
                     </h4>
                     <span className="text-[10px] bg-brand-50 text-brand-900 px-2 py-0.5 rounded-full font-bold">{variants.length} size</span>
                   </div>
@@ -646,7 +290,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
                         <button
                           key={idx}
                           type="button"
-                          onClick={() => handleApplyPreset(preset)}
+                          onClick={() => handleAddPresetCustomization(preset)}
                           className="px-2 py-1 rounded-lg border border-brand-200 bg-brand-50 hover:bg-brand-100 text-brand-800 text-[10px] font-bold transition flex items-center gap-1"
                         >
                           <Icon name="plus" size={10} />
@@ -663,7 +307,7 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
                         <div key={group.id} className="p-2.5 rounded-xl border border-surface-border bg-surface-canvas relative group/item">
                           <button
                             type="button"
-                            onClick={() => handleRemoveCustomGroup(group.id)}
+                            onClick={() => handleRemoveCustomization(group.id)}
                             className="absolute top-2 right-2 p-1 text-ink-subtle hover:text-rose-600 rounded-md hover:bg-rose-50 transition opacity-0 group-hover/item:opacity-100"
                           >
                             <Icon name="trash" size={12} />
@@ -713,3 +357,8 @@ export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
     </Portal>
   );
 };
+"""
+
+with open("apps/cms/src/features/cms/components/superAdmin/modals/ScenarioDishModal.tsx", "w") as f:
+    f.write(content[:jsx_start] + new_jsx)
+
