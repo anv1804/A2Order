@@ -680,58 +680,125 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
             </div>
           </div>
 
-          {/* Batch Action Floating Bar - Đặt ở đáy bảng như trang Kịch Bản để tránh xô lệch khung */}
+          {/* Batch Action Bar */}
           {selectedUserIds.length > 0 && (
-            <div className="shrink-0 mt-2 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-950 text-white flex flex-wrap items-center justify-between gap-2 shadow-lg animate-fadeIn">
-              <div className="flex items-center gap-2 text-xs font-bold pl-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>
-                  Đã chọn <strong className="text-emerald-300 font-black">{selectedUserIds.length}</strong> tài khoản
-                </span>
-                {selectedUserIds.length < filteredUsers.length && (
+            <>
+              {/* 1. Desktop: Nằm gọn gàng bên trong Panel */}
+              <div className="hidden lg:flex shrink-0 mt-2 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-950 text-white flex-wrap items-center justify-between gap-2 shadow-lg animate-fadeIn">
+                <div className="flex items-center gap-2 text-xs font-bold pl-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>
+                    Đã chọn <strong className="text-emerald-300 font-black">{selectedUserIds.length}</strong> tài khoản
+                  </span>
+                  {selectedUserIds.length < filteredUsers.length && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserIds(filteredUsers.map((u) => u.id))}
+                      className="text-xs font-semibold text-emerald-300 hover:text-white underline underline-offset-2 ml-2 cursor-pointer transition"
+                    >
+                      Chọn tất cả {filteredUsers.length} tài khoản
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setSelectedUserIds(filteredUsers.map((u) => u.id))}
-                    className="text-xs font-semibold text-emerald-300 hover:text-white underline underline-offset-2 ml-2 cursor-pointer transition"
+                    onClick={() => {
+                      const selectedUsers = users.filter((u) => selectedUserIds.includes(u.id));
+                      downloadCsv(
+                        `a2order-da-chon-${selectedUserIds.length}-user.csv`,
+                        ["Họ tên", "Email", "Cửa hàng", "Vai trò", "Mã PIN", "Trạng thái", "Ngày tạo"],
+                        selectedUsers.map((u) => [
+                          u.name,
+                          u.email || "",
+                          u.storeName,
+                          u.role,
+                          u.pinCode || "",
+                          u.isActive ? "Hoạt động" : "Đang khóa",
+                          u.createdAt,
+                        ])
+                      );
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
                   >
-                    Chọn tất cả {filteredUsers.length} tài khoản
+                    <Icon name="download" size={12} />
+                    <span>Xuất CSV ({selectedUserIds.length})</span>
                   </button>
-                )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedUserIds([])}
+                    className="px-2.5 py-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Bỏ chọn
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selectedUsers = users.filter((u) => selectedUserIds.includes(u.id));
-                    downloadCsv(
-                      `a2order-da-chon-${selectedUserIds.length}-user.csv`,
-                      ["Họ tên", "Email", "Cửa hàng", "Vai trò", "Mã PIN", "Trạng thái", "Ngày tạo"],
-                      selectedUsers.map((u) => [
-                        u.name,
-                        u.email || "",
-                        u.storeName,
-                        u.role,
-                        u.pinCode || "",
-                        u.isActive ? "Hoạt động" : "Đang khóa",
-                        u.createdAt,
-                      ])
-                    );
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                >
-                  <Icon name="download" size={12} />
-                  <span>Xuất CSV ({selectedUserIds.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedUserIds([])}
-                  className="px-2.5 py-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 text-xs font-bold transition-colors cursor-pointer"
-                >
-                  Bỏ chọn
-                </button>
+              {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar */}
+              <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
+                <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/30 bg-[#0e2720]/98 backdrop-blur-2xl p-1.5 px-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
+                  <div className="flex items-center gap-2 pl-1 min-w-0">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
+                      {selectedUserIds.length}
+                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[11px] font-bold text-white leading-tight truncate">
+                        Đã chọn {selectedUserIds.length} user
+                      </span>
+                      {selectedUserIds.length < filteredUsers.length ? (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedUserIds(filteredUsers.map((u) => u.id))}
+                          className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 text-left leading-tight cursor-pointer active:underline"
+                        >
+                          Chọn hết ({filteredUsers.length})
+                        </button>
+                      ) : (
+                        <span className="text-[9.5px] font-medium text-emerald-400/80 leading-tight">
+                          Toàn bộ user
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const selectedUsers = users.filter((u) => selectedUserIds.includes(u.id));
+                        downloadCsv(
+                          `a2order-da-chon-${selectedUserIds.length}-user.csv`,
+                          ["Họ tên", "Email", "Cửa hàng", "Vai trò", "Mã PIN", "Trạng thái", "Ngày tạo"],
+                          selectedUsers.map((u) => [
+                            u.name,
+                            u.email || "",
+                            u.storeName,
+                            u.role,
+                            u.pinCode || "",
+                            u.isActive ? "Hoạt động" : "Đang khóa",
+                            u.createdAt,
+                          ])
+                        );
+                      }}
+                      className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                      title="Xuất file CSV các user đã chọn"
+                    >
+                      <Icon name="download" size={12} />
+                      <span>Xuất</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserIds([])}
+                      className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
+                      title="Bỏ chọn tất cả"
+                    >
+                      Bỏ chọn
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* Phân Trang Chuẩn Đồng Bộ - Ẩn trên Mobile (< lg) */}

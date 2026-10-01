@@ -764,29 +764,94 @@ export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = (
 
         {/* Thanh tác vụ chọn hàng loạt (Batch Actions Bar) */}
         {selectedDishIds.length > 0 && (
-          <div className="shrink-0 mt-2 p-2 sm:p-2.5 bg-emerald-950 text-white rounded-xl sm:rounded-2xl flex items-center justify-between gap-2 shadow-lg animate-fadeIn">
-            <div className="flex items-center gap-2 text-xs font-bold pl-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Đã chọn {selectedDishIds.length} món</span>
+          <>
+            {/* 1. Desktop: Hiển thị thanh lịch bên trong Panel */}
+            <div className="hidden lg:flex shrink-0 mt-2.5 px-4 py-2 bg-[#0e2720] text-white rounded-2xl items-center justify-between gap-3 shadow-md border border-emerald-900/50 animate-fadeIn">
+              <div className="flex items-center gap-2.5 text-xs font-bold">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720]">
+                  {selectedDishIds.length}
+                </span>
+                <span className="text-white">Đã chọn {selectedDishIds.length} món mẫu</span>
+                {selectedDishIds.length < filteredDishes.length && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDishIds(filteredDishes.map((d) => d.id))}
+                    className="ml-2 text-xs font-semibold text-emerald-300 hover:text-emerald-200 underline cursor-pointer transition"
+                  >
+                    Chọn tất cả ({filteredDishes.length} món)
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBatchDeleteDishes}
+                  className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
+                >
+                  <Icon name="trash" size={13} />
+                  <span>Xóa {selectedDishIds.length} món đã chọn</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDishIds([])}
+                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-emerald-100 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Bỏ chọn
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleBatchDeleteDishes}
-                className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <Icon name="trash" size={12} />
-                <span>Xóa các món đã chọn</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDishIds([])}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Bỏ chọn
-              </button>
+
+            {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar */}
+            <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
+              <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/30 bg-[#0e2720]/98 backdrop-blur-2xl p-1.5 px-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
+                {/* Thông tin số lượng đã chọn */}
+                <div className="flex items-center gap-2 pl-1 min-w-0">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
+                    {selectedDishIds.length}
+                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[11px] font-bold text-white leading-tight truncate">
+                      Đã chọn {selectedDishIds.length} món
+                    </span>
+                    {selectedDishIds.length < filteredDishes.length ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDishIds(filteredDishes.map((d) => d.id))}
+                        className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 text-left leading-tight cursor-pointer active:underline"
+                      >
+                        Chọn hết ({filteredDishes.length})
+                      </button>
+                    ) : (
+                      <span className="text-[9.5px] font-medium text-emerald-400/80 leading-tight">
+                        Toàn bộ món
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Các nút hành động: Xóa & Bỏ chọn */}
+                <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleBatchDeleteDishes}
+                    className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                    title={`Xóa ${selectedDishIds.length} món đã chọn`}
+                  >
+                    <Icon name="trash" size={12} />
+                    <span>Xóa</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDishIds([])}
+                    className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
+                    title="Bỏ chọn tất cả"
+                  >
+                    Bỏ chọn
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Phân Trang Chuẩn Đồng Bộ (Chỉ hiển thị trên Desktop >= lg, Mobile dùng Infinite Scroll) */}

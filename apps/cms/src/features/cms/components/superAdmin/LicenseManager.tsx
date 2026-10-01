@@ -407,49 +407,102 @@ export const LicenseManager: React.FC<LicenseManagerProps> = ({
           </div>
         </div>
 
-        {/* Banner tác vụ hàng loạt khi có key được chọn - Đặt ở đáy bảng như trang Kịch Bản để tránh xô lệch khung */}
+        {/* Banner tác vụ hàng loạt khi có key được chọn */}
         {selectedLicenseIds.length > 0 && (
-          <div className="shrink-0 mt-2 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-950 text-white flex flex-wrap items-center justify-between gap-2 shadow-lg animate-fadeIn">
-            <div className="flex items-center gap-2 text-xs font-bold pl-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>
-                Đã chọn <strong className="text-emerald-300 font-black">{selectedLicenseIds.length}</strong> key
-              </span>
+          <>
+            {/* 1. Desktop: Nằm gọn gàng bên trong Panel */}
+            <div className="hidden lg:flex shrink-0 mt-2 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-emerald-950 text-white flex-wrap items-center justify-between gap-2 shadow-lg animate-fadeIn">
+              <div className="flex items-center gap-2 text-xs font-bold pl-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>
+                  Đã chọn <strong className="text-emerald-300 font-black">{selectedLicenseIds.length}</strong> key
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selectedList = licenses.filter((l) => selectedLicenseIds.includes(l.id));
+                    downloadCsv(
+                      "a2order-license-da-chon.csv",
+                      ["Mã license", "Cửa hàng", "Gói", "Thiết bị", "Thời hạn", "Ngày cấp", "Ngày hết hạn", "Trạng thái"],
+                      selectedList.map((lic) => [
+                        lic.keyCode,
+                        lic.storeName || "",
+                        lic.plan,
+                        lic.maxDevices,
+                        lic.durationMonths,
+                        lic.issuedAt,
+                        lic.expiresAt,
+                        lic.status,
+                      ])
+                    );
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                >
+                  <Icon name="download" size={12} />
+                  <span>Xuất file ({selectedLicenseIds.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLicenseIds([])}
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Bỏ chọn
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  const selectedList = licenses.filter((l) => selectedLicenseIds.includes(l.id));
-                  downloadCsv(
-                    "a2order-license-da-chon.csv",
-                    ["Mã license", "Cửa hàng", "Gói", "Thiết bị", "Thời hạn", "Ngày cấp", "Ngày hết hạn", "Trạng thái"],
-                    selectedList.map((lic) => [
-                      lic.keyCode,
-                      lic.storeName || "",
-                      lic.plan,
-                      lic.maxDevices,
-                      lic.durationMonths,
-                      lic.issuedAt,
-                      lic.expiresAt,
-                      lic.status,
-                    ])
-                  );
-                }}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-              >
-                <Icon name="download" size={12} />
-                <span>Xuất file ({selectedLicenseIds.length})</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedLicenseIds([])}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-900 text-emerald-200 text-xs font-bold transition-colors cursor-pointer"
-              >
-                Bỏ chọn
-              </button>
+
+            {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar */}
+            <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
+              <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/30 bg-[#0e2720]/98 backdrop-blur-2xl p-1.5 px-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
+                <div className="flex items-center gap-2 pl-1 min-w-0">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
+                    {selectedLicenseIds.length}
+                  </span>
+                  <span className="text-[11px] font-bold text-white leading-tight truncate">
+                    Đã chọn {selectedLicenseIds.length} key
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedList = licenses.filter((l) => selectedLicenseIds.includes(l.id));
+                      downloadCsv(
+                        "a2order-license-da-chon.csv",
+                        ["Mã license", "Cửa hàng", "Gói", "Thiết bị", "Thời hạn", "Ngày cấp", "Ngày hết hạn", "Trạng thái"],
+                        selectedList.map((lic) => [
+                          lic.keyCode,
+                          lic.storeName || "",
+                          lic.plan,
+                          lic.maxDevices,
+                          lic.durationMonths,
+                          lic.issuedAt,
+                          lic.expiresAt,
+                          lic.status,
+                        ])
+                      );
+                    }}
+                    className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                    title="Xuất file các key đã chọn"
+                  >
+                    <Icon name="download" size={12} />
+                    <span>Xuất</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLicenseIds([])}
+                    className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
+                    title="Bỏ chọn tất cả"
+                  >
+                    Bỏ chọn
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Phân trang đồng bộ - Ẩn trên Mobile (< lg) */}
