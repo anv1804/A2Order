@@ -11,7 +11,14 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ auditLogs }) => 
   const groupedLogs = useMemo(() => {
     const groups: Record<string, SystemAuditLogRecord[]> = {};
     auditLogs.forEach(log => {
-      const date = log.timestamp.split(" ")[0]; // Assuming format "DD/MM/YYYY HH:mm" or similar
+      let date = "Hôm nay";
+      const ts = log.timestamp || "";
+      if (ts.includes("Hôm qua")) date = "Hôm qua";
+      else if (ts.includes("/")) date = ts.split(" ")[0];
+      else if (ts.includes("-")) {
+        const d = new Date(ts);
+        if (!isNaN(d.getTime())) date = d.toLocaleDateString("vi-VN");
+      }
       if (!groups[date]) groups[date] = [];
       groups[date].push(log);
     });
@@ -19,15 +26,18 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ auditLogs }) => 
   }, [auditLogs]);
 
   const getLogStyle = (action: string, status: string) => {
-    if (status === "FAILED" || status === "CRITICAL") return { bg: "bg-rose-100", border: "border-rose-200", iconCol: "text-rose-600", icon: "alert" };
-    if (status === "WARNING") return { bg: "bg-amber-100", border: "border-amber-200", iconCol: "text-amber-600", icon: "alert" };
+    if (status === "FAILED" || status === "CRITICAL") return { bg: "bg-rose-50", border: "border-rose-200", iconCol: "text-rose-600", icon: "alert" };
+    if (status === "WARNING") return { bg: "bg-amber-50", border: "border-amber-200", iconCol: "text-amber-600", icon: "alert" };
     
-    if (action.includes("CREATE") || action.includes("APPROVE")) return { bg: "bg-blue-100", border: "border-blue-200", iconCol: "text-blue-600", icon: "plus" };
-    if (action.includes("UPDATE") || action.includes("MODIFY")) return { bg: "bg-indigo-100", border: "border-indigo-200", iconCol: "text-indigo-600", icon: "edit" };
-    if (action.includes("DELETE") || action.includes("REVOKE")) return { bg: "bg-rose-100", border: "border-rose-200", iconCol: "text-rose-600", icon: "trash" };
-    if (action.includes("LOGIN") || action.includes("AUTH")) return { bg: "bg-violet-100", border: "border-violet-200", iconCol: "text-violet-600", icon: "lock" };
+    const act = (action || "").toUpperCase();
+    if (act.includes("LICENSE") || act.includes("KEY")) return { bg: "bg-indigo-50", border: "border-indigo-200", iconCol: "text-indigo-600", icon: "key" };
+    if (act.includes("INVOICE") || act.includes("PAY") || act.includes("VIETQR")) return { bg: "bg-emerald-50", border: "border-emerald-200", iconCol: "text-emerald-600", icon: "banknote" };
+    if (act.includes("CREATE") || act.includes("APPROVE") || act.includes("ONBOARD")) return { bg: "bg-blue-50", border: "border-blue-200", iconCol: "text-blue-600", icon: "plus" };
+    if (act.includes("UPDATE") || act.includes("MODIFY") || act.includes("CONFIG")) return { bg: "bg-amber-50", border: "border-amber-200", iconCol: "text-amber-600", icon: "edit" };
+    if (act.includes("DELETE") || act.includes("REVOKE") || act.includes("EXPIRED")) return { bg: "bg-rose-50", border: "border-rose-200", iconCol: "text-rose-600", icon: "trash" };
+    if (act.includes("LOGIN") || act.includes("AUTH")) return { bg: "bg-purple-50", border: "border-purple-200", iconCol: "text-purple-600", icon: "shield" };
     
-    return { bg: "bg-emerald-100", border: "border-emerald-200", iconCol: "text-emerald-600", icon: "activity" };
+    return { bg: "bg-teal-50", border: "border-teal-200", iconCol: "text-teal-600", icon: "activity" };
   };
 
   return (
@@ -86,7 +96,9 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({ auditLogs }) => 
               <div className="space-y-6">
                 {logs.map((log) => {
                   const style = getLogStyle(log.action, log.status);
-                  const time = log.timestamp.split(" ")[1] || log.timestamp;
+                  const time = (log.timestamp.includes("Hôm nay") || log.timestamp.includes("Hôm qua"))
+                    ? log.timestamp.split(" ")[0]
+                    : (log.timestamp.includes(" ") ? log.timestamp.split(" ")[1] : log.timestamp);
                   
                   return (
                     <div key={log.id} className="relative flex gap-4 sm:gap-6 group">

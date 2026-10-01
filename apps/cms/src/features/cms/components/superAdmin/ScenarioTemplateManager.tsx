@@ -11,8 +11,19 @@ import { toast, confirmDialog } from "@/stores/notificationStore";
 import { ScenarioDishModal } from "./modals/ScenarioDishModal";
 import { AddCategoryModal } from "./modals/AddCategoryModal";
 import { ScenarioSidebar } from "./scenario/ScenarioSidebar";
-import { ScenarioDishList } from "./scenario/ScenarioDishList";
-
+import {
+  ScenarioDishList,
+  QuickFilterType,
+  SortByType,
+} from "./scenario/ScenarioDishList";
+import {
+  Utensils,
+  Coffee,
+  Cake,
+  Flame,
+  Layers,
+  TrendingUp,
+} from "lucide-react";
 
 const STORAGE_KEY_DISHES = "a2order_template_dishes_v2";
 const STORAGE_KEY_CATEGORIES = "a2order_template_categories_v2";
@@ -42,9 +53,11 @@ export const ScenarioTemplateManager: React.FC = () => {
     return INITIAL_TEMPLATE_DISHES;
   });
 
-  // 3. Bộ lọc, tìm kiếm & phân trang
+  // 3. Bộ lọc, tìm kiếm, sắp xếp & phân trang
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const [quickFilter, setQuickFilter] = useState<QuickFilterType>("ALL");
+  const [sortBy, setSortBy] = useState<SortByType>("DEFAULT");
   const [viewMode, setViewMode] = useState<"GRID" | "LIST">("LIST");
   const [currentPage, setCurrentPage] = useState<number>(1);
 
@@ -75,15 +88,16 @@ export const ScenarioTemplateManager: React.FC = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  // Reset trang khi thay đổi bộ lọc hoặc tìm kiếm
+  // Reset trang khi thay đổi bộ lọc, danh mục, từ khóa hoặc sắp xếp
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeMajor, selectedCategory, searchQuery]);
+  }, [activeMajor, selectedCategory, searchQuery, quickFilter, sortBy]);
 
-  // Reset category filter khi chuyển Trụ Cột
+  // Reset category filter & quick filter khi chuyển Trụ Cột
   const handleSwitchMajor = (major: FnbMajorCategory) => {
     setActiveMajor(major);
     setSelectedCategory("ALL");
+    setQuickFilter("ALL");
   };
 
   // Danh mục thuộc Trụ Cột đang chọn
@@ -103,9 +117,36 @@ export const ScenarioTemplateManager: React.FC = () => {
     return map;
   }, [dishes]);
 
-  // Lọc món theo Trụ Cột, Danh mục con và Từ khóa tìm kiếm
-  const filteredDishes = useMemo(() => {
+  // Toàn bộ danh sách món thuộc trụ cột đang chọn
+  const allPillarDishes = useMemo(() => {
     return dishes.filter((dish) => {
+      const dishMajor: FnbMajorCategory =
+        dish.majorCategory ||
+        (dish.station === "KITCHEN" ? "FOOD" : dish.station === "DESSERT" ? "DESSERT" : "DRINK");
+      return dishMajor === activeMajor;
+    });
+  }, [dishes, activeMajor]);
+
+  // Chỉ số KPI tóm tắt cho Trụ cột hiện tại
+  const metrics = useMemo(() => {
+    const total = allPillarDishes.length;
+    const hot = allPillarDishes.filter((d) => d.isBestSeller).length;
+    const withVariants = allPillarDishes.filter((d) => d.variants && d.variants.length > 1).length;
+    let totalMargin = 0;
+    let marginCount = 0;
+    allPillarDishes.forEach((d) => {
+      if (d.costPrice && d.costPrice > 0 && d.price > d.costPrice) {
+        totalMargin += ((d.price - d.costPrice) / d.price) * 100;
+        marginCount++;
+      }
+    });
+    const avgMargin = marginCount > 0 ? Math.round(totalMargin / marginCount) : 0;
+    return { total, hot, withVariants, avgMargin };
+  }, [allPillarDishes]);
+
+  // Lọc món theo Trụ Cột, Danh mục con, Quick filter, Từ khóa & Sắp xếp
+  const filteredDishes = useMemo(() => {
+    let result = dishes.filter((dish) => {
       const dishMajor: FnbMajorCategory =
         dish.majorCategory ||
         (dish.station === "KITCHEN" ? "FOOD" : dish.station === "DESSERT" ? "DESSERT" : "DRINK");
@@ -113,25 +154,49 @@ export const ScenarioTemplateManager: React.FC = () => {
       if (dishMajor !== activeMajor) return false;
       if (selectedCategory !== "ALL" && dish.category !== selectedCategory) return false;
 
+      // Quick filter
+      if (quickFilter === "BEST_SELLER" && !dish.isBestSeller) return false;
+      if (quickFilter === "HAS_VARIANTS" && (!dish.variants || dish.variants.length <= 1)) return false;
+      if (
+        quickFilter === "HAS_CUSTOMIZATIONS" &&
+        (!dish.customizationGroups || dish.customizationGroups.length === 0)
+      ) {
+        return false;
+      }
+
+      // Tìm kiếm từ khóa
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchName = dish.name.toLocaleLowerCase("vi").includes(q);
         const matchCat = dish.category?.toLocaleLowerCase("vi").includes(q);
         const matchDesc = dish.description?.toLocaleLowerCase("vi").includes(q);
-        const priceText = `${dish.price} ${dish.price.toLocaleString("vi-VN")} ${dish.costPrice || ""} ${dish.costPrice?.toLocaleString("vi-VN") || ""}`;
+        const priceText = `${dish.price} ${dish.price.toLocaleString("vi-VN")} ${
+          dish.costPrice || ""
+        } ${dish.costPrice?.toLocaleString("vi-VN") || ""}`;
         const matchPrice = priceText.includes(q) || priceText.includes(q.replace(/\./g, ""));
         if (!matchName && !matchCat && !matchDesc && !matchPrice) return false;
       }
 
       return true;
     });
-  }, [dishes, activeMajor, selectedCategory, searchQuery]);
 
-  // Danh sách món sau phân trang
-  const paginatedDishes = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredDishes.slice(start, start + PAGE_SIZE);
-  }, [filteredDishes, currentPage]);
+    // Sắp xếp
+    if (sortBy === "PRICE_ASC") {
+      result = [...result].sort((a, b) => a.price - b.price);
+    } else if (sortBy === "PRICE_DESC") {
+      result = [...result].sort((a, b) => b.price - a.price);
+    } else if (sortBy === "MARGIN_DESC") {
+      result = [...result].sort((a, b) => {
+        const marginA = a.costPrice ? (a.price - a.costPrice) / a.price : 0;
+        const marginB = b.costPrice ? (b.price - b.costPrice) / b.price : 0;
+        return marginB - marginA;
+      });
+    } else if (sortBy === "NAME_ASC") {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+    }
+
+    return result;
+  }, [dishes, activeMajor, selectedCategory, searchQuery, quickFilter, sortBy]);
 
   // Tính số lượng món cho từng danh mục
   const categoryDishCount = useMemo(() => {
@@ -163,7 +228,9 @@ export const ScenarioTemplateManager: React.FC = () => {
     if (newCategory.majorType === activeMajor) {
       setSelectedCategory(newCategory.name);
     }
-    toast.success(`Đã thêm danh mục "${newCategory.name}" vào ${FNB_MAJOR_CONFIG[newCategory.majorType].label}!`);
+    toast.success(
+      `Đã thêm danh mục "${newCategory.name}" vào ${FNB_MAJOR_CONFIG[newCategory.majorType].label}!`
+    );
   };
 
   const handleDeleteCategory = async (cat: FnbCategoryTemplate) => {
@@ -184,19 +251,26 @@ export const ScenarioTemplateManager: React.FC = () => {
     if (count > 0) {
       const hasGeneralCategory = activeCategories.some((category) => category.name === "Món Chung");
       if (!hasGeneralCategory) {
-        setCategories((prev) => [...prev, {
-          id: `cat_general_${activeMajor.toLowerCase()}`,
-          name: "Món Chung",
-          majorType: activeMajor,
-          order: activeCategories.length + 1,
-        }]);
+        setCategories((prev) => [
+          ...prev,
+          {
+            id: `cat_general_${activeMajor.toLowerCase()}`,
+            name: "Món Chung",
+            majorType: activeMajor,
+            order: activeCategories.length + 1,
+          },
+        ]);
       }
-      setDishes((prev) => prev.map((dish) => {
-        const dishMajor = dish.majorCategory || (dish.station === "KITCHEN" ? "FOOD" : dish.station === "DESSERT" ? "DESSERT" : "DRINK");
-        return dish.category === cat.name && dishMajor === activeMajor
-          ? { ...dish, category: "Món Chung" }
-          : dish;
-      }));
+      setDishes((prev) =>
+        prev.map((dish) => {
+          const dishMajor =
+            dish.majorCategory ||
+            (dish.station === "KITCHEN" ? "FOOD" : dish.station === "DESSERT" ? "DESSERT" : "DRINK");
+          return dish.category === cat.name && dishMajor === activeMajor
+            ? { ...dish, category: "Món Chung" }
+            : dish;
+        })
+      );
     }
     if (selectedCategory === cat.name) {
       setSelectedCategory("ALL");
@@ -250,26 +324,88 @@ export const ScenarioTemplateManager: React.FC = () => {
   }
 
   return (
-    <div className="space-y-5 animate-fadeIn pb-10">
-      {/* HEADER TỐI GIẢN */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Quản Trị Kịch Bản & Thực Đơn Mẫu F&B
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-brand-50 text-brand-800 border border-brand-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
-              {dishes.length} món mẫu
-            </span>
+    <div className="space-y-4 sm:space-y-5 animate-fadeIn pb-28 sm:pb-12">
+      {/* 1. HEADER CHÍNH & KPI STRIP */}
+      <div className="space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
+                Quản Trị Kịch Bản & Thực Đơn Mẫu F&B
+              </h2>
+              <span className="px-3 py-0.5 rounded-full bg-brand-50 text-brand-900 border border-brand-200/80 font-black text-xs whitespace-nowrap shrink-0 shadow-2xs">
+                {dishes.length} món mẫu
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+              Quản lý kho thực đơn mẫu, các biến thể size và nhóm tùy chọn đề xuất cho từng mô hình F&B.
+            </p>
           </div>
-          <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-            Quản lý kho thực đơn mẫu, các biến thể size và nhóm tùy chọn đề xuất cho từng mô hình F&B.
-          </p>
+        </div>
+
+        {/* Thanh KPI chỉ số thực đơn: Tối ưu chống tràn dòng trên mobile (360px) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+          <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border border-surface-border shadow-2xs flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800 shrink-0">
+              {activeMajor === "FOOD" ? (
+                <Utensils size={17} />
+              ) : activeMajor === "DRINK" ? (
+                <Coffee size={17} />
+              ) : (
+                <Cake size={17} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted font-bold truncate">
+                {activeMajor === "FOOD" ? "Món Ăn" : activeMajor === "DRINK" ? "Đồ Uống" : "Tráng Miệng"}
+              </div>
+              <div className="text-sm sm:text-lg font-black text-ink-primary leading-tight">
+                {metrics.total} món
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border border-surface-border shadow-2xs flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+              <Flame size={17} className="fill-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted font-bold truncate">Bán chạy</div>
+              <div className="text-sm sm:text-lg font-black text-amber-700 leading-tight">
+                {metrics.hot} món hot
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border border-surface-border shadow-2xs flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+              <Layers size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted font-bold truncate">Đa kích cỡ</div>
+              <div className="text-sm sm:text-lg font-black text-ink-primary leading-tight">
+                {metrics.withVariants} món có size
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 sm:p-3.5 rounded-2xl border border-surface-border shadow-2xs flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+              <TrendingUp size={17} />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-ink-muted font-bold truncate">Lợi nhuận TB</div>
+              <div className="text-sm sm:text-lg font-black text-emerald-800 leading-tight">
+                {metrics.avgMargin > 0 ? `${metrics.avgMargin}% margin` : "N/A"}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* 2. KHU VỰC CHÍNH: SIDEBAR & DISH LIST */}
       <div className="flex flex-col lg:flex-row gap-5 items-start">
-        <ScenarioSidebar 
+        <ScenarioSidebar
           activeMajor={activeMajor}
           handleSwitchMajor={handleSwitchMajor}
           countsByMajor={countsByMajor}
@@ -278,10 +414,11 @@ export const ScenarioTemplateManager: React.FC = () => {
           setSelectedCategory={setSelectedCategory}
           handleOpenAddCategory={handleOpenAddCategory}
           handleDeleteCategory={handleDeleteCategory}
+          categoryDishCount={categoryDishCount}
         />
 
         <div className="flex-1 w-full min-w-0 space-y-4 flex flex-col min-h-[600px]">
-          <ScenarioDishList 
+          <ScenarioDishList
             activeMajor={activeMajor}
             selectedCategory={selectedCategory}
             searchQuery={searchQuery}
@@ -289,10 +426,15 @@ export const ScenarioTemplateManager: React.FC = () => {
             viewMode={viewMode}
             setViewMode={setViewMode}
             filteredDishes={filteredDishes}
+            allPillarDishes={allPillarDishes}
+            quickFilter={quickFilter}
+            setQuickFilter={setQuickFilter}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
             currentPage={currentPage}
             handleEditDish={handleOpenEditDish}
             handleDeleteDish={handleDeleteDish}
-            handleOpenAddDish={() => { setEditingDish(null); setIsDishModalOpen(true); }}
+            handleOpenAddDish={handleOpenAddDish}
           />
 
           {filteredDishes.length > PAGE_SIZE && (
@@ -308,6 +450,7 @@ export const ScenarioTemplateManager: React.FC = () => {
         </div>
       </div>
 
+      {/* 3. MODALS */}
       {isDishModalOpen && (
         <ScenarioDishModal
           isOpen={isDishModalOpen}

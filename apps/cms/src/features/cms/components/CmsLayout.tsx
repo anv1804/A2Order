@@ -74,24 +74,31 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
   const displayName = currentUser?.name || (currentRole === "SUPER_ADMIN" ? "Quản Trị Viên A2Order" : "Chủ cửa hàng");
   const displayEmail = currentUser?.email || "";
   const displayStore = currentRole === "SUPER_ADMIN" ? "Nền tảng A2Order" : (currentUser?.storeName || "Cửa hàng");
-  const mobilePrimaryItems: Array<{ id: string; label: string; icon: IconName }> = currentRole === "SUPER_ADMIN"
+  const mobileNavItems: Array<{ id: string; label: string; icon: IconName; isHome?: boolean }> = currentRole === "SUPER_ADMIN"
     ? [
-        { id: "telemetry", label: "Tổng quan", icon: "home" },
-        { id: "tenants", label: "Quán", icon: "building" },
+        { id: "tenants", label: "Quán & Chuỗi", icon: "building" },
         { id: "scenarios", label: "Kịch bản", icon: "clipboard" },
+        { id: "telemetry", label: "Trang chủ", icon: "home", isHome: true },
         { id: "software_invoices", label: "Hóa đơn", icon: "fileText" },
       ]
     : [
-        { id: "dashboard", label: "Tổng quan", icon: "home" },
-        { id: "staff_order", label: "Gọi món", icon: "cart" },
         { id: "tables", label: "Bàn ăn", icon: "table" },
+        { id: "staff_order", label: "Gọi món", icon: "cart" },
+        { id: "dashboard", label: "Trang chủ", icon: "home", isHome: true },
         { id: "menu", label: "Thực đơn", icon: "grid" },
       ];
-  const isMoreActive = !mobilePrimaryItems.some((item) => item.id === activeMenu);
 
   return (
     <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-[#f6f8f7] font-sans text-ink-primary">
-      <CommandPalette isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} searchQuery={searchQuery} setSearchQuery={setSearchQuery} matchingNavigation={matchingNavigation} onSelect={onSelectMenu} />
+      <CommandPalette
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        matchingNavigation={matchingNavigation}
+        onSelect={onSelectMenu}
+        currentRole={currentRole}
+      />
       {/* 1. Desktop Fixed Left Sidebar */}
       <div className="hidden lg:block h-full shrink-0 z-30">
         <CmsSidebar
@@ -140,8 +147,8 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
 
       {/* 4. Main Work Area (Chứa Header cố định + Content cuộn độc lập) */}
       <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden relative">
-        {/* Fixed Header */}
-        <header className="sticky top-0 z-10 shrink-0 bg-white/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-2 sm:py-2.5 border-b border-slate-200/80">
+        {/* Fixed Header: Căn lề px-3 khớp tuyệt đối với lề của Content px-3 */}
+        <header className="sticky top-0 z-10 shrink-0 bg-white/95 backdrop-blur-xl px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2.5 border-b border-slate-200/80">
           <div className="w-full">
             <CmsTopNav
               userName={displayName}
@@ -185,16 +192,41 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
           </div>
         </header>
 
-        {/* Scrollable Main Content Container with responsive padding */}
+        {/* Scrollable Main Content Container with responsive padding px-3 */}
         <main className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-8 w-full max-w-full scroll-smooth">
           <div className="mx-auto w-full min-w-0 max-w-[1680px]">{children}</div>
         </main>
 
-        {/* Mobile navigation dock */}
+        {/* Mobile navigation dock: Tinh gọn Icon-Only, Trang chủ ở giữa, Hồ sơ bên phải */}
         <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] lg:hidden">
-          <nav aria-label="Điều hướng chính" className="pointer-events-auto mx-auto flex max-w-md items-center gap-1 rounded-[24px] border border-white/10 bg-[#102d25] p-1.5 shadow-[0_16px_40px_rgba(12,36,29,.32)]">
-            {mobilePrimaryItems.map((item) => {
+          <nav
+            aria-label="Điều hướng chính"
+            className="pointer-events-auto mx-auto flex max-w-[330px] items-center justify-between rounded-full border border-white/15 bg-[#0e2720]/95 backdrop-blur-xl p-1.5 shadow-[0_16px_36px_rgba(10,30,24,0.45)] ring-1 ring-black/10"
+          >
+            {mobileNavItems.map((item) => {
               const isActive = activeMenu === item.id;
+              if (item.isHome) {
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectMenu(item.id)}
+                    aria-current={isActive ? "page" : undefined}
+                    aria-label={item.label}
+                    title={item.label}
+                    className={`relative flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                      isActive
+                        ? "bg-white text-[#0e2720] shadow-md ring-2 ring-emerald-400/40"
+                        : "bg-white/10 text-emerald-100/90 hover:bg-white/20 hover:text-white"
+                    }`}
+                  >
+                    <Icon name={item.icon} size={21} />
+                    {isActive && (
+                      <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-emerald-700" />
+                    )}
+                  </button>
+                );
+              }
               return (
                 <button
                   key={item.id}
@@ -202,23 +234,52 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
                   onClick={() => onSelectMenu(item.id)}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={item.label}
-                  className={`flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-0.5 transition-all duration-200 active:scale-95 ${isActive ? "bg-white text-[#12372a] shadow-sm" : "text-emerald-50/70 hover:bg-white/10 hover:text-white"}`}
+                  title={item.label}
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                    isActive
+                      ? "bg-white text-[#0e2720] shadow-sm"
+                      : "text-emerald-100/70 hover:bg-white/10 hover:text-white"
+                  }`}
                 >
                   <Icon name={item.icon} size={19} />
-                  <span className="w-full truncate text-center text-[9px] font-bold leading-tight">{item.label}</span>
+                  {isActive && (
+                    <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-emerald-700" />
+                  )}
                 </button>
               );
             })}
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(true)}
-              aria-label="Mở tất cả chức năng"
-              aria-expanded={isMobileMenuOpen}
-              className={`flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[18px] px-0.5 transition-all duration-200 active:scale-95 ${isMoreActive || isMobileMenuOpen ? "bg-white text-[#12372a] shadow-sm" : "text-emerald-50/70 hover:bg-white/10 hover:text-white"}`}
-            >
-              <Icon name="moreHorizontal" size={19} />
-              <span className="w-full truncate text-center text-[9px] font-bold leading-tight">Tất cả</span>
-            </button>
+            {/* 5. Nút Hồ sơ / Tài khoản cá nhân (Avatar) */}
+            {(() => {
+              const isProfileActive = activeMenu === "profile";
+              const avatarLetter = (displayName || "A").charAt(0).toUpperCase();
+              return (
+                <button
+                  type="button"
+                  onClick={() => onSelectMenu("profile")}
+                  aria-current={isProfileActive ? "page" : undefined}
+                  aria-label="Hồ sơ tài khoản"
+                  title="Hồ sơ cá nhân"
+                  className={`relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 active:scale-90 ${
+                    isProfileActive
+                      ? "bg-white text-[#0e2720] shadow-sm"
+                      : "hover:bg-white/10"
+                  }`}
+                >
+                  <span
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black transition-all ${
+                      isProfileActive
+                        ? "bg-[#0e2720] text-white"
+                        : "bg-emerald-800 text-emerald-100 ring-1 ring-white/20"
+                    }`}
+                  >
+                    {avatarLetter}
+                  </span>
+                  {isProfileActive && (
+                    <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-emerald-700" />
+                  )}
+                </button>
+              );
+            })()}
           </nav>
         </div>
       </div>

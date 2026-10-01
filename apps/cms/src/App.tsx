@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { CmsLayout } from "@/features/cms/components/CmsLayout";
-import { AdminLoginPage } from "@/features/auth";
+import { AdminLoginPage, OwnerLoginPage } from "@/features/auth";
 import { GlobalFeedback } from "@/components/feedback";
 import { LoadingScreen, CmsPageSkeleton } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -83,6 +83,29 @@ export const App: React.FC = () => {
   ]);
   const confirmingNavigation = useRef(false);
 
+  // Quản lý đường dẫn URL hiện tại cho các phân hệ (/admin/login vs /login)
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return window.location.pathname || "/";
+    }
+    return "/";
+  });
+
+  const navigateTo = (path: string) => {
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", path);
+      setCurrentPath(path);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname || "/");
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
       if (!hasUnsavedChanges()) return;
@@ -163,10 +186,16 @@ export const App: React.FC = () => {
       setCurrentRole("SUPER_ADMIN");
       setActiveMenu("telemetry");
       toast.success(`Chào mừng Super Admin ${user.name}! Đã kết nối trung tâm điều hành SaaS A2Order.`);
+      if (currentPath.startsWith("/admin/login") || currentPath.startsWith("/login")) {
+        navigateTo("/admin");
+      }
     } else {
       setCurrentRole("STORE_OWNER");
       setActiveMenu("dashboard");
       toast.success(`Đăng nhập thành công: ${user.name}`);
+      if (currentPath.startsWith("/admin/login") || currentPath.startsWith("/login")) {
+        navigateTo("/");
+      }
     }
   };
 
@@ -209,6 +238,7 @@ export const App: React.FC = () => {
     });
     confirmingNavigation.current = false;
     if (!confirmed) return;
+    const wasAdmin = currentRole === "SUPER_ADMIN";
     useUnsavedChangesStore.getState().clearAll();
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
@@ -216,6 +246,11 @@ export const App: React.FC = () => {
     sessionStorage.removeItem(AUTH_USER_KEY);
     setCurrentUser(null);
     toast.info("Đã đăng xuất khỏi tài khoản quản trị.");
+    if (wasAdmin) {
+      navigateTo("/admin/login");
+    } else {
+      navigateTo("/login");
+    }
   };
 
   if (isInitializing) {
@@ -227,12 +262,26 @@ export const App: React.FC = () => {
     );
   }
 
-  // Nếu chưa đăng nhập: Hiển thị giao diện Đăng Nhập Quản Trị toàn màn hình
+  // Nếu chưa đăng nhập: Phân nhánh hiển thị riêng biệt theo URL
   if (!currentUser) {
+    const isAdminRoute =
+      currentPath.startsWith("/admin") ||
+      currentPath.startsWith("/saas-admin");
+
     return (
       <>
         <GlobalFeedback />
-        <AdminLoginPage onLoginSuccess={handleLoginSuccess} />
+        {isAdminRoute ? (
+          <AdminLoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onNavigateToOwner={() => navigateTo("/login")}
+          />
+        ) : (
+          <OwnerLoginPage
+            onLoginSuccess={handleLoginSuccess}
+            onNavigateToAdmin={() => navigateTo("/admin/login")}
+          />
+        )}
       </>
     );
   }

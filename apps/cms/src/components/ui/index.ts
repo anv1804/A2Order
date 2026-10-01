@@ -9,4 +9,4 @@ export * from "./LoadingScreen.js";
 export * from "./Pagination.js";
 export * from "./Portal.js";
 export * from "./Skeleton.js";
-
+export * from "./SearchableSelect.js";

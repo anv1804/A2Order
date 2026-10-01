@@ -160,7 +160,7 @@ export const FNB_MAJOR_CONFIG: Record<
     description: "Cà phê, trà sữa, trà trái cây, sinh tố, nước ép, bia & đồ uống đóng lon",
   },
   DESSERT: {
-    label: "Đồ Tráng Miệng",
+    label: "Tráng Miệng",
     emoji: "🍰",
     icon: "cake",
     station: "DESSERT",
