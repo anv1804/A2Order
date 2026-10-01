@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { CmsSidebar } from "./CmsSidebar";
 import { CmsTopNav } from "./CmsTopNav";
 import { CommandPalette } from "@/components/ui/CommandPalette";
@@ -24,6 +24,46 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchSelection, setSearchSelection] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Tự động trượt xuống và ẩn thanh điều hướng mobile sau 7s nếu không có tương tác, trượt lên lại khi có thao tác
+  const [isBottomBarVisible, setIsBottomBarVisible] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetHideTimer = useCallback(() => {
+    setIsBottomBarVisible(true);
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    hideTimerRef.current = setTimeout(() => {
+      setIsBottomBarVisible(false);
+    }, 7000); // 7 giây
+  }, []);
+
+  useEffect(() => {
+    resetHideTimer();
+
+    const handleActivity = () => {
+      resetHideTimer();
+    };
+
+    // Lắng nghe sự kiện tương tác trên toàn màn hình (capture: true bắt được mọi hành động cuộn/chạm)
+    window.addEventListener("scroll", handleActivity, { passive: true, capture: true });
+    window.addEventListener("touchstart", handleActivity, { passive: true, capture: true });
+    window.addEventListener("touchmove", handleActivity, { passive: true, capture: true });
+    window.addEventListener("mousemove", handleActivity, { passive: true, capture: true });
+    window.addEventListener("mousedown", handleActivity, { passive: true, capture: true });
+    window.addEventListener("keydown", handleActivity, { passive: true, capture: true });
+
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      window.removeEventListener("scroll", handleActivity, { capture: true });
+      window.removeEventListener("touchstart", handleActivity, { capture: true });
+      window.removeEventListener("touchmove", handleActivity, { capture: true });
+      window.removeEventListener("mousemove", handleActivity, { capture: true });
+      window.removeEventListener("mousedown", handleActivity, { capture: true });
+      window.removeEventListener("keydown", handleActivity, { capture: true });
+    };
+  }, [resetHideTimer]);
 
   const navigationItems = useMemo(() => currentRole === "SUPER_ADMIN" ? [
     { id: "telemetry", label: "Tổng quan nền tảng", hint: "Số liệu và hoạt động" },
@@ -89,7 +129,7 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
       ];
 
   return (
-    <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-[#f6f8f7] font-sans text-ink-primary">
+    <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-white sm:bg-[#f6f8f7] font-sans text-ink-primary">
       <CommandPalette
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -156,11 +196,13 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
               onToggleMobileMenu={() => setIsMobileMenuOpen((prev) => !prev)}
               onOpenProfile={() => onSelectMenu("profile")}
               onOpenSearch={() => { setSearchQuery(""); setIsSearchOpen(true); }}
+              onSelectMenu={onSelectMenu}
               activeMenuTitle={
                 currentRole === "SUPER_ADMIN"
                   ? ({
                       telemetry: "Tổng Quan",
                       tenants: "Chuỗi Quán",
+                      store_users: "User Quán",
                       license_manager: "Giấy Phép",
                       software_invoices: "Hóa Đơn",
                       pricing_config: "Bảng Giá",
@@ -193,15 +235,21 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
         </header>
 
         {/* Scrollable Main Content Container with responsive padding px-3 */}
-        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-8 w-full max-w-full scroll-smooth">
-          <div className="mx-auto w-full min-w-0 max-w-[1680px]">{children}</div>
+        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-3 sm:pb-5 lg:pb-6 w-full max-w-full scroll-smooth">
+          <div className="w-full min-w-0 flex-1 flex flex-col min-h-0">{children}</div>
         </main>
 
-        {/* Mobile navigation dock: Tinh gọn Icon-Only, Trang chủ ở giữa, Hồ sơ bên phải */}
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] lg:hidden">
+        {/* Mobile navigation dock: Tinh gọn Icon-Only, sticky trong suốt trượt xuống ẩn sau 7s không thao tác */}
+        <div
+          className={`pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] lg:hidden transition-all duration-500 ease-in-out ${
+            isBottomBarVisible
+              ? "translate-y-0 opacity-100"
+              : "translate-y-[150%] opacity-0 pointer-events-none"
+          }`}
+        >
           <nav
             aria-label="Điều hướng chính"
-            className="pointer-events-auto mx-auto flex max-w-[330px] items-center justify-between rounded-full border border-white/15 bg-[#0e2720]/95 backdrop-blur-xl p-1.5 shadow-[0_16px_36px_rgba(10,30,24,0.45)] ring-1 ring-black/10"
+            className="pointer-events-auto mx-auto flex max-w-[330px] items-center justify-between rounded-full border border-white/15 bg-[#0e2720]/95 backdrop-blur-xl p-1.5 shadow-[0_8px_24px_rgba(10,30,24,0.18)] ring-1 ring-black/5"
           >
             {mobileNavItems.map((item) => {
               const isActive = activeMenu === item.id;

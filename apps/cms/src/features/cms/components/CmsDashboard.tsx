@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Panel, Button, Badge, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { CmsDashboardProps } from "@/types";
+import { formatCurrency } from "@/lib/formatters";
 
 export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => {
   const [currentVersion, setCurrentVersion] = useState("v1.0.3");
@@ -33,7 +34,7 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-10">
+    <div className="space-y-6 animate-fadeIn pb-16 lg:pb-10">
       {/* 1. Cache Version & Publish Alert Banner */}
       {hasUnpublishedChanges ? (
         <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 shadow-sm animate-fadeIn">
@@ -83,16 +84,17 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold shadow-2xs shrink-0"
             onClick={() => toast.info("Đang trích xuất báo cáo doanh thu ca làm việc ra file Excel...")}
+            title="Xuất Báo Cáo"
+            aria-label="Xuất Báo Cáo"
           >
-            <Icon name="download" className="w-3.5 h-3.5 text-ink-muted" />
-            <span>Xuất Báo Cáo</span>
+            <Icon name="download" className="w-4 h-4 text-ink-muted" />
           </Button>
 
           <Button
             size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
             onClick={() => {
               if (onNavigateTab) {
                 onNavigateTab("menu");
@@ -101,9 +103,10 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
                 toast.info("Đã ghi nhận thay đổi vào bản nháp. Nhấn [Áp Dụng Thay Đổi] để đồng bộ ra máy POS.");
               }
             }}
+            title="Cập Nhật Menu"
+            aria-label="Cập Nhật Menu"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
-            <span>Cập Nhật Menu</span>
+            <Icon name="plus" className="w-4 h-4 text-brand-400" />
           </Button>
         </div>
       </div>
@@ -491,6 +494,180 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab }) => 
           </Panel>
         </div>
       </div>
+
+      {/* 5. Biểu Đồ Doanh Thu Ca Theo Giờ & Top 5 Món Bán Chạy */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Biểu Đồ Doanh Thu Theo Khung Giờ (Col 7/12) */}
+        <Panel variant="default" padding="lg" className="lg:col-span-7 space-y-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between border-b border-surface-border pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Icon name="trending" className="w-4 h-4 text-brand-900" />
+                <h4 className="font-bold text-sm text-ink-primary">Nhịp Độ Doanh Thu Theo Giờ Trong Ca</h4>
+              </div>
+              <p className="text-[11px] text-ink-muted">Biểu đồ đối soát doanh số và số lượng order thực tế</p>
+            </div>
+            <span className="text-[11px] font-bold text-brand-900 bg-brand-50 border border-brand-200/60 px-2 py-0.5 rounded-lg">
+              Đỉnh điểm: 12:00 - 13:00
+            </span>
+          </div>
+
+          <div className="h-48 flex items-end justify-between gap-2 pt-6 pb-2 px-2">
+            {[
+              { hour: "07:00", amount: 320000, orders: 4, isPeak: false },
+              { hour: "08:00", amount: 650000, orders: 8, isPeak: false },
+              { hour: "09:00", amount: 480000, orders: 5, isPeak: false },
+              { hour: "10:00", amount: 390000, orders: 3, isPeak: false },
+              { hour: "11:00", amount: 890000, orders: 11, isPeak: false },
+              { hour: "12:00", amount: 1450000, orders: 18, isPeak: true },
+              { hour: "13:00", amount: 670000, orders: 7, isPeak: false },
+            ].map((slot) => {
+              const maxVal = 1450000;
+              const heightPct = Math.max((slot.amount / maxVal) * 100, 10);
+              return (
+                <div key={slot.hour} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
+                  {/* Tooltip */}
+                  <div className="absolute -top-10 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md">
+                    <div>{slot.hour}: {formatCurrency(slot.amount)}</div>
+                    <div className="text-brand-300 font-normal">{slot.orders} đơn order</div>
+                  </div>
+
+                  {/* Bar */}
+                  <div
+                    className={`w-full max-w-[36px] rounded-t-lg transition-all duration-300 ${
+                      slot.isPeak
+                        ? "bg-brand-900 shadow-sm"
+                        : "bg-brand-500/70 hover:bg-brand-700"
+                    }`}
+                    style={{ height: `${heightPct}%` }}
+                  />
+
+                  {/* Hour */}
+                  <span className="text-[10px] font-bold text-ink-muted mt-2 group-hover:text-ink-primary">
+                    {slot.hour}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-xs border-t border-surface-border pt-3 text-ink-muted">
+            <span>Tổng giờ phục vụ: <strong>7 tiếng</strong></span>
+            <span>Trung bình đơn: <strong>151.000đ / bàn</strong></span>
+          </div>
+        </Panel>
+
+        {/* Top 5 Món Bán Chạy Nhất (Col 5/12) */}
+        <Panel variant="default" padding="lg" className="lg:col-span-5 space-y-3.5 p-4 sm:p-5">
+          <div className="flex items-center justify-between border-b border-surface-border pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Icon name="flame" className="w-4 h-4 text-amber-600" />
+                <h4 className="font-bold text-sm text-ink-primary">Top 5 Món Bán Chạy Trong Ca</h4>
+              </div>
+              <p className="text-[11px] text-ink-muted">Xếp hạng theo số lượng đĩa/ly đã xuất</p>
+            </div>
+            <button
+              onClick={() => onNavigateTab?.("menu")}
+              className="text-xs font-bold text-brand-900 hover:underline"
+            >
+              Thực đơn →
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            {[
+              { rank: 1, name: "Phở Bò Tái Nạm Gầu", sold: 28, revenue: 1820000, category: "Món Nước", trend: "+12%" },
+              { rank: 2, name: "Cà Phê Muối Kem Béo", sold: 34, revenue: 1190000, category: "Đồ Uống", trend: "+25%" },
+              { rank: 3, name: "Cơm Tấm Sườn Bì Chả", sold: 19, revenue: 1235000, category: "Cơm Mặn", trend: "+8%" },
+              { rank: 4, name: "Bún Chả Nướng Than Hoa", sold: 16, revenue: 960000, category: "Món Nước", trend: "+5%" },
+              { rank: 5, name: "Trà Đào Cam Sả Tươi", sold: 22, revenue: 770000, category: "Đồ Uống", trend: "+14%" },
+            ].map((dish) => (
+              <div
+                key={dish.name}
+                className="flex items-center justify-between p-2 rounded-xl bg-surface-canvas border border-surface-border hover:border-brand-200 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                      dish.rank === 1
+                        ? "bg-amber-400 text-amber-950 shadow-2xs"
+                        : dish.rank === 2
+                        ? "bg-slate-200 text-slate-800"
+                        : dish.rank === 3
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-surface-muted text-ink-muted"
+                    }`}
+                  >
+                    {dish.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-ink-primary truncate">{dish.name}</p>
+                    <p className="text-[10px] text-ink-muted">{dish.category} • Đã bán {dish.sold}</p>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-ink-primary block">{formatCurrency(dish.revenue)}</span>
+                  <span className="text-[10px] font-bold text-emerald-700">{dish.trend}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      {/* 6. Bảng Đơn Hàng Gần Nhất (Live Order Stream) */}
+      <Panel variant="default" padding="lg" className="space-y-3.5 p-4 sm:p-5">
+        <div className="flex items-center justify-between border-b border-surface-border pb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Icon name="cart" className="w-4 h-4 text-brand-900" />
+              <h4 className="font-bold text-sm text-ink-primary">Dòng Đơn Hàng Vừa Gọi & Thanh Toán Gần Nhất</h4>
+            </div>
+            <p className="text-[11px] text-ink-muted">Theo dõi trạng thái phục vụ và thanh toán các bàn đang ăn</p>
+          </div>
+          <button
+            onClick={() => onNavigateTab?.("tables")}
+            className="text-xs font-bold text-brand-900 hover:underline"
+          >
+            Sơ đồ bàn →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { id: "ord-881", table: "Bàn 04", time: "1 phút trước", amount: 260000, items: "2x Phở Bò, 1x Trà Đào", status: "COOKING", payMethod: "VietQR" },
+            { id: "ord-880", table: "Bàn 02", time: "5 phút trước", amount: 185000, items: "1x Cơm Tấm, 1x Cafe Muối", status: "SERVED", payMethod: "Tiền mặt" },
+            { id: "ord-879", table: "Mang Về #12", time: "8 phút trước", amount: 130000, items: "2x Cà Phê Muối", status: "PAID", payMethod: "VietQR" },
+            { id: "ord-878", table: "Bàn VIP 01", time: "15 phút trước", amount: 850000, items: "1x Lẩu Đuôi Bò, 4x Bia", status: "SERVED", payMethod: "Chờ thanh toán" },
+          ].map((ord) => (
+            <div
+              key={ord.id}
+              className="p-3 rounded-2xl bg-surface-canvas border border-surface-border hover:border-brand-300 hover:shadow-xs transition-all space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-black text-xs text-ink-primary">{ord.table}</span>
+                <span
+                  className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md ${
+                    ord.status === "COOKING"
+                      ? "bg-amber-100 text-amber-800"
+                      : ord.status === "PAID"
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {ord.status === "COOKING" ? "Bếp nấu" : ord.status === "PAID" ? "Đã trả tiền" : "Đang ăn"}
+                </span>
+              </div>
+              <p className="text-[11px] text-ink-muted truncate font-medium">{ord.items}</p>
+              <div className="flex items-center justify-between pt-1 border-t border-surface-border text-xs">
+                <span className="font-black text-brand-900">{formatCurrency(ord.amount)}</span>
+                <span className="text-[10px] text-ink-muted">{ord.time}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
     </div>
   );
 };

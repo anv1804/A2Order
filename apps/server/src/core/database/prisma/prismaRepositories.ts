@@ -85,31 +85,46 @@ export class PrismaScenarioRepository implements IScenarioRepository {
 export class PrismaStoreRepository implements IStoreRepository {
   async getAll(): Promise<TenantStoreRecord[]> {
     const stores = await prisma.store.findMany({
+      where: {
+        slug: { not: "a2order-platform" }, // Trụ sở A2Order HQ không phải quán thuê phần mềm
+      },
       include: {
         license: true,
+        staff: true,
         _count: { select: { tables: true } },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return stores.map((s) => ({
-      id: s.id,
-      name: s.name,
-      owner: s.bankOwnerName || "Chưa cập nhật",
-      phone: s.phone || "",
-      address: s.address || "",
-      tableCount: s._count.tables,
-      licenseKey: s.license?.licenseKey || "Chưa cấp",
-      plan: (s.license?.planType as any) || "STARTER",
-      status: getStoreAdminStatus(s.status, s.license),
-      activatedAt: s.createdAt.toLocaleDateString("vi-VN"),
-      expiresAt: s.license?.endDate ? s.license.endDate.toLocaleDateString("vi-VN") : "",
-      daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 0,
-      pingMs: 0,
-      activeDevices: 0,
-      configVer: s.configVersion,
-      modules: s.license?.enabledModules ? (s.license.enabledModules.split(",") as AppModule[]) : [],
-    }));
+    return stores.map((s) => {
+      const ownerStaff = s.staff.find((st) => st.role === "STORE_OWNER") || s.staff[0];
+      return {
+        id: s.id,
+        name: s.name,
+        owner: ownerStaff ? ownerStaff.name : (s.bankOwnerName || "Chưa cập nhật"),
+        ownerEmail: ownerStaff?.email || undefined,
+        phone: s.phone || "",
+        address: s.address || "",
+        tableCount: s._count.tables,
+        licenseKey: s.license?.licenseKey || "Chưa cấp",
+        plan: (s.license?.planType as any) || "STARTER",
+        status: getStoreAdminStatus(s.status, s.license),
+        activatedAt: s.createdAt.toLocaleDateString("vi-VN"),
+        expiresAt: s.license?.endDate ? s.license.endDate.toLocaleDateString("vi-VN") : "",
+        daysLeft: s.license?.endDate ? Math.max(0, Math.ceil((s.license.endDate.getTime() - Date.now()) / (1000 * 86400))) : 0,
+        pingMs: 0,
+        activeDevices: 0,
+        configVer: s.configVersion,
+        modules: s.license?.enabledModules ? (s.license.enabledModules.split(",") as AppModule[]) : [],
+        staffList: s.staff.map((st) => ({
+          id: st.id,
+          name: st.name,
+          email: st.email,
+          role: st.role,
+          isActive: st.isActive,
+        })),
+      };
+    });
   }
 
   async getById(id: string): Promise<TenantStoreRecord | null> {
@@ -117,15 +132,18 @@ export class PrismaStoreRepository implements IStoreRepository {
       where: { id },
       include: {
         license: true,
+        staff: true,
         _count: { select: { tables: true } },
       },
     });
     if (!s) return null;
 
+    const ownerStaff = s.staff.find((st) => st.role === "STORE_OWNER") || s.staff[0];
     return {
       id: s.id,
       name: s.name,
-      owner: s.bankOwnerName || "Chưa cập nhật",
+      owner: ownerStaff ? ownerStaff.name : (s.bankOwnerName || "Chưa cập nhật"),
+      ownerEmail: ownerStaff?.email || undefined,
       phone: s.phone || "",
       address: s.address || "",
       tableCount: s._count.tables,
@@ -139,6 +157,13 @@ export class PrismaStoreRepository implements IStoreRepository {
       activeDevices: 0,
       configVer: s.configVersion,
       modules: s.license?.enabledModules ? (s.license.enabledModules.split(",") as AppModule[]) : [],
+      staffList: s.staff.map((st) => ({
+        id: st.id,
+        name: st.name,
+        email: st.email,
+        role: st.role,
+        isActive: st.isActive,
+      })),
     };
   }
 

@@ -27,12 +27,15 @@ import { InvoiceModal } from "./superAdmin/modals/InvoiceModal";
 import { StoreOnboardingModal } from "./superAdmin/modals/StoreOnboardingModal";
 import { CreateLicenseKeyModal } from "./superAdmin/modals/CreateLicenseKeyModal";
 import { StoreDossierModal } from "./superAdmin/modals/StoreDossierModal";
+import { SuspendStoreModal } from "./superAdmin/modals/SuspendStoreModal";
 import { ScenarioTemplateSkeleton } from "@/components/ui";
 
 import { TenantManager } from "./superAdmin/TenantManager";
 import { LicenseManager } from "./superAdmin/LicenseManager";
 import { InvoiceManager } from "./superAdmin/InvoiceManager";
 import { AuditLogViewer } from "./superAdmin/AuditLogViewer";
+import { StoreUserManager } from "./superAdmin/StoreUserManager";
+import { CmsAdminPricingManager } from "./CmsAdminPricingManager";
 
 const ScenarioTemplateManager = React.lazy(() =>
   import("./superAdmin/ScenarioTemplateManager").then((m) => ({ default: m.ScenarioTemplateManager }))
@@ -58,15 +61,18 @@ const downloadCsv = (filename: string, headers: string[], rows: unknown[][]) => 
 export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   subView: initialSubView = "telemetry",
   onTabChange,
-  onImpersonateStore,
 }) => {
-  const [activeTab, setActiveTab] = useState<"tenants" | "licenses" | "invoices" | "telemetry" | "audit" | "scenarios">(
+  const [activeTab, setActiveTab] = useState<"tenants" | "licenses" | "invoices" | "telemetry" | "audit" | "scenarios" | "store_users" | "pricing">(
     initialSubView === "license_manager"
       ? "licenses"
       : initialSubView === "tenants"
       ? "tenants"
+      : initialSubView === "store_users"
+      ? "store_users"
       : initialSubView === "software_invoices"
       ? "invoices"
+      : initialSubView === "pricing_config"
+      ? "pricing"
       : initialSubView === "audit_logs"
       ? "audit"
       : initialSubView === "scenarios"
@@ -78,13 +84,15 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   useEffect(() => {
     if (initialSubView === "license_manager") setActiveTab("licenses");
     else if (initialSubView === "tenants") setActiveTab("tenants");
+    else if (initialSubView === "store_users") setActiveTab("store_users");
     else if (initialSubView === "software_invoices") setActiveTab("invoices");
+    else if (initialSubView === "pricing_config") setActiveTab("pricing");
     else if (initialSubView === "audit_logs") setActiveTab("audit");
     else if (initialSubView === "scenarios") setActiveTab("scenarios");
     else setActiveTab("telemetry");
   }, [initialSubView]);
 
-  const handleSwitchTab = (tab: "tenants" | "licenses" | "invoices" | "telemetry" | "audit" | "scenarios") => {
+  const handleSwitchTab = (tab: "tenants" | "licenses" | "invoices" | "telemetry" | "audit" | "scenarios" | "store_users" | "pricing") => {
     if (onTabChange) onTabChange(tab);
     else setActiveTab(tab);
   };
@@ -94,8 +102,17 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   // Bộ lọc & Phân trang Quán thuê
   const [storeSearch, setStoreSearch] = useState("");
   const [storeStatusFilter, setStoreStatusFilter] = useState<string>("ALL");
+  const [storePlanFilter, setStorePlanFilter] = useState<string>("ALL");
+  const [storeProvinceFilter, setStoreProvinceFilter] = useState<string>("ALL");
   const [tenantPage, setTenantPage] = useState(1);
   const TENANT_PAGE_SIZE = 10;
+  const [isTenantMaximized, setIsTenantMaximized] = useState(false);
+  const [isStoreUserMaximized, setIsStoreUserMaximized] = useState(false);
+  const [isLicenseMaximized, setIsLicenseMaximized] = useState(false);
+  const [isInvoiceMaximized, setIsInvoiceMaximized] = useState(false);
+  const [isPricingMaximized, setIsPricingMaximized] = useState(false);
+  const [isScenarioMaximized, setIsScenarioMaximized] = useState(false);
+  const [isAuditMaximized, setIsAuditMaximized] = useState(false);
 
   // Modal xem chi tiết toàn diện hồ sơ quán thuê
   const [viewingStoreDetails, setViewingStoreDetails] = useState<TenantStoreRecord | null>(null);
@@ -112,17 +129,20 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     storeApi
       .getStores()
       .then((serverStores) => {
-        setStores(serverStores || []);
-        setConnectedSources((sources) => [...new Set([...sources, "stores"])]);
+        if (serverStores && serverStores.length > 0) {
+          setStores(serverStores);
+          setConnectedSources((sources) => [...new Set([...sources, "stores"])]);
+        }
       })
       .catch(() => {});
 
     storeApi
       .getLicenses()
       .then((serverLicenses) => {
-        setConnectedSources((sources) => [...new Set([...sources, "licenses"])]);
-        setLicenses(
-          (serverLicenses || []).map((l) => ({
+        if (serverLicenses && serverLicenses.length > 0) {
+          setConnectedSources((sources) => [...new Set([...sources, "licenses"])]);
+          setLicenses(
+            serverLicenses.map((l) => ({
               id: l.id,
               keyCode: l.keyCode,
               storeName: l.storeName,
@@ -134,16 +154,19 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
               expiresAt: l.expiresAt,
               status: l.status,
               modules: [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
-          }))
-        );
+            }))
+          );
+        }
       })
       .catch(() => {});
 
     storeApi
       .getInvoices()
       .then((serverInvoices) => {
-        setInvoices(serverInvoices || []);
-        setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
+        if (serverInvoices && serverInvoices.length > 0) {
+          setInvoices(serverInvoices);
+          setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
+        }
       })
       .catch(() => {});
   }, []);
@@ -165,6 +188,12 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
   // Modal Cấp Mới / Gia Hạn License Key
   const [licenseTargetStore, setLicenseTargetStore] = useState<TenantStoreRecord | null>(null);
+
+  // Modal Xác Nhận Khóa / Mở Khóa Quán (Bảo Mật Bằng Mã Hợp Đồng)
+  const [suspendTarget, setSuspendTarget] = useState<{
+    store: TenantStoreRecord;
+    mode: "SUSPEND" | "ACTIVATE";
+  } | null>(null);
 
   // Modal Đăng Ký Quán Mới (Onboarding)
   const [isNewStoreModalOpen, setIsNewStoreModalOpen] = useState(false);
@@ -480,20 +509,14 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     }
   };
 
-  // Tạm khóa / Mở khóa quán
-  const handleToggleStoreStatus = async (store: TenantStoreRecord) => {
-    const isSuspending = store.status !== "SUSPENDED";
-    const ok = await confirmDialog({
-      title: isSuspending ? "Tạm Khóa Quán Này?" : "Mở Khóa Quán Hoạt Động Lại?",
-      message: isSuspending
-        ? `Tạm khóa ${store.name} sẽ ngắt kết nối toàn bộ các máy POS và mã QR đặt món của quán này.`
-        : `Mở khóa lại cho ${store.name} để tiếp tục hoạt động bán hàng bình thường.`,
-      confirmText: isSuspending ? "Tạm Khóa Quán" : "Mở Khóa Ngay",
-      cancelText: "Hủy",
-      variant: isSuspending ? "danger" : "primary",
-    });
-    if (!ok) return;
+  // Tạm khóa / Mở khóa quán (Mở modal cảnh báo & xác thực bằng mã hợp đồng)
+  const handleToggleStoreStatus = (store: TenantStoreRecord) => {
+    const mode = store.status === "SUSPENDED" ? "ACTIVATE" : "SUSPEND";
+    setSuspendTarget({ store, mode });
+  };
 
+  const handleConfirmToggleStoreStatus = async (store: TenantStoreRecord) => {
+    const isSuspending = store.status !== "SUSPENDED";
     const newStatus = isSuspending ? "SUSPENDED" : "ACTIVE";
     if (!connectedSources.includes("stores")) {
       toast.error("Máy chủ chưa kết nối. Không thể thay đổi trạng thái quán trên dữ liệu xem trước.");
@@ -512,7 +535,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     if (viewingStoreDetails?.id === store.id) {
       setViewingStoreDetails((prev) => (prev ? { ...prev, status: newStatus } : null));
     }
-    toast.info(`Đã ${isSuspending ? "tạm khóa" : "mở khóa"} quán ${store.name}`);
+    toast.success(`Đã ${isSuspending ? "khóa" : "mở khóa"} cửa hàng ${store.name} thành công.`);
   };
 
   // Bật / Tắt module tính năng (Feature Flags) cho quán
@@ -679,16 +702,57 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     setIsNewStoreModalOpen(false);
   };
 
-  // Lọc quán thuê
+  // Hàm kiểm tra khớp tỉnh thành
+  const matchesProvince = (address: string | undefined, prov: string) => {
+    if (prov === "ALL") return true;
+    const addr = (address || "").toLowerCase();
+    if (prov === "TP.HCM") {
+      return (
+        addr.includes("hồ chí minh") ||
+        addr.includes("tp.hcm") ||
+        addr.includes("tphcm") ||
+        addr.includes("sài gòn") ||
+        addr.includes("phú nhuận") ||
+        addr.includes("quận")
+      );
+    }
+    if (prov === "Hà Nội") {
+      return (
+        addr.includes("hà nội") ||
+        addr.includes("cầu giấy") ||
+        addr.includes("ba đình") ||
+        addr.includes("hoàn kiếm")
+      );
+    }
+    if (prov === "Đà Nẵng") return addr.includes("đà nẵng");
+    if (prov === "Bình Dương") return addr.includes("bình dương");
+    if (prov === "Đồng Nai") return addr.includes("đồng nai");
+    if (prov === "Cần Thơ") return addr.includes("cần thơ");
+    if (prov === "Hải Phòng") return addr.includes("hải phòng");
+    if (prov === "Khác") {
+      return (
+        !addr.includes("hồ chí minh") &&
+        !addr.includes("tp.hcm") &&
+        !addr.includes("hà nội") &&
+        !addr.includes("đà nẵng")
+      );
+    }
+    return addr.includes(prov.toLowerCase());
+  };
+
+  // Lọc quán thuê (theo trạng thái, gói cước, tỉnh thành, từ khóa)
   const filteredStores = stores.filter((s) => {
     if (storeStatusFilter !== "ALL" && s.status !== storeStatusFilter) return false;
+    if (storePlanFilter !== "ALL" && s.plan !== storePlanFilter) return false;
+    if (storeProvinceFilter !== "ALL" && !matchesProvince(s.address, storeProvinceFilter)) return false;
     if (storeSearch.trim()) {
       const q = storeSearch.toLowerCase();
       return (
         s.name.toLowerCase().includes(q) ||
         s.owner.toLowerCase().includes(q) ||
         s.phone.toLowerCase().includes(q) ||
-        s.licenseKey.toLowerCase().includes(q)
+        s.licenseKey.toLowerCase().includes(q) ||
+        (s.address && s.address.toLowerCase().includes(q))
       );
     }
     return true;
@@ -718,98 +782,57 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const renewalCount = stores.filter((store) => store.status === "EXPIRING_SOON" || store.status === "EXPIRED").length;
   const pendingWorkCount = pendingInvoiceCount + unassignedLicenseCount + renewalCount;
 
+  const isCurrentTabMaximized =
+    (activeTab === "tenants" && isTenantMaximized) ||
+    (activeTab === "store_users" && isStoreUserMaximized) ||
+    (activeTab === "licenses" && isLicenseMaximized) ||
+    (activeTab === "scenarios" && isScenarioMaximized) ||
+    (activeTab === "invoices" && isInvoiceMaximized) ||
+    (activeTab === "pricing" && isPricingMaximized) ||
+    (activeTab === "audit" && isAuditMaximized);
+
   return (
-    <div className="space-y-5 sm:space-y-7 animate-fadeIn w-full max-w-full overflow-x-hidden">
-      {/* Header Phân Hệ: Desktop có tiêu đề & mô tả, Mobile ẩn hoàn toàn khi ở tab Tổng Quan (Telemetry) */}
-      <div className={`${activeTab === "telemetry" ? "hidden sm:flex" : "flex"} flex-wrap items-center justify-between gap-2.5`}>
-        <div className="hidden sm:block">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-black text-ink-primary tracking-tight">
-              {activeTab === "telemetry" && "Tổng Quan"}
-              {activeTab === "tenants" && "Chuỗi Quán"}
-              {activeTab === "licenses" && "License Key"}
-              {activeTab === "scenarios" && "Thực Đơn Mẫu"}
-              {activeTab === "invoices" && "Hóa Đơn"}
-              {activeTab === "audit" && "Kiểm Toán"}
-            </h2>
-            <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
-              A2Order Admin
-            </span>
+    <div className={`animate-fadeIn w-full max-w-full overflow-x-hidden ${isCurrentTabMaximized || activeTab === "tenants" || activeTab === "store_users" || activeTab === "licenses" || activeTab === "scenarios" || activeTab === "invoices" || activeTab === "pricing" || activeTab === "audit" ? "flex-1 flex flex-col min-h-0 space-y-3.5" : "space-y-5 sm:space-y-7"}`}>
+      {/* Header Phân Hệ: Desktop có tiêu đề & mô tả, Mobile ẩn hoàn toàn khi ở tab Tổng Quan (Telemetry). Ẩn đi khi tab đang bật chế độ Phóng to */}
+      {!isCurrentTabMaximized && (
+        <div className={`${activeTab === "telemetry" ? "hidden sm:flex" : "flex"} shrink-0 flex-wrap items-center justify-between gap-2.5`}>
+          <div className="hidden sm:block">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-black text-ink-primary tracking-tight">
+                {activeTab === "telemetry" && "Tổng Quan"}
+                {activeTab === "tenants" && "Chuỗi Quán"}
+                {activeTab === "store_users" && "User Quán"}
+                {activeTab === "licenses" && "License Key"}
+                {activeTab === "scenarios" && "Thực Đơn Mẫu"}
+                {activeTab === "invoices" && "Hóa Đơn"}
+                {activeTab === "pricing" && "Bảng Giá"}
+                {activeTab === "audit" && "Kiểm Toán"}
+              </h2>
+              <span className="inline-flex px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-extrabold text-[10px] whitespace-nowrap shrink-0">
+                A2Order Admin
+              </span>
+            </div>
+            <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+              {activeTab === "telemetry" && "Tổng quan đối tác, thiết bị và các công việc cần xử lý."}
+              {activeTab === "tenants" && "Quản lý hợp đồng đối tác, phân quyền module và giám sát thiết bị."}
+              {activeTab === "store_users" && "Quản lý tài khoản đăng nhập CMS của Chủ Quán và mã PIN đăng nhập POS/KDS toàn hệ thống."}
+              {activeTab === "licenses" && "Phát hành và quản lý mã License Key bản quyền cho các máy POS/KDS."}
+              {activeTab === "scenarios" && "Kho thực đơn mẫu, các biến thể size và nhóm topping đề xuất."}
+              {activeTab === "invoices" && "Theo dõi các kỳ cước thuê phần mềm và xác nhận thanh toán."}
+              {activeTab === "pricing" && "Cấu hình đơn giá thuê module SaaS, khung chiết khấu kỳ hạn và voucher khuyến mại."}
+              {activeTab === "audit" && "Nhật ký kiểm toán thao tác và trạng thái hạ tầng đám mây."}
+            </p>
           </div>
-          <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
-            {activeTab === "telemetry" && "Tổng quan đối tác, thiết bị và các công việc cần xử lý."}
-            {activeTab === "tenants" && "Quản lý hợp đồng đối tác, phân quyền module và giám sát thiết bị."}
-            {activeTab === "licenses" && "Phát hành và quản lý mã License Key bản quyền cho các máy POS/KDS."}
-            {activeTab === "scenarios" && "Kho thực đơn mẫu, các biến thể size và nhóm topping đề xuất."}
-            {activeTab === "invoices" && "Theo dõi các kỳ cước thuê phần mềm và xác nhận thanh toán."}
-            {activeTab === "audit" && "Nhật ký kiểm toán thao tác và trạng thái hạ tầng đám mây."}
-          </p>
         </div>
+      )}
 
-        {/* Nút tác vụ nhanh: Tinh gọn, hiện đại */}
-        <div className="flex items-center gap-2 shrink-0">
-          {activeTab === "tenants" ? (
-            <Button
-              size="sm"
-              className="inline-flex h-8 sm:h-9 px-3 rounded-full gap-1.5 text-xs bg-brand-900 text-white font-bold shadow-sm whitespace-nowrap active:scale-95 transition-all"
-              onClick={() => setIsNewStoreModalOpen(true)}
-            >
-              <Icon name="plus" className="w-3.5 h-3.5 text-white" />
-              <span>Thêm Quán</span>
-            </Button>
-          ) : null}
-
-          {activeTab === "audit" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 sm:h-9 px-3 rounded-full gap-1.5 text-xs bg-white text-ink-primary font-bold shadow-xs whitespace-nowrap border-surface-border active:scale-95 transition-all"
-              onClick={handleRefreshTelemetry}
-              disabled={isRefreshing}
-            >
-              <Icon name="refresh" className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-              <span>Làm Mới</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {connectedSources.length < 3 && activeTab !== "telemetry" && (
+      {!isCurrentTabMaximized && connectedSources.length < 3 && activeTab !== "telemetry" && (
         <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-900 animate-fadeIn">
           <Icon name="info" size={15} className="mt-0.5 shrink-0 text-amber-700" />
           <p className="leading-relaxed"><strong>{connectedSources.length ? "Một phần dữ liệu chưa kết nối." : "Đang ở chế độ xem trước."}</strong> {connectedSources.length ? "Danh sách chỉ bao gồm các nguồn đã tải được; thao tác ghi cần máy chủ phản hồi." : "Các bản ghi minh họa không được lưu. Kết nối máy chủ để dùng dữ liệu và thao tác thật."}</p>
         </div>
       )}
 
-      {/* Sub-Nav Switcher giữa Quán Thuê & Kho License Key */}
-      {(activeTab === "tenants" || activeTab === "licenses") && (
-        <div className="no-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-sm">
-          <button
-            type="button"
-            onClick={() => handleSwitchTab("tenants")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-              activeTab === "tenants"
-                ? "bg-brand-900 text-white shadow-sm"
-                : "text-ink-muted hover:text-ink-primary hover:bg-white"
-            }`}
-          >
-            <Icon name="building" className="w-3.5 h-3.5" />
-            <span>Quán Thuê & Điểm Bán ({stores.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSwitchTab("licenses")}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
-              activeTab === "licenses"
-                ? "bg-brand-900 text-white shadow-sm"
-                : "text-ink-muted hover:text-ink-primary hover:bg-white"
-            }`}
-          >
-            <Icon name="key" className="w-3.5 h-3.5" />
-            <span>Kho License Key ({licenses.length})</span>
-          </button>
-        </div>
-      )}
 
       {/* TAB 1: QUẢN LÝ QUÁN THUÊ & HỢP ĐỒNG */}
       {activeTab === "tenants" && (
@@ -819,16 +842,32 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           setStoreSearch={setStoreSearch}
           storeStatusFilter={storeStatusFilter}
           setStoreStatusFilter={setStoreStatusFilter}
+          storePlanFilter={storePlanFilter}
+          setStorePlanFilter={setStorePlanFilter}
+          storeProvinceFilter={storeProvinceFilter}
+          setStoreProvinceFilter={setStoreProvinceFilter}
           tenantPage={tenantPage}
           setTenantPage={setTenantPage}
           filteredStores={filteredStores}
           paginatedStores={paginatedStores}
           TENANT_PAGE_SIZE={TENANT_PAGE_SIZE}
           downloadCsv={downloadCsv}
-          onImpersonateStore={onImpersonateStore}
           setViewingStoreDetails={setViewingStoreDetails}
           setLicenseTargetStore={setLicenseTargetStore}
           handleToggleStoreStatus={handleToggleStoreStatus}
+          onOpenNewStoreModal={() => setIsNewStoreModalOpen(true)}
+          isMaximized={isTenantMaximized}
+          setIsMaximized={setIsTenantMaximized}
+        />
+      )}
+
+      {/* TAB: QUẢN LÝ TÀI KHOẢN & USER QUÁN */}
+      {activeTab === "store_users" && (
+        <StoreUserManager
+          stores={stores}
+          downloadCsv={downloadCsv}
+          isMaximized={isStoreUserMaximized}
+          setIsMaximized={setIsStoreUserMaximized}
         />
       )}
 
@@ -849,6 +888,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           setIsCreateLicenseModalOpen={setIsCreateLicenseModalOpen}
           handleCopyKey={handleCopyKey}
           handleRevokeKey={handleRevokeKey}
+          isMaximized={isLicenseMaximized}
+          setIsMaximized={setIsLicenseMaximized}
         />
       )}
 
@@ -869,6 +910,16 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
           setViewingInvoice={setViewingInvoice}
           handleConfirmInvoice={handleConfirmInvoice}
           confirmingInvoiceId={confirmingInvoiceId}
+          isMaximized={isInvoiceMaximized}
+          setIsMaximized={setIsInvoiceMaximized}
+        />
+      )}
+
+      {/* TAB: BẢNG GIÁ GÓI & VOUCHER */}
+      {activeTab === "pricing" && (
+        <CmsAdminPricingManager
+          isMaximized={isPricingMaximized}
+          setIsMaximized={setIsPricingMaximized}
         />
       )}
 
@@ -891,13 +942,24 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
       {/* TAB 4: NHẬT KÝ KIỂM TOÁN HỆ THỐNG (AUDIT TRAIL) */}
       {activeTab === "audit" && (
-        <AuditLogViewer auditLogs={auditLogs} />
+        <AuditLogViewer
+          auditLogs={auditLogs}
+          onRefresh={handleRefreshTelemetry}
+          isRefreshing={isRefreshing}
+          downloadCsv={downloadCsv}
+          isMaximized={isAuditMaximized}
+          setIsMaximized={setIsAuditMaximized}
+        />
       )}
 
       {/* TAB 5: QUẢN LÝ KỊCH BẢN & THỰC ĐƠN MẪU F&B */}
       {activeTab === "scenarios" && (
         <React.Suspense fallback={<ScenarioTemplateSkeleton />}>
-          <ScenarioTemplateManager />
+          <ScenarioTemplateManager
+            isMaximized={isScenarioMaximized}
+            setIsMaximized={setIsScenarioMaximized}
+            downloadCsv={downloadCsv}
+          />
         </React.Suspense>
       )}
 
@@ -934,6 +996,11 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       <StoreDossierModal
         store={viewingStoreDetails}
         invoices={invoices}
+        stores={stores}
+        onUpdateStore={(updatedStore) => {
+          setStores((prev) => prev.map((s) => (s.id === updatedStore.id ? updatedStore : s)));
+          setViewingStoreDetails(updatedStore);
+        }}
         onClose={() => setViewingStoreDetails(null)}
         onCopyKey={handleCopyKey}
         onOpenRenewModal={(target) => {
@@ -942,9 +1009,18 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         }}
         onToggleModule={handleToggleStoreModule}
         onToggleStoreStatus={handleToggleStoreStatus}
-        onImpersonateStore={onImpersonateStore}
         onViewInvoice={(inv) => setViewingInvoice(inv)}
+      />
+
+      {/* 6. Modal Cảnh Báo & Xác Nhận Khóa/Mở Quán Bằng Mã Hợp Đồng */}
+      <SuspendStoreModal
+        store={suspendTarget?.store || null}
+        mode={suspendTarget?.mode || "SUSPEND"}
+        onClose={() => setSuspendTarget(null)}
+        onConfirm={handleConfirmToggleStoreStatus}
       />
     </div>
   );
 };
+
+export default CmsSuperAdminView;

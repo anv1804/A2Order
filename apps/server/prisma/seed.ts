@@ -48,16 +48,18 @@ async function main() {
     },
   });
 
-  const scenarios = Object.values(DEFAULT_BUSINESS_SCENARIOS);
+  // 1. Tạo các quán mẫu (Chỉ tạo khi bật biến môi trường SEED_DUMMY_STORES=true)
+  if (process.env.SEED_DUMMY_STORES === "true") {
+    const scenarios = Object.values(DEFAULT_BUSINESS_SCENARIOS);
 
-  for (const scenario of scenarios) {
-    const storeSlug = scenario.type.toLowerCase().replace(/_/g, "-");
-    const storeId = `store-${storeSlug}`;
+    for (const scenario of scenarios) {
+      const storeSlug = scenario.type.toLowerCase().replace(/_/g, "-");
+      const storeId = `store-${storeSlug}`;
 
-    console.log(`  -> Tạo cửa hàng mẫu [${scenario.businessName}] (${scenario.type})...`);
+      console.log(`  -> Tạo cửa hàng mẫu [${scenario.businessName}] (${scenario.type})...`);
 
-    // 1. Tạo Store
-    const store = await prisma.store.upsert({
+      // 1. Tạo Store
+      const store = await prisma.store.upsert({
       where: { id: storeId },
       update: {
         name: scenario.businessName,
@@ -177,6 +179,7 @@ async function main() {
       });
     }
   }
+}
 
   console.log("✅ [A2Order Prisma Seed] Hoàn tất gieo mầm dữ liệu thành công!");
 }

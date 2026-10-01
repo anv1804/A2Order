@@ -77,7 +77,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     {
       title: "TỔNG QUAN NỀN TẢNG",
       items: [
-        { id: "telemetry", label: "Tổng Quan & Doanh Số SaaS", icon: "chart" },
+        { id: "telemetry", label: "Tổng Quan Nền Tảng", icon: "chart" },
         { id: "scenarios", label: "Kịch Bản & Món Mẫu F&B", icon: "clipboard" },
       ],
     },
@@ -85,6 +85,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       title: "ĐỐI TÁC & THUÊ BAO",
       items: [
         { id: "tenants", label: "Quản Lý Quán & Chuỗi", icon: "building" },
+        { id: "store_users", label: "Tài Khoản & User Quán", icon: "users" },
         { id: "license_manager", label: "Giấy Phép & License", icon: "key" },
         { id: "software_invoices", label: "Hóa Đơn & Thu Phí", icon: "fileText" },
         { id: "pricing_config", label: "Bảng Giá Gói & Voucher", icon: "tag" },
@@ -101,8 +102,8 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   const currentGroups = currentRole === "SUPER_ADMIN" ? superAdminGroups : filteredStoreOwnerGroups;
 
   return (
-    <aside className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden bg-[#102d25] p-4 text-white transition-[width] duration-300 lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] lg:px-3" : "lg:w-[280px]"}`}>
-      <div className="mb-5 flex shrink-0 items-center justify-between gap-3 px-1 pt-1">
+    <aside className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden bg-[#102d25] text-white transition-[width] duration-300 lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] p-3" : "lg:w-[280px] p-4"}`}>
+      <div className={`mb-5 flex shrink-0 items-center ${collapsed ? "justify-center" : "justify-between gap-3 px-1"} pt-1`}>
         <div className="flex min-w-0 items-center gap-3">
           {collapsed && onToggleCollapse ? (
             <button type="button" onClick={onToggleCollapse} aria-label="Mở rộng sidebar" title="Mở rộng sidebar" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
@@ -122,8 +123,15 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         )}
       </div>
 
-      <div className={`mb-5 flex shrink-0 items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3 ${collapsed ? "lg:justify-center lg:px-1" : ""}`} title={collapsed ? (currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng") : undefined}>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-300/20 text-emerald-200">
+      <div
+        className={`mb-5 flex shrink-0 items-center ${
+          collapsed
+            ? "justify-center"
+            : "gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3"
+        }`}
+        title={collapsed ? (currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng") : undefined}
+      >
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${collapsed ? "bg-white/10 border border-white/10 text-emerald-200" : "bg-emerald-300/20 text-emerald-200"}`}>
           <Icon name={currentRole === "SUPER_ADMIN" ? "shield" : "store"} size={18} />
         </span>
         {!collapsed && <span className="min-w-0 flex-1">
@@ -133,10 +141,10 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         {!collapsed && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(110,231,183,.1)]" />}
       </div>
 
-      <nav aria-label="Danh mục quản trị" className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain pr-1 scrollbar-thin">
+      <nav aria-label="Danh mục quản trị" className={`min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain scrollbar-thin ${collapsed ? "pr-0" : "pr-1"}`}>
         {currentGroups.map((group) => (
           <div key={group.title}>
-            {collapsed ? <div className="mx-2 mb-2 border-t border-white/10" /> : <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-100/40">{group.title}</p>}
+            {collapsed ? <div className="w-8 mx-auto my-2 border-t border-white/10" /> : <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-100/40">{group.title}</p>}
             <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive = activeMenu === item.id;
@@ -148,7 +156,15 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
                     aria-current={isActive ? "page" : undefined}
                     title={collapsed ? item.label : undefined}
                     aria-label={collapsed ? item.label : undefined}
-                    className={`group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-semibold transition-all duration-200 active:scale-[.98] ${collapsed ? "lg:justify-center lg:px-0" : ""} ${isActive ? "bg-white text-[#12372a] shadow-[0_8px_24px_rgba(0,0,0,.16)]" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
+                    className={`group flex items-center transition-all duration-200 active:scale-[.98] ${
+                      collapsed
+                        ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0"
+                        : "min-h-11 w-full gap-3 rounded-xl px-3 text-left text-xs font-semibold"
+                    } ${
+                      isActive
+                        ? "bg-white text-[#12372a] shadow-[0_8px_24px_rgba(0,0,0,.16)]"
+                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
                   >
                     <Icon name={item.icon} size={17} className={`shrink-0 ${isActive ? "text-emerald-800" : "text-emerald-100/60 group-hover:text-emerald-200"}`} />
                     {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
@@ -163,15 +179,38 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       </nav>
 
       <div className="mt-4 shrink-0 border-t border-white/10 pt-3">
-        <button type="button" onClick={() => onSelectMenu("profile")} aria-current={activeMenu === "profile" ? "page" : undefined} aria-label={collapsed ? "Hồ sơ cá nhân" : undefined} title={collapsed ? "Hồ sơ cá nhân" : undefined} className={`flex w-full items-center gap-3 rounded-2xl p-2 text-left transition ${collapsed ? "lg:justify-center lg:px-0" : ""} ${activeMenu === "profile" ? "bg-white text-[#12372a]" : "text-white hover:bg-white/10"}`}>
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${activeMenu === "profile" ? "bg-emerald-100 text-emerald-900" : "bg-emerald-300/20 text-emerald-100"}`}>{(currentUser?.name || "A").charAt(0).toUpperCase()}</span>
+        <button
+          type="button"
+          onClick={() => onSelectMenu("profile")}
+          aria-current={activeMenu === "profile" ? "page" : undefined}
+          aria-label={collapsed ? "Hồ sơ cá nhân" : undefined}
+          title={collapsed ? "Hồ sơ cá nhân" : undefined}
+          className={`flex items-center transition ${
+            collapsed
+              ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0"
+              : "w-full gap-3 rounded-2xl p-2 text-left"
+          } ${activeMenu === "profile" ? "bg-white text-[#12372a]" : "text-white hover:bg-white/10"}`}
+        >
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${activeMenu === "profile" ? "bg-emerald-100 text-emerald-900" : "bg-emerald-300/20 text-emerald-100"}`}>
+            {(currentUser?.name || "A").charAt(0).toUpperCase()}
+          </span>
           {!collapsed && <span className="min-w-0 flex-1">
             <span className="block truncate text-xs font-bold">{currentUser?.name || "Tài khoản quản trị"}</span>
             <span className={`mt-0.5 block truncate text-[10px] ${activeMenu === "profile" ? "text-emerald-900/60" : "text-white/50"}`}>{currentUser?.email || "Xem hồ sơ"}</span>
           </span>}
           {!collapsed && <Icon name="arrowRight" size={15} className={activeMenu === "profile" ? "text-emerald-800" : "text-white/40"} />}
         </button>
-        <button type="button" onClick={onLogout} aria-label="Đăng xuất" title={collapsed ? "Đăng xuất" : undefined} className={`mt-1 flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-xs font-semibold text-white/60 transition hover:bg-white/10 hover:text-white ${collapsed ? "lg:justify-center lg:px-0" : ""}`}>
+        <button
+          type="button"
+          onClick={onLogout}
+          aria-label="Đăng xuất"
+          title={collapsed ? "Đăng xuất" : undefined}
+          className={`mt-1 flex items-center transition hover:bg-white/10 hover:text-white ${
+            collapsed
+              ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0 text-white/60"
+              : "min-h-10 w-full gap-3 rounded-xl px-3 text-xs font-semibold text-white/60"
+          }`}
+        >
           <Icon name="logout" size={16} /> {!collapsed && "Đăng xuất"}
         </button>
       </div>

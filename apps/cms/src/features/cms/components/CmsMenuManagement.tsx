@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
 import {
   FnbDishItem,
@@ -234,6 +235,20 @@ export const CmsMenuManagement: React.FC = () => {
   const totalPages = Math.ceil(filteredDishes.length / pageSize) || 1;
   const paginatedDishes = filteredDishes.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  const {
+    visibleItems: mobileDishes,
+    visibleCount: visibleDishCount,
+    hasMore: hasMoreDishes,
+    sentinelRef: dishSentinelRef,
+    isMobile,
+  } = useMobileInfiniteScroll({
+    items: filteredDishes,
+    pageSize: 10,
+    mobileBreakpoint: 768,
+  });
+
+  const displayedDishes = isMobile ? mobileDishes : paginatedDishes;
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
@@ -263,13 +278,15 @@ export const CmsMenuManagement: React.FC = () => {
             <span>Nạp Kịch Bản Mẫu F&B</span>
           </Button>
 
+          {/* Nút Thêm Món Mới (Icon-only) */}
           <Button
             size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
             onClick={() => setIsAddModalOpen(true)}
+            title="Thêm Món Mới"
+            aria-label="Thêm Món Mới"
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span>+ Thêm Món Mới</span>
+            <Icon name="plus" className="w-4 h-4" />
           </Button>
         </div>
       </div>
@@ -348,7 +365,7 @@ export const CmsMenuManagement: React.FC = () => {
 
       {/* Grid Danh Sách Món Ăn */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {paginatedDishes.map((dish) => {
+        {displayedDishes.map((dish) => {
           const grossProfit = dish.price - (dish.costPrice || 0);
           const marginPercent = dish.price > 0 ? Math.round((grossProfit / dish.price) * 100) : 0;
           return (
@@ -478,14 +495,26 @@ export const CmsMenuManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Phân trang */}
-      <Pagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        totalItems={filteredDishes.length}
-        pageSize={pageSize}
-        onPageChange={setCurrentPage}
-      />
+      {/* Mobile Infinite Scroll Sentinel */}
+      <div className="block md:hidden">
+        <MobileInfiniteSentinel
+          hasMore={hasMoreDishes}
+          totalCount={filteredDishes.length}
+          visibleCount={visibleDishCount}
+          sentinelRef={dishSentinelRef}
+        />
+      </div>
+
+      {/* Phân trang trên Desktop (>= md) */}
+      <div className="hidden md:block">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredDishes.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
+      </div>
 
       {/* Modals đã được tách thành các module riêng biệt */}
       <AddDishModal

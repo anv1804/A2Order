@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Icon, Button, Badge, Panel, Portal } from "@/components/ui";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { PromotionVoucherRecord, DiscountType } from "@/types/cms.types";
 
@@ -253,6 +254,13 @@ export const CmsPromotionsManagement: React.FC = () => {
     return { activeCount, totalUsed };
   }, [promotions]);
 
+  const {
+    displayedItems: displayedPromotions,
+    sentinelRef,
+    isLoadingMore,
+    hasMore,
+  } = useMobileInfiniteScroll(filteredPromotions, 10);
+
   return (
     <div className="space-y-5 animate-fadeIn pb-12">
       {/* Header */}
@@ -274,11 +282,12 @@ export const CmsPromotionsManagement: React.FC = () => {
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
             onClick={handleOpenCreateModal}
+            title="Tạo Khuyến Mãi Mới"
+            aria-label="Tạo Khuyến Mãi Mới"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
-            <span>+ Tạo Khuyến Mãi Mới</span>
+            <Icon name="plus" className="w-4 h-4 text-brand-400" />
           </Button>
         </div>
       </div>
@@ -403,14 +412,14 @@ export const CmsPromotionsManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border font-medium">
-              {filteredPromotions.length === 0 ? (
+              {displayedPromotions.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-xs text-ink-muted font-bold">
                     Không tìm thấy chương trình khuyến mãi nào
                   </td>
                 </tr>
               ) : (
-                filteredPromotions.map((p) => (
+                displayedPromotions.map((p) => (
                   <tr key={p.id} className="hover:bg-brand-50/20 transition-colors">
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-2">
@@ -503,6 +512,14 @@ export const CmsPromotionsManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        <MobileInfiniteSentinel
+          sentinelRef={sentinelRef}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          displayedCount={displayedPromotions.length}
+          totalCount={filteredPromotions.length}
+        />
       </Panel>
 
       {/* MODAL TẠO / SỬA VOUCHER */}

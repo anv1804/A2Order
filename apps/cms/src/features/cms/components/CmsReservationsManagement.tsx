@@ -3,6 +3,7 @@ import { Button, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { Reservation } from "@/types/cms.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
 const AVAILABLE_TABLES = [
   "Bàn 01 (Tầng 1 - 4 người)",
@@ -300,6 +301,20 @@ export const CmsReservationsManagement: React.FC = () => {
     reservationPage * PAGE_SIZE
   );
 
+  const {
+    visibleItems: mobileReservations,
+    visibleCount: visibleReservationCount,
+    hasMore: hasMoreReservations,
+    sentinelRef: reservationSentinelRef,
+    isMobile,
+  } = useMobileInfiniteScroll({
+    items: filteredReservations,
+    pageSize: 10,
+    mobileBreakpoint: 768,
+  });
+
+  const displayedReservations = isMobile ? mobileReservations : paginatedReservations;
+
   // Thống kê nhanh
   const totalGuestsToday = reservations
     .filter((r) => r.dateCategory === "TODAY" && r.status !== "CANCELLED" && r.status !== "NO_SHOW")
@@ -339,14 +354,16 @@ export const CmsReservationsManagement: React.FC = () => {
             <span>+ Đặt Bàn Hotline</span>
           </Button>
 
+          {/* Nút Khách Đến Ngay / Thêm Lịch (Icon-only) */}
           <Button
             size="sm"
             variant="outline"
-            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold shadow-2xs shrink-0"
             onClick={() => openModal("WALK_IN")}
+            title="Tiếp nhận khách đến ngay"
+            aria-label="Tiếp nhận khách đến ngay"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-ink-muted" />
-            <span>Khách Đến Ngay</span>
+            <Icon name="plus" className="w-4 h-4 text-ink-muted" />
           </Button>
         </div>
       </div>
@@ -515,7 +532,7 @@ export const CmsReservationsManagement: React.FC = () => {
             </p>
           </div>
         ) : (
-          paginatedReservations.map((res) => {
+          displayedReservations.map((res) => {
             const isPending = res.status === "PENDING";
             const isConfirmed = res.status === "CONFIRMED";
             const isArrived = res.status === "ARRIVED";
@@ -728,13 +745,25 @@ export const CmsReservationsManagement: React.FC = () => {
         )}
       </div>
 
-      {/* Phân trang */}
-      <Pagination
-        currentPage={reservationPage}
-        totalItems={filteredReservations.length}
-        pageSize={PAGE_SIZE}
-        onPageChange={setReservationPage}
-      />
+      {/* Mobile Infinite Scroll Sentinel */}
+      <div className="block md:hidden">
+        <MobileInfiniteSentinel
+          hasMore={hasMoreReservations}
+          totalCount={filteredReservations.length}
+          visibleCount={visibleReservationCount}
+          sentinelRef={reservationSentinelRef}
+        />
+      </div>
+
+      {/* Phân trang trên Desktop (>= md) */}
+      <div className="hidden md:block">
+        <Pagination
+          currentPage={reservationPage}
+          totalItems={filteredReservations.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setReservationPage}
+        />
+      </div>
 
       {/* Modal Tiếp Nhận Đặt Bàn Mới (Hotline/Walk-in) */}
       {isModalOpen && (

@@ -143,7 +143,7 @@ export const CmsTableManagement: React.FC = () => {
     }));
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn pb-16 lg:pb-0">
       {/* Title & Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="space-y-1">
@@ -173,11 +173,12 @@ export const CmsTableManagement: React.FC = () => {
 
           <Button
             size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
             onClick={() => setIsAddZoneOpen(true)}
+            title="Thêm Khu Vực"
+            aria-label="Thêm Khu Vực"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
-            <span>Thêm Khu Vực</span>
+            <Icon name="plus" className="w-4 h-4 text-brand-400" />
           </Button>
         </div>
       </div>
@@ -311,11 +312,12 @@ export const CmsTableManagement: React.FC = () => {
               </div>
               <Button
                 size="sm"
-                className="rounded-xl text-xs gap-1.5 bg-brand-900 text-white px-3 shadow-xs"
+                className="rounded-xl h-8 w-8 p-0 flex items-center justify-center bg-brand-900 text-white shadow-xs shrink-0"
                 onClick={() => handleOpenAddTable(zone.id)}
+                title="Thêm Bàn"
+                aria-label="Thêm Bàn"
               >
                 <Icon name="plus" className="w-3.5 h-3.5" />
-                <span>Thêm Bàn</span>
               </Button>
             </div>
 

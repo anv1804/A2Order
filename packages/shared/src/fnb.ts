@@ -235,6 +235,14 @@ export interface TenantStoreRecord {
   businessType?: BusinessType;
   lastSync?: string;
   terminals?: ConnectedTerminalRecord[];
+  ownerEmail?: string;
+  staffList?: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    role: string;
+    isActive: boolean;
+  }>;
 }
 
 export interface SoftwareInvoiceRecord {

@@ -67,6 +67,7 @@ export type IconName =
   | "bars"
   | "moreHorizontal"
   | "chevronLeft"
+  | "chevronRight"
   | "arrowLeft"
   | "coffee"
   | "cup"
@@ -76,7 +77,11 @@ export type IconName =
   | "list"
   | "home"
   | "user"
-  | "heart";
+  | "heart"
+  | "maximize"
+  | "minimize"
+  | "copy"
+  | "eyeOff";
 
 export interface IconProps {
   name: IconName;

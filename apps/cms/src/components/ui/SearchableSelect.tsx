@@ -23,7 +23,7 @@ export interface SearchableSelectProps {
   menuClassName?: string;
   disabled?: boolean;
   showSearch?: boolean;
-  align?: "left" | "right";
+  align?: "left" | "right" | "auto";
   id?: string;
 }
 
@@ -39,15 +39,53 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   menuClassName,
   disabled = false,
   showSearch = true,
-  align = "left",
+  align = "auto",
   id,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
+  const [resolvedAlign, setResolvedAlign] = useState<"left" | "right">("left");
   const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const autoId = useId();
   const selectId = id || autoId;
+
+  // Tính toán hướng mở (lên/xuống, trái/phải) chống tràn màn hình & card
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+
+      const expectedMenuWidth = Math.max(rect.width, 210);
+      if (align === "right") {
+        setResolvedAlign("right");
+      } else if (align === "left") {
+        // Nếu căn trái bị tràn mép phải màn hình (> window.innerWidth - 16px) thì tự động đảo sang căn phải
+        if (rect.left + expectedMenuWidth > window.innerWidth - 16) {
+          setResolvedAlign("right");
+        } else {
+          setResolvedAlign("left");
+        }
+      } else {
+        // "auto": Nếu phần tử nằm ở nửa phải màn hình hoặc sẽ tràn mép phải, tự động căn phải (right-0)
+        if (
+          rect.left + expectedMenuWidth > window.innerWidth - 16 ||
+          rect.left + rect.width / 2 > window.innerWidth / 2
+        ) {
+          setResolvedAlign("right");
+        } else {
+          setResolvedAlign("left");
+        }
+      }
+    }
+  }, [isOpen, align]);
 
   const selectedOption = options.find((opt) => opt.value === value);
 
@@ -162,13 +200,14 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         />
       </button>
 
-      {/* Popover Menu Xổ Xuống với Ô Tìm Kiếm */}
+      {/* Popover Menu Xổ Xuống/Lên với Ô Tìm Kiếm */}
       {isOpen && (
         <div
           className={twMerge(
             clsx(
-              "absolute top-full mt-1.5 z-50 min-w-[200px] w-full max-w-xs sm:max-w-sm bg-white rounded-2xl border border-surface-border shadow-elevated overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100",
-              align === "right" ? "right-0" : "left-0",
+              "absolute z-50 min-w-[200px] w-full max-w-[calc(100vw-32px)] sm:max-w-sm bg-white rounded-2xl border border-surface-border shadow-elevated overflow-hidden animate-in fade-in-50 zoom-in-95 duration-100",
+              openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5",
+              resolvedAlign === "right" ? "right-0" : "left-0",
               menuClassName
             )
           )}
@@ -190,7 +229,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-primary p-0.5 rounded"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-subtle hover:text-ink-primary p-0.5 rounded cursor-pointer"
                     title="Xóa tìm kiếm"
                   >
                     <X size={12} />
@@ -201,7 +240,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
           )}
 
           {/* Danh Sách Lựa Chọn (Scrollable) */}
-          <div className="max-h-56 overflow-y-auto scrollbar-thin p-1.5 space-y-0.5">
+          <div className="max-h-48 overflow-y-auto scrollbar-thin p-1.5 space-y-0.5">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => {
                 const isSelected = opt.value === value;

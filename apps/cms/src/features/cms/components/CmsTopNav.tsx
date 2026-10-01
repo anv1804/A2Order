@@ -10,6 +10,7 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
   storeName,
   onOpenProfile,
   onOpenSearch,
+  onSelectMenu,
 }) => {
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -36,6 +37,7 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
         onClose={() => setIsNotiOpen(false)}
         notifications={notifications}
         onNotificationsChange={handleNotificationsChange}
+        onNavigateTab={onSelectMenu}
       />
       <div className="flex h-12 sm:h-16 min-w-0 items-center justify-between gap-1.5 sm:gap-3 px-0">
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">

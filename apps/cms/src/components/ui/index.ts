@@ -10,3 +10,5 @@ export * from "./Pagination.js";
 export * from "./Portal.js";
 export * from "./Skeleton.js";
 export * from "./SearchableSelect.js";
+export * from "./Checkbox.js";
+export * from "./ErrorBoundary.js";

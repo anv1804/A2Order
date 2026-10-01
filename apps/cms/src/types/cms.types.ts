@@ -277,6 +277,7 @@ export interface CmsTopNavProps {
   storeName?: string;
   onOpenProfile?: () => void;
   onOpenSearch?: () => void;
+  onSelectMenu?: (menuKey: string) => void;
 }
 
 export interface CmsLayoutProps {
@@ -310,9 +311,8 @@ export interface CmsStoreSettingsProps {
 }
 
 export interface CmsSuperAdminViewProps {
-  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config" | "scenarios";
+  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config" | "scenarios" | "store_users";
   onTabChange?: (tab: string) => void;
-  onImpersonateStore?: (store: TenantStoreRecord) => void;
 }
 
 export interface CmsDashboardProps {
@@ -467,6 +467,14 @@ export interface TenantStoreRecord {
   businessType?: BusinessType;
   lastSync?: string;
   terminals?: ConnectedTerminalRecord[];
+  ownerEmail?: string;
+  staffList?: Array<{
+    id: string;
+    name: string;
+    email: string | null;
+    role: string;
+    isActive: boolean;
+  }>;
 }
 
 export interface SoftwareInvoiceRecord {
@@ -592,3 +600,20 @@ export interface WaiterTableOrder {
   totalAmount: number;
   isSplit?: boolean;
 }
+
+// ================= TÀI KHOẢN & USER QUÁN (SUPER ADMIN PLATFORM) =================
+export interface PlatformStoreUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  pinCode: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  storeId: string;
+  storeName: string;
+  storeStatus?: string;
+  storePlan?: string;
+  hasPassword?: boolean;
+}
+

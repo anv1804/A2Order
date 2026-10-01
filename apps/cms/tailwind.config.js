@@ -11,6 +11,7 @@ export default {
         sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
       },
       spacing: {
+        "7.5": "1.875rem", // 30px
         "11": "2.75rem", // 44px: Touch Target tối thiểu
         "13": "3.25rem", // 52px: Nút hành động ngón cái
       },

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { DeepAnalyticsReport, MenuCategoryType } from "@a2order/shared";
 import { SalesBillRecord, CanceledItemRecord } from "@/types/cms.types";
 
@@ -312,6 +313,20 @@ export const CmsDeepAnalyticsView: React.FC = () => {
     billPage * BILL_PAGE_SIZE
   );
 
+  const {
+    visibleItems: mobileBills,
+    visibleCount: visibleBillCount,
+    hasMore: hasMoreBills,
+    sentinelRef: billSentinelRef,
+    isMobile,
+  } = useMobileInfiniteScroll({
+    items: filteredBills,
+    pageSize: 10,
+    mobileBreakpoint: 768,
+  });
+
+  const displayedBills = isMobile ? mobileBills : paginatedBills;
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Title & Filter bar */}
@@ -367,15 +382,16 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               <span>Chốt Ca (Z-Report)</span>
             </Button>
 
-            {/* Nút Xuất CSV thực sự */}
+            {/* Nút Xuất CSV thực sự (Icon-only) */}
             <Button
               size="sm"
               variant="outline"
-              className="rounded-xl gap-1.5 text-xs bg-white shrink-0"
+              className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center text-xs bg-white shrink-0"
               onClick={handleExportCsv}
+              title="Xuất báo cáo doanh thu ra CSV"
+              aria-label="Xuất CSV"
             >
-              <Icon name="download" className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Xuất CSV</span>
+              <Icon name="download" className="w-4 h-4" />
             </Button>
           </div>
         </div>
@@ -727,7 +743,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  paginatedBills.map((b) => (
+                  displayedBills.map((b) => (
                     <tr key={b.id} className="hover:bg-brand-50/30 transition-colors">
                       <td className="py-3 px-4">
                         <span className="font-mono font-black text-brand-950">{b.billCode}</span>
@@ -787,13 +803,25 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             </table>
           </div>
 
-          {/* Phân trang hóa đơn */}
-          <Pagination
-            currentPage={billPage}
-            totalItems={filteredBills.length}
-            pageSize={BILL_PAGE_SIZE}
-            onPageChange={setBillPage}
-          />
+          {/* Mobile Infinite Scroll Sentinel */}
+          <div className="block md:hidden">
+            <MobileInfiniteSentinel
+              hasMore={hasMoreBills}
+              totalCount={filteredBills.length}
+              visibleCount={visibleBillCount}
+              sentinelRef={billSentinelRef}
+            />
+          </div>
+
+          {/* Phân trang hóa đơn trên Desktop (>= md) */}
+          <div className="hidden md:block">
+            <Pagination
+              currentPage={billPage}
+              totalItems={filteredBills.length}
+              pageSize={BILL_PAGE_SIZE}
+              onPageChange={setBillPage}
+            />
+          </div>
         </div>
       )}
 

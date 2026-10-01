@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import {
   InventoryIngredient,
   InwardReceipt,
@@ -351,10 +352,37 @@ export const CmsInventoryManagement: React.FC = () => {
     stockPage * STOCK_PAGE_SIZE
   );
 
+  const {
+    visibleItems: mobileIngredients,
+    visibleCount: visibleIngredientCount,
+    hasMore: hasMoreIngredients,
+    sentinelRef: ingredientSentinelRef,
+    isMobile,
+  } = useMobileInfiniteScroll({
+    items: filteredIngredients,
+    pageSize: 10,
+    mobileBreakpoint: 768,
+  });
+
+  const displayedIngredients = isMobile ? mobileIngredients : paginatedIngredients;
+
   const paginatedReceipts = receipts.slice(
     (receiptPage - 1) * RECEIPT_PAGE_SIZE,
     receiptPage * RECEIPT_PAGE_SIZE
   );
+
+  const {
+    visibleItems: mobileReceipts,
+    visibleCount: visibleReceiptCount,
+    hasMore: hasMoreReceipts,
+    sentinelRef: receiptSentinelRef,
+  } = useMobileInfiniteScroll({
+    items: receipts,
+    pageSize: 10,
+    mobileBreakpoint: 768,
+  });
+
+  const displayedReceipts = isMobile ? mobileReceipts : paginatedReceipts;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -375,18 +403,19 @@ export const CmsInventoryManagement: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {/* Nút Thêm Nguyên Liệu (Icon-only) */}
           <Button
             size="sm"
             variant="outline"
-            className="rounded-full gap-1.5 text-xs border-surface-border text-ink-primary hover:bg-surface-muted whitespace-nowrap shrink-0"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center border-surface-border text-ink-primary hover:bg-surface-muted shrink-0"
             onClick={() => {
               setNewIngCode(`NL-${Math.floor(100 + Math.random() * 900)}`);
               setIsAddIngredientOpen(true);
             }}
+            title="Thêm Nguyên Liệu Mới"
+            aria-label="Thêm Nguyên Liệu Mới"
           >
-            <Icon name="plus" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">+ Nguyên Liệu</span>
-            <span className="hidden sm:inline">Thêm Nguyên Liệu</span>
+            <Icon name="plus" className="w-4 h-4" />
           </Button>
 
           <Button
@@ -640,7 +669,7 @@ export const CmsInventoryManagement: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    paginatedIngredients.map((item) => {
+                    displayedIngredients.map((item) => {
                       const isLow = item.currentStock <= item.minStockLevel;
                       return (
                         <tr key={item.id} className="hover:bg-brand-50/40 transition-colors">
@@ -699,13 +728,25 @@ export const CmsInventoryManagement: React.FC = () => {
             </div>
           </Panel>
 
-          {/* Phân trang tồn kho */}
-          <Pagination
-            currentPage={stockPage}
-            totalItems={filteredIngredients.length}
-            pageSize={STOCK_PAGE_SIZE}
-            onPageChange={setStockPage}
-          />
+          {/* Mobile Infinite Scroll Sentinel */}
+          <div className="block md:hidden">
+            <MobileInfiniteSentinel
+              hasMore={hasMoreIngredients}
+              totalCount={filteredIngredients.length}
+              visibleCount={visibleIngredientCount}
+              sentinelRef={ingredientSentinelRef}
+            />
+          </div>
+
+          {/* Phân trang tồn kho trên Desktop (>= md) */}
+          <div className="hidden md:block">
+            <Pagination
+              currentPage={stockPage}
+              totalItems={filteredIngredients.length}
+              pageSize={STOCK_PAGE_SIZE}
+              onPageChange={setStockPage}
+            />
+          </div>
         </div>
       )}
 
@@ -727,7 +768,7 @@ export const CmsInventoryManagement: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {paginatedReceipts.map((rc) => (
+            {displayedReceipts.map((rc) => (
               <Panel key={rc.id} variant="default" padding="lg" className="space-y-4 border border-surface-border">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-3">
                   <div>
@@ -781,13 +822,25 @@ export const CmsInventoryManagement: React.FC = () => {
             ))}
           </div>
 
-          {/* Phân trang phiếu nhập kho */}
-          <Pagination
-            currentPage={receiptPage}
-            totalItems={receipts.length}
-            pageSize={RECEIPT_PAGE_SIZE}
-            onPageChange={setReceiptPage}
-          />
+          {/* Mobile Infinite Scroll Sentinel */}
+          <div className="block md:hidden">
+            <MobileInfiniteSentinel
+              hasMore={hasMoreReceipts}
+              totalCount={receipts.length}
+              visibleCount={visibleReceiptCount}
+              sentinelRef={receiptSentinelRef}
+            />
+          </div>
+
+          {/* Phân trang phiếu nhập kho trên Desktop (>= md) */}
+          <div className="hidden md:block">
+            <Pagination
+              currentPage={receiptPage}
+              totalItems={receipts.length}
+              pageSize={RECEIPT_PAGE_SIZE}
+              onPageChange={setReceiptPage}
+            />
+          </div>
         </div>
       )}
 

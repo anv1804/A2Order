@@ -13,6 +13,7 @@ import { landingRoutes } from "./modules/landing/landing.routes.js";
 import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
 import { scenarioRoutes } from "./modules/scenario/scenario.routes.js";
 import { menuRoutes } from "./modules/menu/menu.routes.js";
+import { staffRoutes } from "./modules/staff/staff.routes.js";
 
 const fastify = Fastify({
   logger: false,
@@ -32,6 +33,7 @@ async function main() {
   await fastify.register(orderRoutes, { prefix: "/api/orders" });
   await fastify.register(billingRoutes, { prefix: "/api/billing" });
   await fastify.register(storeRoutes, { prefix: "/api/stores" });
+  await fastify.register(staffRoutes, { prefix: "/api/staff" });
   await fastify.register(licenseRoutes, { prefix: "/api/licenses" });
   await fastify.register(landingRoutes, { prefix: "/api/landing" });
   await fastify.register(analyticsRoutes, { prefix: "/api/analytics" });

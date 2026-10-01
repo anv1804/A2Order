@@ -1,5 +1,6 @@
 import React from "react";
 import { PaginationProps } from "@/types/ui.types.js";
+import { Icon } from "./Icon.js";
 
 export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
@@ -9,10 +10,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   className = "",
 }) => {
-  if (totalItems === 0) return null;
-
-  const totalPages = propTotalPages ?? Math.max(1, Math.ceil(totalItems / pageSize));
-  const startItem = (currentPage - 1) * pageSize + 1;
+  const totalPages = Math.max(1, propTotalPages ?? Math.ceil(totalItems / pageSize));
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
   // Sinh danh sách trang (tối đa 5 trang hiển thị)
@@ -29,53 +28,70 @@ export const Pagination: React.FC<PaginationProps> = ({
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    return pages;
+    return pages.length > 0 ? pages : [1];
   };
 
   const pageNumbers = getPageNumbers();
 
   return (
     <div
-      className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-surface-border text-xs ${className}`}
+      className={`flex flex-row items-center justify-between gap-2 pt-2.5 sm:pt-3.5 border-t border-slate-200/80 text-[11px] sm:text-xs select-none ${className}`}
     >
-      {/* Thông tin số lượng */}
-      <div className="text-ink-muted font-medium">
-        Hiển thị <span className="font-bold text-ink-primary">{startItem}</span> -{" "}
-        <span className="font-bold text-ink-primary">{endItem}</span> trên tổng số{" "}
-        <span className="font-black text-brand-900">{totalItems}</span>
+      {/* Thông tin số lượng & trang */}
+      <div className="text-slate-500 font-medium truncate">
+        {totalItems === 0 ? (
+          <span>0 bản ghi</span>
+        ) : (
+          <>
+            <span className="sm:hidden font-bold text-slate-800">
+              {startItem}-{endItem} <span className="font-normal text-slate-400">/</span> {totalItems}
+            </span>
+            <span className="hidden sm:inline">
+              Hiển thị <span className="font-bold text-slate-800">{startItem}</span> -{" "}
+              <span className="font-bold text-slate-800">{endItem}</span> trong tổng số{" "}
+              <span className="font-black text-emerald-800">{totalItems}</span> bản ghi
+              <span className="text-slate-400 ml-1.5 font-normal">
+                (Trang {currentPage} / {totalPages})
+              </span>
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Dải nút điều hướng */}
-      {totalPages > 1 && (
-        <div className="flex max-w-full items-center gap-1">
-          {/* Nút Trước */}
-          <button
-            type="button"
-            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage <= 1}
-            className={`rounded-xl px-2.5 py-1.5 font-bold transition-all sm:px-3 ${
-              currentPage <= 1
-                ? "text-ink-subtle bg-surface-canvas cursor-not-allowed opacity-50"
-                : "text-ink-secondary bg-white border border-surface-border hover:bg-surface-canvas hover:text-ink-primary shadow-xs"
-            }`}
-          >
-            ← Trước
-          </button>
+      {/* Dải nút điều hướng đồng bộ (Luôn hiển thị trên mọi trang) */}
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        {/* Nút Trước (Icon-only) */}
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage <= 1}
+          aria-label="Trang trước"
+          title="Trang trước"
+          className={`w-8 h-8 rounded-lg sm:rounded-xl flex items-center justify-center font-bold transition-all text-xs ${
+            currentPage <= 1
+              ? "text-slate-300 bg-slate-50 border border-slate-200/60 cursor-not-allowed opacity-60"
+              : "text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-2xs cursor-pointer active:scale-95"
+          }`}
+        >
+          <Icon name="chevronLeft" size={15} />
+        </button>
 
-          <span className="px-2 font-bold text-ink-secondary sm:hidden">{currentPage} / {totalPages}</span>
+        <span className="px-1.5 font-bold text-slate-600 sm:hidden">
+          {currentPage}/{totalPages}
+        </span>
 
-          {/* Dải số trang trên màn hình rộng */}
-          <div className="hidden items-center gap-1 sm:flex">
+        {/* Dải số trang trên màn hình rộng */}
+        <div className="hidden items-center gap-1 sm:flex">
           {pageNumbers[0] > 1 && (
             <>
               <button
                 type="button"
                 onClick={() => onPageChange(1)}
-                className="w-8 h-8 rounded-xl font-bold bg-white border border-surface-border text-ink-secondary hover:text-ink-primary"
+                className="w-8 h-8 rounded-xl font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer transition-all"
               >
                 1
               </button>
-              {pageNumbers[0] > 2 && <span className="px-1 text-ink-subtle">...</span>}
+              {pageNumbers[0] > 2 && <span className="px-1 text-slate-400">...</span>}
             </>
           )}
 
@@ -86,8 +102,8 @@ export const Pagination: React.FC<PaginationProps> = ({
               onClick={() => onPageChange(page)}
               className={`w-8 h-8 rounded-xl font-black transition-all ${
                 currentPage === page
-                  ? "bg-brand-900 text-white shadow-sm"
-                  : "bg-white border border-surface-border text-ink-secondary hover:bg-surface-canvas hover:text-ink-primary"
+                  ? "bg-emerald-700 text-white shadow-sm ring-1 ring-emerald-800"
+                  : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer"
               }`}
             >
               {page}
@@ -97,34 +113,36 @@ export const Pagination: React.FC<PaginationProps> = ({
           {pageNumbers[pageNumbers.length - 1] < totalPages && (
             <>
               {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                <span className="px-1 text-ink-subtle">...</span>
+                <span className="px-1 text-slate-400">...</span>
               )}
               <button
                 type="button"
                 onClick={() => onPageChange(totalPages)}
-                className="w-8 h-8 rounded-xl font-bold bg-white border border-surface-border text-ink-secondary hover:text-ink-primary"
+                className="w-8 h-8 rounded-xl font-bold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-2xs cursor-pointer transition-all"
               >
                 {totalPages}
               </button>
             </>
           )}
-          </div>
-
-          {/* Nút Sau */}
-          <button
-            type="button"
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage >= totalPages}
-            className={`rounded-xl px-2.5 py-1.5 font-bold transition-all sm:px-3 ${
-              currentPage >= totalPages
-                ? "text-ink-subtle bg-surface-canvas cursor-not-allowed opacity-50"
-                : "text-ink-secondary bg-white border border-surface-border hover:bg-surface-canvas hover:text-ink-primary shadow-xs"
-            }`}
-          >
-            Sau →
-          </button>
         </div>
-      )}
+
+        {/* Nút Sau (Icon-only) */}
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage >= totalPages}
+          aria-label="Trang sau"
+          title="Trang sau"
+          className={`w-8 h-8 rounded-lg sm:rounded-xl flex items-center justify-center font-bold transition-all text-xs ${
+            currentPage >= totalPages
+              ? "text-slate-300 bg-slate-50 border border-slate-200/60 cursor-not-allowed opacity-60"
+              : "text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 shadow-2xs cursor-pointer active:scale-95"
+          }`}
+        >
+          <Icon name="chevronRight" size={15} />
+        </button>
+      </div>
     </div>
   );
 };
+

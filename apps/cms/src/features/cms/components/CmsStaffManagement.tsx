@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
+import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
 import { StaffRole, StaffUser, PermissionItem, AttendanceLogRecord } from "@/types/cms.types";
@@ -341,8 +342,15 @@ export const CmsStaffManagement: React.FC = () => {
     toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
   };
 
+  const {
+    displayedItems: displayedStaff,
+    sentinelRef,
+    isLoadingMore,
+    hasMore,
+  } = useMobileInfiniteScroll(staffList, 10);
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 animate-fadeIn pb-16 lg:pb-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <div className="space-y-1">
@@ -362,11 +370,12 @@ export const CmsStaffManagement: React.FC = () => {
         <div className="flex items-center gap-2 shrink-0">
           <Button
             size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
+            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
             onClick={handleOpenAddModal}
+            title="Thêm Nhân Viên Mới"
+            aria-label="Thêm Nhân Viên Mới"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
-            <span>+ Thêm Nhân Viên Mới</span>
+            <Icon name="plus" className="w-4 h-4 text-brand-400" />
           </Button>
         </div>
       </div>
@@ -443,7 +452,7 @@ export const CmsStaffManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-border font-medium">
-                {staffList.map((staff) => {
+                {displayedStaff.map((staff) => {
                   const isPinVisible = showPins[staff.id];
 
                   return (
@@ -548,6 +557,14 @@ export const CmsStaffManagement: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          <MobileInfiniteSentinel
+            sentinelRef={sentinelRef}
+            isLoadingMore={isLoadingMore}
+            hasMore={hasMore}
+            displayedCount={displayedStaff.length}
+            totalCount={staffList.length}
+          />
         </Panel>
       )}
 
@@ -811,9 +828,15 @@ export const CmsStaffManagement: React.FC = () => {
                 <h3 className="text-sm font-black text-ink-primary">Lịch Làm Việc Tuần 28/09 — 04/10/2026</h3>
                 <p className="text-xs text-ink-muted mt-0.5">Tổng quan phân ca nhân viên theo ngày. Chỉnh sửa chi tiết liên hệ quản lý.</p>
               </div>
-              <Button size="sm" variant="outline" className="rounded-xl text-xs gap-1.5" onClick={() => toast.info("Tính năng xuất bảng phân ca PDF đang phát triển")}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center shrink-0"
+                onClick={() => toast.info("Tính năng xuất bảng phân ca PDF đang phát triển")}
+                title="Xuất Bảng Phân Ca"
+                aria-label="Xuất Bảng Phân Ca"
+              >
                 <Icon name="fileText" className="w-3.5 h-3.5" />
-                Xuất Bảng Phân Ca
               </Button>
             </div>
 

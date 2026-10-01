@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "a2order",
-  "version": "1.0.0",
+  "version": "6.5.0",
   "private": true,
   "description": "Hệ thống Quản lý Vận hành & Gọi món Thông minh cho Quán ăn / Nhà hàng vừa & nhỏ",
   "workspaces": [

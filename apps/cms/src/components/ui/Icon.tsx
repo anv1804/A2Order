@@ -34,6 +34,8 @@ import {
   Monitor,
   Smartphone,
   Eye,
+  EyeOff,
+  Copy,
   Calendar,
   Filter,
   Download,
@@ -68,6 +70,7 @@ import {
   Menu as MenuBars,
   MoreHorizontal,
   ChevronLeft,
+  ChevronRight,
   ArrowLeft,
   Coffee,
   CupSoda,
@@ -77,6 +80,8 @@ import {
   Home,
   User,
   Heart,
+  Maximize2,
+  Minimize2,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -151,6 +156,7 @@ const iconMap: Record<IconName, LucideIcon> = {
   bars: MenuBars,
   moreHorizontal: MoreHorizontal,
   chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
   arrowLeft: ArrowLeft,
   coffee: Coffee,
   cup: CupSoda,
@@ -161,6 +167,10 @@ const iconMap: Record<IconName, LucideIcon> = {
   home: Home,
   user: User,
   heart: Heart,
+  maximize: Maximize2,
+  minimize: Minimize2,
+  copy: Copy,
+  eyeOff: EyeOff,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {
