@@ -734,7 +734,7 @@ export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = (
         {/* Khung cuộn nội dung chính (Cô lập cuộn nội bộ bảng với overscroll-y-contain) */}
         <div
           onScroll={handleInnerScroll}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain scrollbar-thin pr-0.5 sm:pr-1"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain scrollbar-thin pr-0.5 sm:pr-1 pb-24 lg:pb-4"
         >
           {/* Bảng chuẩn trên Desktop */}
           <ScenarioDesktopTable

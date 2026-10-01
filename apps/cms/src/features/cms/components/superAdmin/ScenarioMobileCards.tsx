@@ -18,12 +18,12 @@ export interface ScenarioMobileCardsProps {
 const getStationInfo = (station?: "KITCHEN" | "BAR" | "DESSERT") => {
   switch (station) {
     case "BAR":
-      return { label: "Quầy Bar", dotColor: "bg-amber-500", textColor: "text-amber-800" };
+      return { label: "Quầy Bar", textColor: "text-amber-800" };
     case "DESSERT":
-      return { label: "Quầy Bánh", dotColor: "bg-purple-500", textColor: "text-purple-800" };
+      return { label: "Quầy Bánh", textColor: "text-purple-800" };
     case "KITCHEN":
     default:
-      return { label: "Bếp Nóng", dotColor: "bg-emerald-500", textColor: "text-emerald-800" };
+      return { label: "Bếp Nóng", textColor: "text-emerald-800" };
   }
 };
 
@@ -51,7 +51,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
   visibleCount,
 }) => {
   return (
-    <div className="block lg:hidden w-full space-y-2">
+    <div className="block lg:hidden w-full space-y-2.5">
       {dishes.length === 0 ? (
         <div className="py-8 text-center text-xs text-slate-400 font-bold bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
           <div className="flex flex-col items-center justify-center gap-1.5">
@@ -62,7 +62,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-2.5">
           {dishes.map((dish) => {
             const isSelected = selectedDishIds.includes(dish.id);
             const major =
@@ -82,25 +82,16 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
             return (
               <div
                 key={dish.id}
-                className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                className={`rounded-2xl border p-3 transition-all duration-200 ${
                   isSelected
                     ? "bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs"
                     : "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300"
                 }`}
               >
-                <div className="flex items-start gap-2.5">
-                  {/* 1. Checkbox chọn món */}
-                  <div className="pt-1 shrink-0">
-                    <Checkbox
-                      checked={isSelected}
-                      onChange={() => onToggleSelectDish(dish.id)}
-                      title={`Chọn ${dish.name}`}
-                      size="sm"
-                    />
-                  </div>
-
-                  {/* 2. Ảnh món ăn: Cố định kích thước chuẩn w-16 h-16 (64x64px), không bao giờ bị phình to */}
-                  <div className="relative w-16 h-16 min-w-[64px] min-h-[64px] max-w-[64px] max-h-[64px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 shadow-2xs flex items-center justify-center">
+                {/* 1. Phần thân chính: Ảnh món ăn + Thông tin rộng rãi */}
+                <div className="flex items-start gap-3">
+                  {/* Ảnh đại diện món ăn (72x72px): Bo góc mượt mà, bóng đổ nhẹ, badge Hot nếu có */}
+                  <div className="relative w-[72px] h-[72px] min-w-[72px] min-h-[72px] max-w-[72px] max-h-[72px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 shadow-2xs">
                     {dish.image ? (
                       <img
                         src={dish.image}
@@ -109,85 +100,99 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
                         loading="lazy"
                       />
                     ) : (
-                      <Icon name={majorInfo.icon} size={22} className="text-slate-400" />
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-50">
+                        <Icon name={majorInfo.icon} size={26} />
+                      </div>
                     )}
 
-                    {/* Huy hiệu Hot tinh tế ghim góc ảnh */}
+                    {/* Huy hiệu Hot ghim góc ảnh */}
                     {dish.isBestSeller && (
-                      <span className="absolute top-0.5 left-0.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 leading-none z-10">
+                      <span className="absolute top-1 left-1 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 leading-none z-10">
                         <Icon name="flame" size={8} className="fill-white" />
                         Hot
                       </span>
                     )}
                   </div>
 
-                  {/* 3. Nội dung thông tin món */}
-                  <div className="flex-1 min-w-0">
-                    {/* Hàng 1: Tên món + Nút thao tác Sửa/Xóa tinh tế */}
-                    <div className="flex items-start justify-between gap-1.5">
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                  {/* Thông tin món: Rộng rãi, không bị các nút bấm chèn ép */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-between min-h-[72px]">
+                    <div>
+                      {/* Tên món: Cho phép hiển thị 2 dòng đầy đủ, không bị cắt cụt */}
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-snug line-clamp-2">
                         {dish.name}
                       </h4>
 
-                      {/* Nút thao tác Icon-only */}
-                      <div className="flex items-center gap-1 shrink-0 -mt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => handleEditDish(dish)}
-                          title={`Chỉnh sửa ${dish.name}`}
-                          aria-label="Chỉnh sửa món"
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
-                        >
-                          <Icon name="edit" size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDish(dish)}
-                          title={`Xóa ${dish.name}`}
-                          aria-label="Xóa món"
-                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
-                        >
-                          <Icon name="trash" size={12} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Hàng 2: Phân loại & Trạm phục vụ - GỌN TRÊN 1 DÒNG DUY NHẤT (Chống bậc thang) */}
-                    <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-slate-500 font-medium truncate">
-                      <span className="font-bold text-slate-700 shrink-0">{majorInfo.label}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-slate-600 truncate">{dish.category || "Món Chung"}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className={`font-semibold shrink-0 ${stationInfo.textColor}`}>
-                        {stationInfo.label}
-                      </span>
-                    </div>
-
-                    {/* Hàng 3: Giá bán + Tỷ lệ lãi + Size/Topping (Đáy thẻ liền mạch) */}
-                    <div className="flex items-center justify-between gap-1.5 mt-2 pt-1.5 border-t border-slate-100">
-                      <div className="flex items-baseline gap-1.5">
-                        <span className="text-xs sm:text-sm font-black text-slate-950 font-mono tracking-tight">
-                          {dish.price.toLocaleString("vi-VN")} đ
+                      {/* Phân loại & Trạm phục vụ: 1 dòng thanh thoát */}
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 font-medium">
+                        <span className="font-bold text-slate-700 shrink-0">{majorInfo.label}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="truncate text-slate-600">{dish.category || "Món Chung"}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className={`font-semibold shrink-0 ${stationInfo.textColor}`}>
+                          {stationInfo.label}
                         </span>
-                        {hasMargin && (
-                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 leading-none">
-                            +{marginPercent}% lãi
-                          </span>
-                        )}
                       </div>
+                    </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        {variantCount > 1 && (
-                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 leading-none">
-                            {variantCount} size
-                          </span>
-                        )}
-                        {customGroupCount > 0 && (
-                          <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 leading-none">
-                            +{customGroupCount} topping
-                          </span>
-                        )}
-                      </div>
+                    {/* Giá bán + Tỷ lệ lãi: Không bao giờ bị rớt chữ đ */}
+                    <div className="flex items-baseline gap-2 mt-1.5">
+                      <span className="text-sm font-black text-slate-950 font-mono tracking-tight whitespace-nowrap">
+                        {dish.price.toLocaleString("vi-VN")} đ
+                      </span>
+                      {hasMargin && (
+                        <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 whitespace-nowrap leading-none">
+                          +{marginPercent}% lãi
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Thanh đáy thẻ: Checkbox chọn món bên trái + Size/Topping + Nút Sửa/Xóa bên phải */}
+                <div className="flex items-center justify-between gap-2 mt-2.5 pt-2 border-t border-slate-100">
+                  {/* Left: Checkbox chọn món có nhãn dễ bấm */}
+                  <label className="flex items-center gap-2 cursor-pointer select-none py-0.5">
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => onToggleSelectDish(dish.id)}
+                      size="sm"
+                    />
+                    <span className="text-xs font-semibold text-slate-600">
+                      {isSelected ? "Đã chọn" : "Chọn"}
+                    </span>
+                  </label>
+
+                  {/* Right: Badges size/topping + Nút Sửa / Xóa */}
+                  <div className="flex items-center gap-1.5">
+                    {variantCount > 1 && (
+                      <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200/60 leading-none">
+                        {variantCount} size
+                      </span>
+                    )}
+                    {customGroupCount > 0 && (
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/60 leading-none">
+                        +{customGroupCount} topping
+                      </span>
+                    )}
+
+                    <div className="flex items-center gap-1 pl-1.5 border-l border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => handleEditDish(dish)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-800 transition active:scale-95"
+                        title="Chỉnh sửa món"
+                      >
+                        <Icon name="edit" size={12} />
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDish(dish)}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95"
+                        title="Xóa món"
+                      >
+                        <Icon name="trash" size={13} />
+                      </button>
                     </div>
                   </div>
                 </div>
