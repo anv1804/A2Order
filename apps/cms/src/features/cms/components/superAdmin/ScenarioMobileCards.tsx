@@ -99,13 +99,13 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
                     />
                   </div>
 
-                  {/* 2. Ảnh món ăn: Kích thước 60x60, bo góc tròn đẹp mắt, badge Hot trên ảnh */}
-                  <div className="relative w-15 h-15 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 shadow-2xs flex items-center justify-center">
+                  {/* 2. Ảnh món ăn: Cố định kích thước chuẩn w-16 h-16 (64x64px), không bao giờ bị phình to */}
+                  <div className="relative w-16 h-16 min-w-[64px] min-h-[64px] max-w-[64px] max-h-[64px] rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 shadow-2xs flex items-center justify-center">
                     {dish.image ? (
                       <img
                         src={dish.image}
                         alt={dish.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover block"
                         loading="lazy"
                       />
                     ) : (
@@ -114,7 +114,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
 
                     {/* Huy hiệu Hot tinh tế ghim góc ảnh */}
                     {dish.isBestSeller && (
-                      <span className="absolute top-0.5 left-0.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 leading-none">
+                      <span className="absolute top-0.5 left-0.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 leading-none z-10">
                         <Icon name="flame" size={8} className="fill-white" />
                         Hot
                       </span>
@@ -136,7 +136,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
                           onClick={() => handleEditDish(dish)}
                           title={`Chỉnh sửa ${dish.name}`}
                           aria-label="Chỉnh sửa món"
-                          className="w-6.5 h-6.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
                         >
                           <Icon name="edit" size={12} />
                         </button>
@@ -145,7 +145,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
                           onClick={() => handleDeleteDish(dish)}
                           title={`Xóa ${dish.name}`}
                           aria-label="Xóa món"
-                          className="w-6.5 h-6.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                          className="w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
                         >
                           <Icon name="trash" size={12} />
                         </button>
