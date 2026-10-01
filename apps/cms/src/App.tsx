@@ -6,6 +6,7 @@ import { LoadingScreen, CmsPageSkeleton, ErrorBoundary } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { hasUnsavedChanges, useUnsavedChangesStore } from "@/stores/unsavedChangesStore";
 import { AuthUser } from "@/types";
+import { CmsAppRole } from "@/types/cms.types";
 import { AppModule } from "@a2order/shared";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { API_BASE_URL } from "@/services/api/apiClient";
@@ -89,10 +90,54 @@ const CmsProfileView = safeLazy(() =>
 const AUTH_TOKEN_KEY = "a2order_auth_token";
 const AUTH_USER_KEY = "a2order_auth_user";
 
+const ROLE_ALLOWED_MENUS: Record<CmsAppRole, string[]> = {
+  SUPER_ADMIN: [
+    "telemetry",
+    "tenants",
+    "store_users",
+    "license_manager",
+    "software_invoices",
+    "pricing_config",
+    "scenarios",
+    "audit_logs",
+    "profile",
+  ],
+  STORE_OWNER: [
+    "dashboard",
+    "staff_order",
+    "tables",
+    "kds",
+    "reservations",
+    "menu",
+    "inventory",
+    "customers",
+    "promotions",
+    "analytics",
+    "team",
+    "hardware",
+    "landing_page",
+    "settings",
+    "profile",
+  ],
+  ACCOUNTANT: ["analytics", "inventory", "dashboard", "profile"],
+  CASHIER: ["staff_order", "tables", "dashboard", "reservations", "customers", "profile"],
+  CHEF: ["kds", "menu", "profile"],
+  WAITER: ["tables", "staff_order", "reservations", "profile"],
+};
+
+const ROLE_DEFAULT_MENUS: Record<CmsAppRole, string> = {
+  SUPER_ADMIN: "telemetry",
+  STORE_OWNER: "dashboard",
+  ACCOUNTANT: "analytics",
+  CASHIER: "staff_order",
+  CHEF: "kds",
+  WAITER: "tables",
+};
+
 export const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [currentRole, setCurrentRole] = usePersistentState<"STORE_OWNER" | "SUPER_ADMIN">("currentRole", "SUPER_ADMIN");
+  const [currentRole, setCurrentRole] = usePersistentState<CmsAppRole>("currentRole", "SUPER_ADMIN");
   const [activeMenu, setActiveMenu] = usePersistentState<string>("activeMenu", "telemetry");
   const [enabledModules, setEnabledModules] = usePersistentState<AppModule[]>("enabledModules", [
     AppModule.CORE_POS,
@@ -102,6 +147,15 @@ export const App: React.FC = () => {
     AppModule.MODULE_LANDING_PAGE,
   ]);
   const confirmingNavigation = useRef(false);
+
+  // Bảo vệ điều hướng nghiêm ngặt: Nếu menu đang chọn không thuộc vai trò hiện tại, lập tức redirect về menu mặc định của role
+  useEffect(() => {
+    const allowed = ROLE_ALLOWED_MENUS[currentRole] || ROLE_ALLOWED_MENUS.STORE_OWNER;
+    if (!allowed.includes(activeMenu)) {
+      const defaultMenu = ROLE_DEFAULT_MENUS[currentRole] || "dashboard";
+      setActiveMenu(defaultMenu);
+    }
+  }, [currentRole, activeMenu, setActiveMenu]);
 
   // Quản lý đường dẫn URL hiện tại cho các phân hệ (/admin/login vs /login)
   const [currentPath, setCurrentPath] = useState<string>(() => {
@@ -322,12 +376,17 @@ export const App: React.FC = () => {
         onChangeRole={async (role) => {
           if (!(await confirmLeaveUnsaved())) return;
           setCurrentRole(role);
-          if (role === "SUPER_ADMIN") {
-            setActiveMenu("telemetry");
-          } else {
-            setActiveMenu("dashboard");
-          }
-          toast.info(`Đã chuyển sang chế độ ${role === "SUPER_ADMIN" ? "Super Admin Nền Tảng" : "Chủ Quán"}`);
+          const defaultMenu = ROLE_DEFAULT_MENUS[role] || "dashboard";
+          setActiveMenu(defaultMenu);
+          const roleLabels: Record<CmsAppRole, string> = {
+            SUPER_ADMIN: "Super Admin Nền Tảng",
+            STORE_OWNER: "Chủ Quán (Toàn Quyền)",
+            ACCOUNTANT: "Kế Toán Quán",
+            CASHIER: "Thu Ngân Bán Hàng",
+            CHEF: "Bếp Nấu / KDS",
+            WAITER: "Phục Vụ Bàn & POS",
+          };
+          toast.info(`Đã chuyển sang chế độ ${roleLabels[role] || role}`);
         }}
       >
         <ErrorBoundary>
@@ -335,6 +394,7 @@ export const App: React.FC = () => {
             {activeMenu === "profile" ? (
               <CmsProfileView user={currentUser} currentRole={currentRole} onLogout={handleLogout} />
             ) : currentRole === "SUPER_ADMIN" ? (
+              /* Phân hệ Super Admin Nền Tảng */
               activeMenu === "scenarios" ? (
                 <ScenarioTemplateManager />
               ) : (
@@ -366,12 +426,42 @@ export const App: React.FC = () => {
                   }}
                 />
               )
-            ) : (
+            ) : currentRole === "CHEF" ? (
+              /* Phân hệ Bếp Nấu & Pha Chế (KDS & Báo Hết) - Tách riêng biệt 100% */
               <>
-                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} />}
-                {activeMenu === "staff_order" && <CmsStaffOrderView />}
-                {activeMenu === "tables" && <CmsTableManagement />}
-                {activeMenu === "menu" && <CmsMenuManagement />}
+                {activeMenu === "kds" && <CmsKdsView />}
+                {activeMenu === "menu" && <CmsMenuManagement currentRole="CHEF" />}
+              </>
+            ) : currentRole === "WAITER" ? (
+              /* Phân hệ Phục Vụ Bàn & Order Cầm Tay - Tách riêng biệt 100% */
+              <>
+                {activeMenu === "tables" && <CmsTableManagement currentRole="WAITER" />}
+                {activeMenu === "staff_order" && <CmsStaffOrderView currentRole="WAITER" />}
+                {activeMenu === "reservations" && <CmsReservationsManagement />}
+              </>
+            ) : currentRole === "CASHIER" ? (
+              /* Phân hệ Thu Ngân & Điểm Thanh Toán - Tách riêng biệt 100% */
+              <>
+                {activeMenu === "staff_order" && <CmsStaffOrderView currentRole="CASHIER" />}
+                {activeMenu === "tables" && <CmsTableManagement currentRole="CASHIER" />}
+                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="CASHIER" />}
+                {activeMenu === "reservations" && <CmsReservationsManagement />}
+                {activeMenu === "customers" && <CmsCustomerManagement />}
+              </>
+            ) : currentRole === "ACCOUNTANT" ? (
+              /* Phân hệ Kế Toán & Dòng Tiền P&L - Tách riêng biệt 100% */
+              <>
+                {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
+                {activeMenu === "inventory" && <CmsInventoryManagement />}
+                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="ACCOUNTANT" />}
+              </>
+            ) : (
+              /* Phân hệ Chủ Quán (Toàn quyền quản trị cửa hàng) */
+              <>
+                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="STORE_OWNER" />}
+                {activeMenu === "staff_order" && <CmsStaffOrderView currentRole="STORE_OWNER" />}
+                {activeMenu === "tables" && <CmsTableManagement currentRole="STORE_OWNER" />}
+                {activeMenu === "menu" && <CmsMenuManagement currentRole="STORE_OWNER" />}
                 {activeMenu === "inventory" && <CmsInventoryManagement />}
                 {activeMenu === "customers" && <CmsCustomerManagement />}
                 {activeMenu === "promotions" && <CmsPromotionsManagement />}

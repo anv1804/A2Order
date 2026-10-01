@@ -234,8 +234,11 @@ export interface Reservation {
   depositStatus?: "UNPAID" | "PAID";
   notes?: string;
   source: "LANDING_PAGE" | "PHONE_CALL" | "WALK_IN";
-  status: "PENDING" | "CONFIRMED" | "ARRIVED" | "NO_SHOW" | "CANCELLED";
+  status: "PENDING" | "CONFIRMED" | "ARRIVED" | "NO_SHOW" | "CANCELLED" | "LATE";
   createdAt: string;
+  depositResolution?: "FORFEIT_PENALTY" | "VOUCHER_CREDIT" | "REFUNDED";
+  extendedMinutes?: number;
+  lateNotifiedAt?: string;
 }
 
 // Navigation & Layout Component Props
@@ -253,15 +256,23 @@ export interface CmsSidebarMenuGroup {
   items: CmsSidebarMenuItem[];
 }
 
+export type CmsAppRole =
+  | "SUPER_ADMIN"
+  | "STORE_OWNER"
+  | "ACCOUNTANT"
+  | "CASHIER"
+  | "CHEF"
+  | "WAITER";
+
 export interface CmsSidebarProps {
   activeMenu: string;
   onSelectMenu: (menu: string) => void;
   onLogout: () => void;
-  currentRole: "STORE_OWNER" | "SUPER_ADMIN";
-  onChangeRole?: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
+  currentRole: CmsAppRole;
+  onChangeRole?: (role: CmsAppRole) => void;
   enabledModules?: AppModule[];
   onCloseMobileDrawer?: () => void;
-  currentUser?: { name: string; email?: string | null; storeName?: string | null } | null;
+  currentUser?: { name: string; email?: string | null; storeName?: string | null; role?: string } | null;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -278,6 +289,8 @@ export interface CmsTopNavProps {
   onOpenProfile?: () => void;
   onOpenSearch?: () => void;
   onSelectMenu?: (menuKey: string) => void;
+  currentRole?: CmsAppRole;
+  onChangeRole?: (role: CmsAppRole) => void;
 }
 
 export interface CmsLayoutProps {
@@ -285,10 +298,10 @@ export interface CmsLayoutProps {
   onLogout: () => void;
   activeMenu: string;
   onSelectMenu: (menu: string) => void;
-  currentRole: "STORE_OWNER" | "SUPER_ADMIN";
-  onChangeRole?: (role: "STORE_OWNER" | "SUPER_ADMIN") => void;
+  currentRole: CmsAppRole;
+  onChangeRole?: (role: CmsAppRole) => void;
   enabledModules?: AppModule[];
-  currentUser?: { name: string; email?: string | null; storeName?: string | null } | null;
+  currentUser?: { name: string; email?: string | null; storeName?: string | null; role?: string } | null;
 }
 
 export interface CmsMetricCardsProps {
@@ -317,6 +330,19 @@ export interface CmsSuperAdminViewProps {
 
 export interface CmsDashboardProps {
   onNavigateTab?: (tab: string) => void;
+  currentRole?: CmsAppRole;
+}
+
+export interface CmsMenuManagementProps {
+  currentRole?: CmsAppRole;
+}
+
+export interface CmsStaffOrderViewProps {
+  currentRole?: CmsAppRole;
+}
+
+export interface CmsTableManagementProps {
+  currentRole?: CmsAppRole;
 }
 
 // Sales Audit & Reporting Types
@@ -579,14 +605,30 @@ export interface ReceiptTemplateConfig {
 
 // ================= NHÂN VIÊN ORDER CẦM TAY (WAITER POS) =================
 export interface WaiterOrderItem {
+  id?: string;
   dishId: string;
   name: string;
   price: number;
   quantity: number;
   notes?: string;
   selectedModifiers?: string[];
-  status?: "WAITING" | "COOKING" | "SERVED" | "OUT_OF_STOCK";
+  status?: "WAITING" | "COOKING" | "SERVED" | "OUT_OF_STOCK" | "REMAKE" | "RETURNED" | "CANCELED";
   orderedAt?: string;
+  round?: number;
+  remakeReason?: string;
+  cancelReason?: string;
+}
+
+export interface OrderSurcharge {
+  id: string;
+  name: string;
+  amount: number;
+}
+
+export interface OrderDiscount {
+  type: "PERCENT" | "AMOUNT";
+  value: number;
+  reason: string;
 }
 
 export interface WaiterTableOrder {
@@ -599,6 +641,23 @@ export interface WaiterTableOrder {
   items: WaiterOrderItem[];
   totalAmount: number;
   isSplit?: boolean;
+  mergedTables?: string[];
+  surcharges?: OrderSurcharge[];
+  discount?: OrderDiscount;
+  offlinePaid?: boolean;
+  offlinePaidAt?: string;
+}
+
+export interface CanceledItemRecord {
+  id: string;
+  dishName: string;
+  quantity: number;
+  price: number;
+  canceledAt: string;
+  tableName: string;
+  canceledBy: string;
+  reason: string;
+  type?: "CANCEL_WAITING" | "CANCEL_COOKING" | "RETURN_SERVED" | "REMAKE";
 }
 
 // ================= TÀI KHOẢN & USER QUÁN (SUPER ADMIN PLATFORM) =================

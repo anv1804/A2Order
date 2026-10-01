@@ -34,3 +34,7 @@ pnpm-debug.log*
 # Prisma
 dev.db
 dev.db-journal
+
+# Agent skills
+.agents/
+skills-lock.json

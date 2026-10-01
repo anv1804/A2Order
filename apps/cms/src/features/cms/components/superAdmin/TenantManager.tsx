@@ -230,7 +230,7 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
         className={`transition-all duration-200 flex flex-col p-2.5 sm:p-5 lg:p-6 ${
           isMaximized
             ? "flex-1 min-h-0 h-full shadow-sm border border-slate-200"
-            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-2 z-10 shadow-sm"
+            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-0 sm:top-2 z-10 shadow-sm"
         }`}
       >
         {/* Header Toolbar */}
@@ -482,7 +482,7 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
         {/* Khối Bảng & Phân Trang (Kéo dài xuống đáy màn hình, cuộn nội bộ) */}
         <div className="flex-1 min-h-0 flex flex-col justify-between overflow-hidden">
           {/* Vùng cuộn nội bộ cho Bảng / Thẻ */}
-          <div onScroll={handleInnerScroll} className="flex-1 min-h-[200px] lg:min-h-0 overflow-y-auto overflow-x-auto scrollbar-thin border-0 sm:border rounded-none sm:rounded-2xl border-slate-200/70 bg-transparent sm:bg-white shadow-none sm:shadow-2xs">
+          <div onScroll={handleInnerScroll} className="flex-1 min-h-[200px] lg:min-h-0 overflow-y-auto overflow-x-auto overscroll-y-contain scrollbar-thin border-0 sm:border rounded-none sm:rounded-2xl border-slate-200/70 bg-transparent sm:bg-white shadow-none sm:shadow-2xs">
             {/* Desktop Table View (>= lg) */}
             <TenantDesktopTable
               paginatedStores={paginatedStores}
@@ -497,7 +497,7 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
             />
 
             {/* Mobile / Tablet Cards View (< lg) với Cuộn Tải Thêm (Infinite Scroll) */}
-            <div className="block lg:hidden">
+            <div className="block lg:hidden pb-24 lg:pb-0">
               <TenantMobileCards
                 paginatedStores={mobileStores}
                 selectedStoreIds={selectedStoreIds}

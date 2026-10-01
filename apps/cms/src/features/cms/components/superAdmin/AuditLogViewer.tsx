@@ -248,7 +248,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
         className={`transition-all duration-200 flex flex-col p-2.5 sm:p-5 lg:p-6 ${
           isMaximized
             ? "flex-1 min-h-0 h-full shadow-sm border border-slate-200"
-            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-2 z-10 shadow-sm"
+            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-0 sm:top-2 z-10 shadow-sm"
         }`}
       >
         {/* Header Toolbar */}
@@ -408,7 +408,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
         {/* Khung nội dung bảng hoặc timeline cuộn mượt mà */}
         <div
           onScroll={handleInnerScroll}
-          className="flex-1 min-h-0 overflow-y-auto overflow-x-auto rounded-none sm:rounded-xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-y-contain scrollbar-thin rounded-none sm:rounded-xl border-0 sm:border border-slate-100 bg-transparent sm:bg-white"
         >
           {viewMode === "TABLE" ? (
             <>
@@ -416,7 +416,7 @@ export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
                 paginatedLogs={paginatedLogs}
                 onViewDetails={setViewingLog}
               />
-              <div className="block lg:hidden">
+              <div className="block lg:hidden pb-24 lg:pb-0">
                 <AuditMobileCards
                   paginatedLogs={mobileLogs}
                   onViewDetails={setViewingLog}

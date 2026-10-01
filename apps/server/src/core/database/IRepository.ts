@@ -74,3 +74,45 @@ export interface IInvoiceRepository {
   create(data: Omit<SoftwareInvoiceRecord, "id">): Promise<SoftwareInvoiceRecord>;
   confirmPayment(id: string): Promise<SoftwareInvoiceRecord | null>;
 }
+
+// ==========================================
+// 5. STAFF REPOSITORY INTERFACE
+// ==========================================
+export interface StaffRecord {
+  id: string;
+  storeId: string;
+  name: string;
+  email?: string | null;
+  passwordHash?: string | null;
+  pinCode?: string | null;
+  role: string;
+  isActive: boolean;
+  createdAt: string | Date;
+  storeName?: string;
+  storeStatus?: string;
+  storePlan?: string;
+}
+
+export interface IStaffRepository {
+  getAll(params?: {
+    storeId?: string;
+    role?: string;
+    status?: string;
+    search?: string;
+  }): Promise<StaffRecord[]>;
+  getById(id: string): Promise<StaffRecord | null>;
+  getByEmail(email: string): Promise<StaffRecord | null>;
+  findByPin(storeId: string, staffId: string, pinCode: string): Promise<StaffRecord | null>;
+  create(data: {
+    storeId: string;
+    name: string;
+    email?: string | null;
+    passwordHash?: string | null;
+    pinCode?: string;
+    role: string;
+    isActive?: boolean;
+  }): Promise<StaffRecord>;
+  update(id: string, data: Partial<StaffRecord>): Promise<StaffRecord | null>;
+  delete(id: string): Promise<boolean>;
+  toggleStatus(id: string): Promise<StaffRecord | null>;
+}

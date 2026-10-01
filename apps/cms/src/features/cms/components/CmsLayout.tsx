@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui";
 import { IconName } from "@/types";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
-import { CmsLayoutProps } from "@/types/cms.types";
+import { CmsLayoutProps, CmsAppRole } from "@/types/cms.types";
 
 export const CmsLayout: React.FC<CmsLayoutProps> = ({
   children,
@@ -65,32 +65,66 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
     };
   }, [resetHideTimer]);
 
-  const navigationItems = useMemo(() => currentRole === "SUPER_ADMIN" ? [
-    { id: "telemetry", label: "Tổng quan nền tảng", hint: "Số liệu và hoạt động" },
-    { id: "tenants", label: "Quản lý quán & chuỗi", hint: "Đối tác và thiết bị" },
-    { id: "license_manager", label: "License key", hint: "Cấp và gia hạn" },
-    { id: "software_invoices", label: "Hóa đơn & thu phí", hint: "Theo dõi thanh toán" },
-    { id: "pricing_config", label: "Bảng giá & voucher", hint: "Cấu hình gói dịch vụ" },
-    { id: "scenarios", label: "Kịch bản F&B", hint: "Thực đơn mẫu" },
-    { id: "audit_logs", label: "Kiểm toán hệ thống", hint: "Nhật ký hoạt động" },
-    { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và quyền truy cập" },
-  ] : [
-    { id: "dashboard", label: "Tổng quan quán", hint: "Tình hình vận hành" },
-    { id: "staff_order", label: "Gọi món", hint: "POS cầm tay" },
-    { id: "tables", label: "Bàn ăn", hint: "Sơ đồ bàn" },
-    { id: "kds", label: "Màn hình bếp", hint: "KDS và trạng thái món" },
-    { id: "reservations", label: "Đặt bàn", hint: "Lịch hẹn khách" },
-    { id: "menu", label: "Thực đơn", hint: "Món ăn và giá" },
-    { id: "inventory", label: "Kho hàng", hint: "Tồn kho và nhập hàng" },
-    { id: "customers", label: "Khách hàng", hint: "Hồ sơ và khách thân thiết" },
-    { id: "promotions", label: "Khuyến mãi", hint: "Voucher và ưu đãi" },
-    { id: "analytics", label: "Báo cáo", hint: "Doanh thu và hiệu quả" },
-    { id: "team", label: "Nhân sự", hint: "Nhân viên và quyền" },
-    { id: "hardware", label: "Thiết bị", hint: "Máy in và phần cứng" },
-    { id: "settings", label: "Cài đặt", hint: "Cấu hình cửa hàng" },
-    { id: "landing_page", label: "Website cửa hàng", hint: "Landing page và SEO" },
-    { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và quyền truy cập" },
-  ], [currentRole]);
+  const roleNavigationMap: Record<CmsAppRole, Array<{ id: string; label: string; hint: string }>> = {
+    SUPER_ADMIN: [
+      { id: "telemetry", label: "Tổng quan nền tảng", hint: "Số liệu và hoạt động" },
+      { id: "tenants", label: "Quản lý quán & chuỗi", hint: "Đối tác và thiết bị" },
+      { id: "store_users", label: "Tài khoản quán", hint: "Phân quyền user" },
+      { id: "license_manager", label: "License key", hint: "Cấp và gia hạn" },
+      { id: "software_invoices", label: "Hóa đơn & thu phí", hint: "Theo dõi thanh toán" },
+      { id: "pricing_config", label: "Bảng giá & voucher", hint: "Cấu hình gói dịch vụ" },
+      { id: "scenarios", label: "Kịch bản F&B", hint: "Thực đơn mẫu" },
+      { id: "audit_logs", label: "Kiểm toán hệ thống", hint: "Nhật ký hoạt động" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và quyền truy cập" },
+    ],
+    STORE_OWNER: [
+      { id: "dashboard", label: "Tổng quan quán", hint: "Tình hình vận hành" },
+      { id: "staff_order", label: "Gọi món cầm tay", hint: "POS bán hàng" },
+      { id: "tables", label: "Sơ đồ bàn", hint: "Bàn ăn & mã QR" },
+      { id: "kds", label: "Màn hình bếp", hint: "KDS và trạng thái món" },
+      { id: "reservations", label: "Đặt bàn", hint: "Lịch hẹn khách" },
+      { id: "menu", label: "Thực đơn", hint: "Món ăn và giá" },
+      { id: "inventory", label: "Kho hàng", hint: "Tồn kho và nhập hàng" },
+      { id: "customers", label: "Khách hàng", hint: "Hồ sơ và khách thân thiết" },
+      { id: "promotions", label: "Khuyến mãi", hint: "Voucher và ưu đãi" },
+      { id: "analytics", label: "Báo cáo", hint: "Doanh thu và hiệu quả" },
+      { id: "team", label: "Nhân sự", hint: "Nhân viên và phân quyền" },
+      { id: "hardware", label: "Thiết bị", hint: "Máy in và phần cứng" },
+      { id: "landing_page", label: "Website cửa hàng", hint: "Landing page và SEO" },
+      { id: "settings", label: "Cài đặt", hint: "Cấu hình cửa hàng" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và quyền truy cập" },
+    ],
+    ACCOUNTANT: [
+      { id: "analytics", label: "Báo cáo doanh thu & P&L", hint: "Dòng tiền & lãi lỗ" },
+      { id: "inventory", label: "Kho & Phiếu nhập NCC", hint: "Giá vốn nguyên liệu" },
+      { id: "dashboard", label: "Tổng quan tài chính", hint: "Doanh số ca làm" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và đổi mật khẩu" },
+    ],
+    CASHIER: [
+      { id: "staff_order", label: "Thu ngân & POS", hint: "Thanh toán & in bill" },
+      { id: "tables", label: "Sơ đồ bàn & Bill", hint: "Bàn chờ thanh toán" },
+      { id: "dashboard", label: "Tổng quan ca bán", hint: "Kiểm két tiền mặt" },
+      { id: "reservations", label: "Lịch đặt bàn", hint: "Tiếp đón khách đặt" },
+      { id: "customers", label: "Khách hàng & VIP", hint: "Tích điểm & giảm giá" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và đổi mã PIN" },
+    ],
+    CHEF: [
+      { id: "kds", label: "Màn hình bếp (KDS)", hint: "Điều phối chế biến món" },
+      { id: "menu", label: "Báo hết & Thực đơn", hint: "Bật tắt món hết nguyên liệu" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và đổi mã PIN" },
+    ],
+    WAITER: [
+      { id: "tables", label: "Sơ đồ bàn & QR", hint: "Trạng thái bàn ăn" },
+      { id: "staff_order", label: "Order cầm tay (POS)", hint: "Gọi món & xin đá khăn" },
+      { id: "reservations", label: "Lịch đặt bàn", hint: "Khách hẹn bàn trước" },
+      { id: "profile", label: "Hồ sơ cá nhân", hint: "Tài khoản và đổi mã PIN" },
+    ],
+  };
+
+  const navigationItems = useMemo(() => {
+    return roleNavigationMap[currentRole] || roleNavigationMap.STORE_OWNER;
+  }, [currentRole]);
+
   const matchingNavigation = navigationItems.filter((item) => `${item.label} ${item.hint}`.toLocaleLowerCase("vi").includes(searchQuery.trim().toLocaleLowerCase("vi")));
 
   useEffect(() => setSearchSelection(0), [searchQuery]);
@@ -114,19 +148,45 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
   const displayName = currentUser?.name || (currentRole === "SUPER_ADMIN" ? "Quản Trị Viên A2Order" : "Chủ cửa hàng");
   const displayEmail = currentUser?.email || "";
   const displayStore = currentRole === "SUPER_ADMIN" ? "Nền tảng A2Order" : (currentUser?.storeName || "Cửa hàng");
-  const mobileNavItems: Array<{ id: string; label: string; icon: IconName; isHome?: boolean }> = currentRole === "SUPER_ADMIN"
-    ? [
-        { id: "tenants", label: "Quán & Chuỗi", icon: "building" },
-        { id: "scenarios", label: "Kịch bản", icon: "clipboard" },
-        { id: "telemetry", label: "Trang chủ", icon: "home", isHome: true },
-        { id: "software_invoices", label: "Hóa đơn", icon: "fileText" },
-      ]
-    : [
-        { id: "tables", label: "Bàn ăn", icon: "table" },
-        { id: "staff_order", label: "Gọi món", icon: "cart" },
-        { id: "dashboard", label: "Trang chủ", icon: "home", isHome: true },
-        { id: "menu", label: "Thực đơn", icon: "grid" },
-      ];
+
+  const roleMobileNavMap: Record<CmsAppRole, Array<{ id: string; label: string; icon: IconName; isHome?: boolean }>> = {
+    SUPER_ADMIN: [
+      { id: "tenants", label: "Quán & Chuỗi", icon: "building" },
+      { id: "scenarios", label: "Kịch bản", icon: "clipboard" },
+      { id: "telemetry", label: "Trang chủ", icon: "home", isHome: true },
+      { id: "software_invoices", label: "Hóa đơn", icon: "fileText" },
+    ],
+    STORE_OWNER: [
+      { id: "tables", label: "Bàn ăn", icon: "table" },
+      { id: "staff_order", label: "Gọi món", icon: "cart" },
+      { id: "dashboard", label: "Trang chủ", icon: "home", isHome: true },
+      { id: "menu", label: "Thực đơn", icon: "grid" },
+    ],
+    ACCOUNTANT: [
+      { id: "dashboard", label: "Ca bán", icon: "activity" },
+      { id: "inventory", label: "Kho hàng", icon: "cart" },
+      { id: "analytics", label: "Báo cáo P&L", icon: "trending", isHome: true },
+    ],
+    CASHIER: [
+      { id: "tables", label: "Bàn ăn", icon: "table" },
+      { id: "staff_order", label: "Thu ngân", icon: "cashier", isHome: true },
+      { id: "dashboard", label: "Kiểm két", icon: "activity" },
+      { id: "customers", label: "Khách VIP", icon: "userCheck" },
+    ],
+    CHEF: [
+      { id: "kds", label: "Bếp KDS", icon: "kitchen", isHome: true },
+      { id: "menu", label: "Báo hết", icon: "menu" },
+    ],
+    WAITER: [
+      { id: "tables", label: "Sơ đồ bàn", icon: "table", isHome: true },
+      { id: "staff_order", label: "Order POS", icon: "cart" },
+      { id: "reservations", label: "Đặt bàn", icon: "calendarCheck" },
+    ],
+  };
+
+  const mobileNavItems = useMemo(() => {
+    return roleMobileNavMap[currentRole] || roleMobileNavMap.STORE_OWNER;
+  }, [currentRole]);
 
   return (
     <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-white sm:bg-[#f6f8f7] font-sans text-ink-primary">
@@ -228,14 +288,28 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
                       profile: "Hồ Sơ",
                     } as Record<string, string>)[activeMenu] || "Tổng Quan"
               }
-              roleBadgeText={currentRole === "SUPER_ADMIN" ? "Super Admin" : "Chủ Quán"}
+              roleBadgeText={
+                currentRole === "SUPER_ADMIN"
+                  ? "Super Admin"
+                  : currentRole === "ACCOUNTANT"
+                  ? "Kế Toán"
+                  : currentRole === "CASHIER"
+                  ? "Thu Ngân"
+                  : currentRole === "CHEF"
+                  ? "Đầu Bếp"
+                  : currentRole === "WAITER"
+                  ? "Phục Vụ"
+                  : "Chủ Quán"
+              }
               storeName={displayStore}
+              currentRole={currentRole}
+              onChangeRole={onChangeRole}
             />
           </div>
         </header>
 
-        {/* Scrollable Main Content Container with responsive padding px-3 và pb-28 an toàn cho mobile bottom dock */}
-        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-28 sm:pb-24 lg:pb-6 w-full max-w-full scroll-smooth">
+        {/* Scrollable Main Content Container with responsive padding px-3 */}
+        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-3 sm:pb-5 lg:pb-6 w-full max-w-full scroll-smooth">
           <div className="w-full min-w-0 flex-1 flex flex-col min-h-0">{children}</div>
         </main>
 

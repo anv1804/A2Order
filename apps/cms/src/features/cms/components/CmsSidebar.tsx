@@ -99,7 +99,82 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     },
   ];
 
-  const currentGroups = currentRole === "SUPER_ADMIN" ? superAdminGroups : filteredStoreOwnerGroups;
+  // Nhóm menu cho Phục vụ bàn
+  const waiterGroups: MenuGroup[] = [
+    {
+      title: "PHỤC VỤ & ORDER BÀN",
+      items: [
+        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table" },
+        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart" },
+        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
+      ],
+    },
+  ];
+
+  // Nhóm menu cho Đầu bếp / Pha chế
+  const chefGroups: MenuGroup[] = [
+    {
+      title: "BẾP NẤU & THỰC ĐƠN",
+      items: [
+        { id: "kds", label: "Màn Hình Bếp (KDS)", icon: "kitchen" },
+        { id: "menu", label: "Thực Đơn & Báo Hết", icon: "menu" },
+      ],
+    },
+  ];
+
+  // Nhóm menu cho Thu ngân
+  const cashierGroups: MenuGroup[] = [
+    {
+      title: "THU NGÂN & BÁN HÀNG",
+      items: [
+        { id: "dashboard", label: "Tổng Quan Ca Bán", icon: "activity" },
+        { id: "staff_order", label: "Thu Ngân & POS", icon: "cashier" },
+        { id: "tables", label: "Sơ Đồ Bàn & Bill", icon: "table" },
+        { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
+        { id: "customers", label: "Khách Hàng & VIP", icon: "userCheck" },
+      ],
+    },
+  ];
+
+  // Nhóm menu cho Kế toán
+  const accountantGroups: MenuGroup[] = [
+    {
+      title: "TÀI CHÍNH & SỔ SÁCH",
+      items: [
+        { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
+        { id: "analytics", label: "Báo Cáo Doanh Thu", icon: "trending" },
+        { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart" },
+      ],
+    },
+  ];
+
+  const currentGroups = (() => {
+    switch (currentRole) {
+      case "SUPER_ADMIN":
+        return superAdminGroups;
+      case "ACCOUNTANT":
+        return accountantGroups;
+      case "CASHIER":
+        return cashierGroups;
+      case "CHEF":
+        return chefGroups;
+      case "WAITER":
+        return waiterGroups;
+      case "STORE_OWNER":
+      default:
+        return filteredStoreOwnerGroups;
+    }
+  })();
+
+  const roleMeta: Record<string, { label: string; icon: any; desc: string }> = {
+    SUPER_ADMIN: { label: "Quản trị nền tảng", icon: "shield", desc: "Toàn quyền SaaS A2Order" },
+    STORE_OWNER: { label: "Chủ nhà hàng", icon: "store", desc: currentUser?.storeName || "Toàn quyền quản trị" },
+    ACCOUNTANT: { label: "Kế toán quán", icon: "trending", desc: "Báo cáo dòng tiền & kho" },
+    CASHIER: { label: "Thu ngân ca", icon: "cashier", desc: "Bán hàng & hóa đơn" },
+    CHEF: { label: "Bếp / Pha chế", icon: "kitchen", desc: "Điều phối bếp KDS" },
+    WAITER: { label: "Phục vụ bàn", icon: "users", desc: "Sơ đồ bàn & order" },
+  };
+  const activeRoleMeta = roleMeta[currentRole] || roleMeta.STORE_OWNER;
 
   return (
     <aside className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden bg-[#102d25] text-white transition-[width] duration-300 lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] p-3" : "lg:w-[280px] p-4"}`}>
@@ -129,14 +204,14 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
             ? "justify-center"
             : "gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3"
         }`}
-        title={collapsed ? (currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng") : undefined}
+        title={collapsed ? activeRoleMeta.label : undefined}
       >
         <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${collapsed ? "bg-white/10 border border-white/10 text-emerald-200" : "bg-emerald-300/20 text-emerald-200"}`}>
-          <Icon name={currentRole === "SUPER_ADMIN" ? "shield" : "store"} size={18} />
+          <Icon name={activeRoleMeta.icon} size={18} />
         </span>
         {!collapsed && <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-bold">{currentRole === "SUPER_ADMIN" ? "Quản trị nền tảng" : "Quản trị cửa hàng"}</span>
-          <span className="mt-0.5 block truncate text-[10px] text-white/50">{currentRole === "SUPER_ADMIN" ? "Toàn quyền hệ thống" : currentUser?.storeName || "Không gian vận hành"}</span>
+          <span className="block truncate text-xs font-bold">{activeRoleMeta.label}</span>
+          <span className="mt-0.5 block truncate text-[10px] text-white/50">{activeRoleMeta.desc}</span>
         </span>}
         {!collapsed && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(110,231,183,.1)]" />}
       </div>

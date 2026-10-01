@@ -385,165 +385,211 @@ export const CmsInventoryManagement: React.FC = () => {
   const displayedReceipts = isMobile ? mobileReceipts : paginatedReceipts;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* 1. Header & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Quản Lý Kho & Nhập Hàng
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
+        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Inventory & Recipe BOM
+              </span>
+              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
+                {ingredients.length} Nguyên liệu • {lowStockCount > 0 ? `${lowStockCount} Sắp hết hàng` : "Đầy đủ định mức"}
+              </span>
+            </div>
+
+            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
+              Quản Trị Kho Hàng & Nhập Kho NCC
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Định Mức & Trừ Tồn Kho
-            </span>
+            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
+              Kiểm soát nguyên vật liệu tươi sống, định mức an toàn, trừ tồn tự động theo công thức chế biến (BOM).
+            </p>
+
+            {/* Quick Live Stats Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="banknote" size={12} className="text-emerald-300" />
+                <span>Giá trị tồn: {totalStockValue.toLocaleString("vi-VN")} đ</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="alert" size={12} className={lowStockCount > 0 ? "text-amber-300" : "text-emerald-300"} />
+                <span>{lowStockCount} Món báo động</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="fileText" size={12} className="text-blue-300" />
+                <span>{receipts.length} Phiếu nhập tháng</span>
+              </span>
+            </div>
           </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Kiểm soát nguyên vật liệu tươi sống, định mức an toàn và trừ tồn tự động khi bán món
-          </p>
+
+          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setNewIngCode(`NL-${Math.floor(100 + Math.random() * 900)}`);
+                setIsAddIngredientOpen(true);
+              }}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 sm:px-4 text-xs font-bold text-white transition active:scale-95 shrink-0"
+              title="Thêm Nguyên Liệu Mới"
+            >
+              <Icon name="plus" size={14} />
+              <span>Thêm Nguyên Liệu</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsCreateReceiptOpen(true)}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition active:scale-95 shrink-0"
+            >
+              <Icon name="fileText" size={14} />
+              <span>Lập Phiếu Nhập</span>
+            </button>
+          </div>
         </div>
+      </section>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Nút Thêm Nguyên Liệu (Icon-only) */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center border-surface-border text-ink-primary hover:bg-surface-muted shrink-0"
-            onClick={() => {
-              setNewIngCode(`NL-${Math.floor(100 + Math.random() * 900)}`);
-              setIsAddIngredientOpen(true);
-            }}
-            title="Thêm Nguyên Liệu Mới"
-            aria-label="Thêm Nguyên Liệu Mới"
-          >
-            <Icon name="plus" className="w-4 h-4" />
-          </Button>
-
-          <Button
-            size="sm"
-            className="rounded-full gap-2 text-xs bg-brand-900 text-white hover:bg-brand-950 px-4 shadow-sm"
-            onClick={() => setIsCreateReceiptOpen(true)}
-          >
-            <Icon name="fileText" className="w-3.5 h-3.5" />
-            <span>+ Lập Phiếu Nhập Kho</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* 2. Chỉ Số Tổng Quan Kho */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Panel variant="featured" padding="lg" className="flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-brand-200">Giá Trị Tồn Kho Thực Tế</span>
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white">
-              <Icon name="banknote" className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-3xl font-black text-white tracking-tight">
-              {totalStockValue.toLocaleString("vi-VN")} đ
-            </h3>
-            <span className="text-[11px] font-medium text-brand-200 mt-1 block">
-              Tổng giá vốn các mặt hàng đang trữ trong kho
+      {/* 2. 4 Thẻ Bento Chỉ Số Kho */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Icon name="banknote" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
+              Giá trị kho
             </span>
           </div>
-        </Panel>
-
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Danh Mục Nguyên Liệu</span>
-            <div className="w-8 h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted">
-              <Icon name="menu" className="w-4 h-4" />
-            </div>
-          </div>
           <div>
-            <h3 className="text-3xl font-black text-ink-primary tracking-tight">
-              {ingredients.length} <span className="text-sm font-bold text-ink-muted">mặt hàng</span>
-            </h3>
-            <span className="text-[11px] font-medium text-ink-muted mt-1 block">
-              Thịt tươi, rau củ, tinh bột & pha chế
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Giá Trị Tồn Kho Thực Tế
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {totalStockValue.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+            </p>
+            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+              Vốn lưu trữ hiện hữu
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+              <Icon name="menu" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
+              Danh mục
             </span>
           </div>
-        </Panel>
-
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Cảnh Báo Sắp Hết Hàng</span>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${lowStockCount > 0 ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-              <Icon name="alert" className="w-4 h-4" />
-            </div>
-          </div>
           <div>
-            <h3 className={`text-3xl font-black tracking-tight ${lowStockCount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-              {lowStockCount} <span className="text-sm font-bold">mặt hàng</span>
-            </h3>
-            <span className="text-[11px] font-medium text-ink-muted mt-1 block">
-              {lowStockCount > 0 ? "Dưới định mức an toàn - Cần nhập ngay!" : "Mọi mặt hàng đều đạt chuẩn tồn kho"}
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Nguyên Liệu Theo Dõi
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {ingredients.length} <span className="text-xs font-bold text-slate-400">mặt hàng</span>
+            </p>
+            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
+              Thịt, rau củ & đồ pha chế
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className={`flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl ${lowStockCount > 0 ? "bg-rose-50 text-rose-600 border border-rose-100" : "bg-emerald-50 text-emerald-600 border border-emerald-100"}`}>
+              <Icon name="alert" size={16} />
+            </span>
+            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md border ${lowStockCount > 0 ? "text-rose-700 bg-rose-50 border-rose-100" : "text-emerald-700 bg-emerald-50 border-emerald-100"}`}>
+              {lowStockCount > 0 ? "Cần nhập" : "An toàn"}
             </span>
           </div>
-        </Panel>
-
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[140px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-ink-muted">Nhập Kho Tháng Này</span>
-            <div className="w-8 h-8 rounded-full bg-surface-muted flex items-center justify-center text-ink-muted">
-              <Icon name="trending" className="w-4 h-4" />
-            </div>
-          </div>
           <div>
-            <h3 className="text-3xl font-black text-ink-primary tracking-tight">
-              {totalInwardMonth.toLocaleString("vi-VN")} đ
-            </h3>
-            <span className="text-[11px] font-medium text-ink-muted mt-1 block">
-              {receipts.length} đợt giao từ các nhà cung cấp
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Cảnh Báo Sắp Hết
+            </h4>
+            <p className={`text-base sm:text-xl font-black tracking-tight leading-tight truncate ${lowStockCount > 0 ? "text-rose-600" : "text-slate-900"}`}>
+              {lowStockCount} <span className="text-xs font-bold text-slate-400">mặt hàng</span>
+            </p>
+            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+              {lowStockCount > 0 ? "Dưới định mức an toàn" : "Đầy đủ dự trữ"}
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Icon name="trending" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
+              Tháng này
             </span>
           </div>
-        </Panel>
-      </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Nhập Kho Tháng Này
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {totalInwardMonth.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+            </p>
+            <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
+              {receipts.length} đợt giao từ NCC
+            </p>
+          </div>
+        </article>
+      </section>
 
-      {/* 3. Tab Switcher Navigation */}
-      <div className="flex border-b border-surface-border gap-6 text-xs font-black">
+      {/* 3. Sticky Segmented Control Tabs */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs flex items-center gap-1.5 overflow-x-auto no-scrollbar">
         <button
+          type="button"
           onClick={() => setActiveTab("stock")}
-          className={`pb-3.5 relative flex items-center gap-2 transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "stock"
-              ? "text-brand-900 border-b-2 border-brand-900"
-              : "text-ink-muted hover:text-ink-primary"
+              ? "bg-slate-950 text-white shadow-2xs font-black"
+              : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
           }`}
         >
-          <Icon name="table" className="w-4 h-4" />
-          <span>Tồn Kho & Định Mức An Toàn</span>
+          <Icon name="table" size={14} />
+          <span>Tồn Kho & Định Mức</span>
           {lowStockCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-500 text-white font-black">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-black">
               {lowStockCount}
             </span>
           )}
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("receipts")}
-          className={`pb-3.5 relative flex items-center gap-2 transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "receipts"
-              ? "text-brand-900 border-b-2 border-brand-900"
-              : "text-ink-muted hover:text-ink-primary"
+              ? "bg-slate-950 text-white shadow-2xs font-black"
+              : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
           }`}
         >
-          <Icon name="fileText" className="w-4 h-4" />
-          <span>Lịch Sử Phiếu Nhập Kho NCC</span>
-          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-surface-muted text-ink-muted font-bold">
+          <Icon name="fileText" size={14} />
+          <span>Phiếu Nhập NCC</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 text-current">
             {receipts.length}
           </span>
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("recipes")}
-          className={`pb-3.5 relative flex items-center gap-2 transition-all ${
+          className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
             activeTab === "recipes"
-              ? "text-brand-900 border-b-2 border-brand-900"
-              : "text-ink-muted hover:text-ink-primary"
+              ? "bg-slate-950 text-white shadow-2xs font-black"
+              : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
           }`}
         >
-          <Icon name="menu" className="w-4 h-4" />
-          <span>Định Lượng Món Ăn (Recipe BOM)</span>
+          <Icon name="menu" size={14} />
+          <span>Định Lượng Món (Recipe BOM)</span>
         </button>
       </div>
 

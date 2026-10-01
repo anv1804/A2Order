@@ -80,6 +80,23 @@ export const CmsReservationsManagement: React.FC = () => {
       status: "PENDING",
       createdAt: "14:20 Hôm nay",
     },
+    {
+      id: "r5",
+      guestName: "Anh Minh Quân (Trễ Hẹn)",
+      phone: "0934 888 999",
+      guestCount: 5,
+      reservationTime: "18:45 - Tối nay",
+      dateCategory: "TODAY",
+      tableAssigned: "Bàn 03 (Tầng 1 - 6 người)",
+      occasion: "BUSINESS",
+      depositAmount: 300000,
+      depositStatus: "PAID",
+      notes: "Báo kẹt xe trễ 15p, đang tính thời gian ân hạn giữ chỗ (Grace Period)",
+      source: "PHONE_CALL",
+      status: "LATE",
+      extendedMinutes: 0,
+      createdAt: "18:00 Hôm nay",
+    },
   ]);
 
   // Bộ lọc & Phân trang
@@ -92,6 +109,10 @@ export const CmsReservationsManagement: React.FC = () => {
   // Modal xếp bàn an toàn
   const [tableAssignTarget, setTableAssignTarget] = useState<Reservation | null>(null);
   const [selectedTable, setSelectedTable] = useState<string>("");
+
+  // Modal xử lý No-Show & Tiền cọc (Loss Prevention & Customer Retention SOP)
+  const [noShowModalTarget, setNoShowModalTarget] = useState<Reservation | null>(null);
+  const [depositResolution, setDepositResolution] = useState<"FORFEIT_PENALTY" | "VOUCHER_CREDIT" | "REFUNDED">("FORFEIT_PENALTY");
 
   // Modal tạo mới đặt bàn (Walk-in / Hotline)
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -157,21 +178,87 @@ export const CmsReservationsManagement: React.FC = () => {
     toast.success(`Khách ${res.guestName} đã đến! Đã chuyển trạng thái bàn ${res.tableAssigned}`);
   };
 
-  // Báo vắng mặt / Bùng bàn an toàn
-  const handleNoShow = async (res: Reservation) => {
-    const ok = await confirmDialog({
-      title: "Xác Nhận Khách Vắng Mặt?",
-      message: `Khách ${res.guestName} quá giờ hẹn. Giải phóng bàn ${res.tableAssigned} để tiếp đón khách vãng lai?`,
-      confirmText: "Giải Phóng Bàn",
-      cancelText: "Giữ Chỗ Thêm",
-      variant: "danger",
-    });
-    if (!ok) return;
+  // Gia hạn giữ bàn +15 phút (Extend Hold Time SOP)
+  const handleExtendReservation = (res: Reservation) => {
+    const currentExt = res.extendedMinutes || 0;
+    const newExt = currentExt + 15;
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === res.id
+          ? {
+              ...r,
+              extendedMinutes: newExt,
+              status: "CONFIRMED",
+            }
+          : r
+      )
+    );
+    toast.success(`Đã gia hạn giữ bàn thêm +15 phút cho khách ${res.guestName}! (Đã gia hạn: +${newExt} phút)`);
+  };
+
+  // Đánh dấu khách báo trễ giờ (Grace Period 15p)
+  const handleMarkLate = (res: Reservation) => {
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === res.id
+          ? {
+              ...r,
+              status: "LATE",
+              lateNotifiedAt: "Quá 15p quy định",
+            }
+          : r
+      )
+    );
+    toast.warning(`Đã chuyển khách ${res.guestName} sang trạng thái TRỄ GIỜ. Đang tính thời gian ân hạn giữ chỗ 15p.`);
+  };
+
+  // Mở modal xử lý nhả bàn & xử lý cọc No-Show
+  const handleOpenNoShow = (res: Reservation) => {
+    setNoShowModalTarget(res);
+    setDepositResolution("FORFEIT_PENALTY");
+  };
+
+  // Xác nhận nhả bàn & xử lý cọc No-Show
+  const handleConfirmNoShow = () => {
+    if (!noShowModalTarget) return;
+    const target = noShowModalTarget;
+    const hasDeposit = (target.depositAmount || 0) > 0 && target.depositStatus === "PAID";
+    const assignedTable = target.tableAssigned || "Bàn";
 
     setReservations((prev) =>
-      prev.map((r) => (r.id === res.id ? { ...r, status: "NO_SHOW" } : r))
+      prev.map((r) =>
+        r.id === target.id
+          ? {
+              ...r,
+              status: "NO_SHOW",
+              tableAssigned: "Chưa gán bàn",
+              depositResolution: hasDeposit ? depositResolution : undefined,
+              notes: (r.notes ? r.notes + " | " : "") +
+                (hasDeposit
+                  ? depositResolution === "FORFEIT_PENALTY"
+                    ? "Thu tiền cọc do vi phạm quá hạn giữ bàn (No-Show)"
+                    : depositResolution === "VOUCHER_CREDIT"
+                    ? `Đã tạo voucher bảo lưu cọc ${(target.depositAmount || 0).toLocaleString("vi-VN")}đ hạn 30 ngày`
+                    : "Đã hoàn trả tiền cọc cho khách"
+                  : "Khách không đến, đã nhả bàn đón khách khác"),
+            }
+          : r
+      )
     );
-    toast.info(`Đã đánh dấu vắng mặt cho ${res.guestName} và mở lại bàn đón khách khác.`);
+
+    if (hasDeposit) {
+      if (depositResolution === "FORFEIT_PENALTY") {
+        toast.warning(`Đã nhả ${assignedTable}! Ghi nhận thu cọc ${(target.depositAmount || 0).toLocaleString("vi-VN")} đ vi phạm No-Show.`);
+      } else if (depositResolution === "VOUCHER_CREDIT") {
+        toast.success(`Đã nhả ${assignedTable}! Đã cấp Voucher cọc ${(target.depositAmount || 0).toLocaleString("vi-VN")} đ bảo lưu 30 ngày cho khách ${target.guestName}.`);
+      } else {
+        toast.info(`Đã nhả ${assignedTable} và xác nhận hoàn cọc ${(target.depositAmount || 0).toLocaleString("vi-VN")} đ cho khách ${target.guestName}.`);
+      }
+    } else {
+      toast.info(`Đã giải phóng ${assignedTable} về trạng thái trống để đón tiếp khách khác.`);
+    }
+
+    setNoShowModalTarget(null);
   };
 
   // Từ chối yêu cầu đặt bàn an toàn
@@ -321,6 +408,7 @@ export const CmsReservationsManagement: React.FC = () => {
     .reduce((sum, r) => sum + r.guestCount, 0);
   const pendingCount = reservations.filter((r) => r.status === "PENDING").length;
   const confirmedCount = reservations.filter((r) => r.status === "CONFIRMED").length;
+  const lateCount = reservations.filter((r) => r.status === "LATE").length;
   const arrivedCount = reservations.filter((r) => r.status === "ARRIVED").length;
   const totalDeposits = reservations
     .filter((r) => r.depositStatus === "PAID")
@@ -485,6 +573,7 @@ export const CmsReservationsManagement: React.FC = () => {
             { id: "ALL", label: "Tất Cả", count: reservations.length },
             { id: "PENDING", label: "Chờ Duyệt", count: pendingCount, highlight: pendingCount > 0 ? "text-amber-700 bg-amber-50" : "" },
             { id: "CONFIRMED", label: "Đã Giữ Bàn", count: confirmedCount },
+            { id: "LATE", label: "Trễ Giờ (Grace)", count: lateCount, highlight: lateCount > 0 ? "text-amber-800 bg-amber-100 font-extrabold animate-pulse" : "" },
             { id: "ARRIVED", label: "Đang Tại Quán", count: arrivedCount },
             { id: "NO_SHOW", label: "Vắng Mặt", count: reservations.filter((r) => r.status === "NO_SHOW").length },
             { id: "CANCELLED", label: "Đã Hủy", count: reservations.filter((r) => r.status === "CANCELLED").length },
@@ -536,6 +625,7 @@ export const CmsReservationsManagement: React.FC = () => {
             const isPending = res.status === "PENDING";
             const isConfirmed = res.status === "CONFIRMED";
             const isArrived = res.status === "ARRIVED";
+            const isLate = res.status === "LATE";
             const isNoShow = res.status === "NO_SHOW";
             const isCancelled = res.status === "CANCELLED";
 
@@ -545,6 +635,8 @@ export const CmsReservationsManagement: React.FC = () => {
                 className={`p-4 sm:p-5 rounded-2xl bg-white border transition-all relative overflow-hidden shadow-2xs hover:shadow-md ${
                   isArrived
                     ? "border-emerald-200/80 bg-linear-to-r from-emerald-50/20 to-white"
+                    : isLate
+                    ? "border-amber-300 bg-amber-50/20 hover:border-amber-500"
                     : isPending
                     ? "border-amber-200/80 hover:border-amber-400"
                     : "border-surface-border hover:border-brand-400"
@@ -557,8 +649,10 @@ export const CmsReservationsManagement: React.FC = () => {
                       ? "bg-emerald-500"
                       : isConfirmed
                       ? "bg-brand-800"
+                      : isLate
+                      ? "bg-amber-500 animate-pulse"
                       : isPending
-                      ? "bg-amber-500"
+                      ? "bg-amber-400"
                       : isNoShow
                       ? "bg-slate-400"
                       : "bg-rose-400"
@@ -599,11 +693,13 @@ export const CmsReservationsManagement: React.FC = () => {
 
                         {/* Tag trạng thái chuẩn cao cấp */}
                         <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${
+                          className={`px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 ${
                             isArrived
                               ? "bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs"
                               : isConfirmed
                               ? "bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs"
+                              : isLate
+                              ? "bg-amber-50 text-amber-900 border border-amber-400 shadow-2xs animate-pulse"
                               : isPending
                               ? "bg-amber-50 text-amber-900 border border-amber-300 shadow-2xs"
                               : isNoShow
@@ -611,16 +707,35 @@ export const CmsReservationsManagement: React.FC = () => {
                               : "bg-rose-50 text-rose-700 border border-rose-200"
                           }`}
                         >
+                          {isLate && <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-ping inline-block" />}
                           {isArrived
                             ? "Đang tại quán"
                             : isConfirmed
                             ? "Đã giữ bàn"
+                            : isLate
+                            ? "Trễ giờ (>15p Grace)"
                             : isPending
                             ? "Chờ xác nhận"
                             : isNoShow
                             ? "Vắng mặt"
                             : "Đã hủy"}
                         </span>
+
+                        {Boolean(res.extendedMinutes && res.extendedMinutes > 0) && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-50 text-blue-800 border border-blue-200">
+                            +{res.extendedMinutes}p gia hạn
+                          </span>
+                        )}
+
+                        {res.depositResolution && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-slate-100 text-slate-700 border border-slate-200">
+                            {res.depositResolution === "FORFEIT_PENALTY"
+                              ? "Thu cọc vi phạm"
+                              : res.depositResolution === "VOUCHER_CREDIT"
+                              ? "Voucher cọc 30 ngày"
+                              : "Đã hoàn cọc"}
+                          </span>
+                        )}
                       </div>
 
                       {/* Chi tiết vị trí bàn, tiền cọc & nguồn */}
@@ -682,7 +797,7 @@ export const CmsReservationsManagement: React.FC = () => {
                   </div>
 
                   {/* Cột 2: Cụm Nút Thao Tác Chuyên Nghiệp */}
-                  <div className="flex items-center gap-2 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-surface-border/50 justify-end">
+                  <div className="flex items-center gap-2 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-surface-border/50 justify-end flex-wrap">
                     {isPending && (
                       <>
                         <button
@@ -704,11 +819,11 @@ export const CmsReservationsManagement: React.FC = () => {
                       </>
                     )}
 
-                    {isConfirmed && (
+                    {(isConfirmed || isLate) && (
                       <>
                         <button
                           type="button"
-                          className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-black shadow-xs hover:bg-emerald-800 active:scale-95 transition-all flex items-center gap-1.5"
+                          className="px-3.5 py-2 rounded-xl bg-emerald-700 text-white text-xs font-black shadow-xs hover:bg-emerald-800 active:scale-95 transition-all flex items-center gap-1.5"
                           onClick={() => handleCustomerArrived(res)}
                         >
                           <Icon name="checkCircle" size={14} />
@@ -717,10 +832,33 @@ export const CmsReservationsManagement: React.FC = () => {
 
                         <button
                           type="button"
-                          onClick={() => handleNoShow(res)}
-                          className="px-3 py-2 rounded-xl text-xs font-bold text-ink-muted hover:text-rose-600 hover:bg-rose-50 active:scale-95 transition-all"
+                          onClick={() => handleExtendReservation(res)}
+                          className="px-2.5 py-2 rounded-xl text-xs font-bold text-brand-900 bg-brand-50 hover:bg-brand-100 border border-brand-200 active:scale-95 transition-all flex items-center gap-1"
+                          title="Gia hạn giữ bàn thêm +15 phút"
                         >
-                          Vắng Mặt
+                          <Icon name="clock" size={13} />
+                          <span>+15p Gia Hạn</span>
+                        </button>
+
+                        {isConfirmed && !isLate && (
+                          <button
+                            type="button"
+                            onClick={() => handleMarkLate(res)}
+                            className="px-2.5 py-2 rounded-xl text-xs font-bold text-amber-700 hover:bg-amber-50 active:scale-95 transition-all"
+                            title="Quá giờ hẹn: Đánh dấu trễ giờ"
+                          >
+                            Báo Trễ
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenNoShow(res)}
+                          className="px-2.5 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 active:scale-95 transition-all flex items-center gap-1"
+                          title="Khách không đến: Giải phóng bàn & xử lý cọc"
+                        >
+                          <Icon name="alert" size={13} />
+                          <span>Nhả Bàn (No-Show)</span>
                         </button>
                       </>
                     )}
@@ -971,6 +1109,151 @@ export const CmsReservationsManagement: React.FC = () => {
                   onClick={handleSaveTableAssignment}
                 >
                   Xác Nhận Xếp Bàn
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
+
+      {/* MODAL XỬ LÝ NHẢ BÀN & TIỀN CỌC (NO-SHOW SOP) */}
+      {noShowModalTarget && (
+        <Portal>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white w-full max-w-lg rounded-3xl shadow-elevated border border-surface-border p-5 sm:p-6 space-y-4 animate-scaleUp">
+              <div className="flex items-center justify-between border-b border-surface-border pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                    <Icon name="alert" size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-ink-primary">
+                      Nhả Bàn & Xử Lý Cọc (No-Show SOP)
+                    </h3>
+                    <p className="text-xs text-ink-muted">
+                      {noShowModalTarget.guestName} ({noShowModalTarget.phone}) • {noShowModalTarget.tableAssigned || "Bàn chưa gán"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNoShowModalTarget(null)}
+                  className="w-7 h-7 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-canvas"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+
+              {/* Cảnh báo quy định giữ bàn */}
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
+                ⏳ <strong>Quy Định Thời Gian Ân Hạn (Grace Period 15p):</strong> Khách đã quá giờ hẹn {noShowModalTarget.reservationTime}. Để tránh lãng phí công suất bàn trong khung giờ cao điểm, hệ thống sẽ <strong>giải phóng bàn về trạng thái TRỐNG</strong> để tiếp đón khách vãng lai đang chờ.
+              </div>
+
+              {/* Phần xử lý tiền cọc */}
+              {(noShowModalTarget.depositAmount || 0) > 0 && noShowModalTarget.depositStatus === "PAID" ? (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between text-xs">
+                    <span className="text-emerald-950 font-bold">Tiền cọc giữ chỗ của khách:</span>
+                    <span className="text-base font-black text-emerald-900">
+                      {(noShowModalTarget.depositAmount || 0).toLocaleString("vi-VN")} đ
+                    </span>
+                  </div>
+
+                  <label className="text-xs font-black text-ink-primary block">
+                    Chọn nghiệp vụ xử lý tiền cọc:
+                  </label>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => setDepositResolution("FORFEIT_PENALTY")}
+                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                        depositResolution === "FORFEIT_PENALTY"
+                          ? "border-rose-500 bg-rose-50/50 shadow-2xs"
+                          : "border-surface-border bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="p-1 rounded-lg bg-rose-600 text-white shrink-0 mt-0.5">
+                        <Icon name="trash" size={13} />
+                      </span>
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="text-xs font-black text-rose-950">
+                          1. Thu cọc vi phạm chính sách (Không hoàn lại)
+                        </div>
+                        <p className="text-[11px] text-rose-900/80 leading-snug">
+                          Khách vắng mặt không báo trước làm trống bàn giờ vàng. Chuyển tiền cọc vào mục bồi hoàn doanh thu.
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDepositResolution("VOUCHER_CREDIT")}
+                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                        depositResolution === "VOUCHER_CREDIT"
+                          ? "border-brand-600 bg-brand-50/50 shadow-2xs"
+                          : "border-surface-border bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="p-1 rounded-lg bg-brand-800 text-white shrink-0 mt-0.5">
+                        <Icon name="refresh" size={13} />
+                      </span>
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="text-xs font-black text-brand-950">
+                          2. Cấp Voucher Cọc Bảo Lưu 30 Ngày (Khuyên dùng)
+                        </div>
+                        <p className="text-[11px] text-brand-900/80 leading-snug">
+                          Giữ chân khách hàng: Bảo lưu {(noShowModalTarget.depositAmount || 0).toLocaleString("vi-VN")} đ thành mã giảm giá cho lần ghé quán tiếp theo.
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDepositResolution("REFUNDED")}
+                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
+                        depositResolution === "REFUNDED"
+                          ? "border-slate-500 bg-slate-50 shadow-2xs"
+                          : "border-surface-border bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      <span className="p-1 rounded-lg bg-slate-700 text-white shrink-0 mt-0.5">
+                        <Icon name="refresh" size={13} />
+                      </span>
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="text-xs font-black text-slate-900">
+                          3. Hoàn trả lại tiền cọc (Lý do bất khả kháng)
+                        </div>
+                        <p className="text-[11px] text-slate-600 leading-snug">
+                          Khách báo gặp sự cố khẩn cấp, thời tiết xấu hoặc lý do bất khả kháng. Quán hoàn lại 100% cọc qua tài khoản.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-surface-canvas rounded-2xl border border-surface-border text-xs text-ink-muted">
+                  ℹ️ Lịch đặt bàn này <strong>chưa đặt cọc</strong>. Sau khi xác nhận, bàn sẽ được chuyển về trạng thái TRỐNG ngay lập tức để tiếp đón khách mới.
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-surface-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl text-xs"
+                  onClick={() => setNoShowModalTarget(null)}
+                >
+                  Đóng
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs px-5 shadow-sm font-black"
+                  onClick={handleConfirmNoShow}
+                >
+                  Xác Nhận Nhả Bàn & Đổi Trạng Thái Trống
                 </Button>
               </div>
             </div>

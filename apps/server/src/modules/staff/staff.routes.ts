@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import bcrypt from "bcryptjs";
-import { prisma } from "../../core/database/prismaClient.js";
+import { staffRepository, storeRepository } from "../../core/database/repositoryFactory.js";
 
 export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   /**
@@ -17,53 +17,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     };
 
     try {
-      const whereClause: any = {};
-
-      if (storeId && storeId !== "ALL") {
-        whereClause.storeId = storeId;
-      }
-
-      if (role && role !== "ALL") {
-        whereClause.role = role;
-      }
-
-      if (status === "ACTIVE") {
-        whereClause.isActive = true;
-      } else if (status === "INACTIVE" || status === "SUSPENDED") {
-        whereClause.isActive = false;
-      }
-
-      if (search && search.trim()) {
-        const q = search.trim().toLowerCase();
-        whereClause.OR = [
-          { name: { contains: q, mode: "insensitive" } },
-          { email: { contains: q, mode: "insensitive" } },
-          { pinCode: { contains: q } },
-          { store: { name: { contains: q, mode: "insensitive" } } },
-        ];
-      }
-
-      const staffList = await prisma.staff.findMany({
-        where: whereClause,
-        include: {
-          store: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              status: true,
-              phone: true,
-              license: {
-                select: {
-                  planType: true,
-                  status: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: [{ store: { name: "asc" } }, { createdAt: "desc" }],
-      });
+      const staffList = await staffRepository.getAll({ storeId, role, status, search });
 
       const formatted = staffList.map((st) => ({
         id: st.id,
@@ -72,11 +26,11 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         pinCode: st.pinCode || "",
         role: st.role,
         isActive: st.isActive,
-        createdAt: st.createdAt.toISOString(),
+        createdAt: typeof st.createdAt === "string" ? st.createdAt : st.createdAt.toISOString(),
         storeId: st.storeId,
-        storeName: st.store.name,
-        storeStatus: st.store.status,
-        storePlan: st.store.license?.planType || "STARTER",
+        storeName: st.storeName || "Cửa Hàng",
+        storeStatus: st.storeStatus || "ACTIVE",
+        storePlan: st.storePlan || "STARTER",
         hasPassword: !!st.passwordHash,
       }));
 
@@ -118,10 +72,8 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
 
     try {
       // 1. Kiểm tra quán có tồn tại không
-      const store = await prisma.store.findUnique({
-        where: { id: body.storeId },
-      });
-      if (!store) {
+      const store = await storeRepository.getById(body.storeId);
+      if (!store && body.storeId !== "store-a2platform-system") {
         return reply.status(404).send({
           success: false,
           error: "Cửa hàng không tồn tại.",
@@ -131,9 +83,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       // 2. Nếu có email, kiểm tra trùng lặp
       const cleanEmail = body.email ? body.email.trim().toLowerCase() : null;
       if (cleanEmail) {
-        const existing = await prisma.staff.findUnique({
-          where: { email: cleanEmail },
-        });
+        const existing = await staffRepository.getByEmail(cleanEmail);
         if (existing) {
           return reply.status(400).send({
             success: false,
@@ -151,25 +101,14 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       // 4. Xử lý PIN code (mặc định 1111 nếu không nhập)
       const pinCode = body.pinCode && body.pinCode.trim() ? body.pinCode.trim() : "1111";
 
-      const created = await prisma.staff.create({
-        data: {
-          storeId: body.storeId,
-          name: body.name.trim(),
-          email: cleanEmail,
-          passwordHash,
-          pinCode,
-          role: body.role,
-          isActive: body.isActive !== undefined ? body.isActive : true,
-        },
-        include: {
-          store: {
-            select: {
-              id: true,
-              name: true,
-              license: { select: { planType: true } },
-            },
-          },
-        },
+      const created = await staffRepository.create({
+        storeId: body.storeId,
+        name: body.name.trim(),
+        email: cleanEmail,
+        passwordHash,
+        pinCode,
+        role: body.role,
+        isActive: body.isActive !== undefined ? body.isActive : true,
       });
 
       return {
@@ -182,10 +121,10 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
           pinCode: created.pinCode || "",
           role: created.role,
           isActive: created.isActive,
-          createdAt: created.createdAt.toISOString(),
+          createdAt: typeof created.createdAt === "string" ? created.createdAt : created.createdAt.toISOString(),
           storeId: created.storeId,
-          storeName: created.store.name,
-          storePlan: created.store.license?.planType || "STARTER",
+          storeName: created.storeName || "Cửa Hàng",
+          storePlan: created.storePlan || "STARTER",
           hasPassword: !!created.passwordHash,
         },
       };
@@ -214,9 +153,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     };
 
     try {
-      const existing = await prisma.staff.findUnique({
-        where: { id },
-      });
+      const existing = await staffRepository.getById(id);
       if (!existing) {
         return reply.status(404).send({
           success: false,
@@ -234,9 +171,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       if (body.email !== undefined) {
         const cleanEmail = body.email ? body.email.trim().toLowerCase() : null;
         if (cleanEmail && cleanEmail !== existing.email) {
-          const duplicate = await prisma.staff.findUnique({
-            where: { email: cleanEmail },
-          });
+          const duplicate = await staffRepository.getByEmail(cleanEmail);
           if (duplicate && duplicate.id !== id) {
             return reply.status(400).send({
               success: false,
@@ -247,19 +182,13 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         updateData.email = cleanEmail;
       }
 
-      const updated = await prisma.staff.update({
-        where: { id },
-        data: updateData,
-        include: {
-          store: {
-            select: {
-              id: true,
-              name: true,
-              license: { select: { planType: true } },
-            },
-          },
-        },
-      });
+      const updated = await staffRepository.update(id, updateData);
+      if (!updated) {
+        return reply.status(404).send({
+          success: false,
+          error: "Không tìm thấy tài khoản nhân sự để cập nhật.",
+        });
+      }
 
       return {
         success: true,
@@ -271,10 +200,10 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
           pinCode: updated.pinCode || "",
           role: updated.role,
           isActive: updated.isActive,
-          createdAt: updated.createdAt.toISOString(),
+          createdAt: typeof updated.createdAt === "string" ? updated.createdAt : updated.createdAt.toISOString(),
           storeId: updated.storeId,
-          storeName: updated.store.name,
-          storePlan: updated.store.license?.planType || "STARTER",
+          storeName: updated.storeName || "Cửa Hàng",
+          storePlan: updated.storePlan || "STARTER",
           hasPassword: !!updated.passwordHash,
         },
       };
@@ -295,9 +224,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     const { id } = request.params as { id: string };
 
     try {
-      const existing = await prisma.staff.findUnique({
-        where: { id },
-      });
+      const existing = await staffRepository.getById(id);
       if (!existing) {
         return reply.status(404).send({
           success: false,
@@ -305,10 +232,13 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         });
       }
 
-      const updated = await prisma.staff.update({
-        where: { id },
-        data: { isActive: !existing.isActive },
-      });
+      const updated = await staffRepository.toggleStatus(id);
+      if (!updated) {
+        return reply.status(404).send({
+          success: false,
+          error: "Không thể đổi trạng thái tài khoản.",
+        });
+      }
 
       return {
         success: true,
@@ -338,9 +268,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     };
 
     try {
-      const existing = await prisma.staff.findUnique({
-        where: { id },
-      });
+      const existing = await staffRepository.getById(id);
       if (!existing) {
         return reply.status(404).send({
           success: false,
@@ -356,10 +284,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         updateData.pinCode = body.pinCode.trim();
       }
 
-      await prisma.staff.update({
-        where: { id },
-        data: updateData,
-      });
+      await staffRepository.update(id, updateData);
 
       return {
         success: true,
@@ -382,9 +307,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     const { id } = request.params as { id: string };
 
     try {
-      const existing = await prisma.staff.findUnique({
-        where: { id },
-      });
+      const existing = await staffRepository.getById(id);
       if (!existing) {
         return reply.status(404).send({
           success: false,
@@ -392,9 +315,7 @@ export const staffRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
         });
       }
 
-      await prisma.staff.delete({
-        where: { id },
-      });
+      await staffRepository.delete(id);
 
       return {
         success: true,

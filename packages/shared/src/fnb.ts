@@ -91,6 +91,7 @@ export interface DishVariantOption {
   id: string;
   name: string;
   price: number;
+  image?: string; // Ảnh riêng cho từng biến thể quy cách/hương vị
 }
 
 export interface DishCustomizationOption {
@@ -125,6 +126,7 @@ export interface FnbDishItem {
   variants?: DishVariantOption[];
   customizationGroups?: DishCustomizationGroup[];
   majorCategory?: FnbMajorCategory;
+  subCategory?: string;
 }
 
 // ==========================================
@@ -139,6 +141,8 @@ export interface FnbCategoryTemplate {
   emoji?: string;
   description?: string;
   order?: number;
+  parentId?: string; // ID danh mục cha nếu là Sub-category
+  subCategories?: FnbCategoryTemplate[]; // Danh sách sub-category nếu là danh mục cha
 }
 
 export const FNB_MAJOR_CONFIG: Record<

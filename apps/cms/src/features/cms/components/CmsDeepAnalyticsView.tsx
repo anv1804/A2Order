@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { DeepAnalyticsReport, MenuCategoryType } from "@a2order/shared";
 import { SalesBillRecord, CanceledItemRecord } from "@/types/cms.types";
 
@@ -260,7 +261,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   ]);
 
   // Nhật ký món bị hủy sau khi in bếp (Void / Waste Audit)
-  const [canceledItems] = useState<CanceledItemRecord[]>([
+  const [canceledItems] = usePersistentState<CanceledItemRecord[]>("void_audit_canceled_items", [
     {
       id: "c-1",
       dishName: "Phở Bò Tái Gầu",
@@ -328,158 +329,217 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   const displayedBills = isMobile ? mobileBills : paginatedBills;
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Title & Filter bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Báo Cáo Doanh Số & Tài Chính F&B
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
+        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Financial & Revenue Intelligence
+              </span>
+              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
+                {report.summary.totalOrders} Đơn thanh toán • {report.summary.totalRevenue.toLocaleString("vi-VN")} đ
+              </span>
+            </div>
+
+            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
+              Báo Cáo Doanh Thu & Kỹ Thuật Tài Chính
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Thời Gian Thực
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Sổ chi tiết từng bill, doanh thu theo ca, cơ cấu VietQR Napas và kiểm toán thất thoát
-          </p>
-        </div>
+            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
+              Sổ chi tiết từng bill, doanh thu theo ca, cơ cấu thanh toán VietQR Napas và kiểm toán thất thoát.
+            </p>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-          {/* Lọc thời gian */}
-          <div className="p-1 bg-surface-muted rounded-2xl flex gap-1 text-xs font-bold border border-surface-border overflow-x-auto shrink-0">
-            {(
-              [
-                { id: "today", label: "Hôm nay" },
-                { id: "yesterday", label: "Hôm qua" },
-                { id: "week", label: "7 ngày" },
-                { id: "month", label: "Tháng này" },
-              ] as const
-            ).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setPeriod(t.id)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-xl transition-all shrink-0 ${
-                  period === t.id
-                    ? "bg-white text-brand-950 font-black shadow-sm"
-                    : "text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+            {/* Quick Live Stats Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="banknote" size={12} className="text-emerald-300" />
+                <span>Doanh thu: {report.summary.totalRevenue.toLocaleString("vi-VN")} đ</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="trending" size={12} className="text-teal-300" />
+                <span>AOV: {report.summary.averageOrderValue.toLocaleString("vi-VN")} đ</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="activity" size={12} className="text-blue-300" />
+                <span>VietQR: 72.8%</span>
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Nút Xem Phiếu Z-Report Chốt Ca */}
-            <Button
-              size="sm"
-              className="flex-1 sm:flex-none rounded-xl gap-1.5 text-xs bg-brand-900 text-white shadow-sm"
+          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+            <button
+              type="button"
               onClick={() => setIsZReportOpen(true)}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition active:scale-95 shrink-0"
             >
-              <Icon name="fileText" className="w-3.5 h-3.5" />
+              <Icon name="fileText" size={14} />
               <span>Chốt Ca (Z-Report)</span>
-            </Button>
+            </button>
 
-            {/* Nút Xuất CSV thực sự (Icon-only) */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center text-xs bg-white shrink-0"
+            <button
+              type="button"
               onClick={handleExportCsv}
+              className="inline-flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white transition active:scale-95 shrink-0"
               title="Xuất báo cáo doanh thu ra CSV"
               aria-label="Xuất CSV"
             >
-              <Icon name="download" className="w-4 h-4" />
-            </Button>
+              <Icon name="download" size={15} />
+            </button>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-1.5 sm:gap-2 border-b border-surface-border pb-2.5 overflow-x-auto no-scrollbar text-xs font-bold">
-        {[
-          { id: "overview", label: "Tổng Quan & Dòng Tiền", shortLabel: "Tổng Quan", icon: "activity" },
-          { id: "bills", label: `Sổ Chi Tiết Hóa Đơn (${bills.length})`, shortLabel: `Hóa Đơn (${bills.length})`, icon: "fileText" },
-          { id: "pnl", label: "P&L Lãi / Lỗ", shortLabel: "Lãi / Lỗ", icon: "trending" },
-          { id: "menu_cogs", label: "Kỹ Thuật Thực Đơn & COGS", shortLabel: "COGS Món", icon: "sparkles" },
-          { id: "void_audit", label: `Kiểm Toán Món Hủy (${canceledItems.length})`, shortLabel: `Món Hủy (${canceledItems.length})`, icon: "alert" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-brand-900 text-white shadow-sm font-black"
-                : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary hover:border-brand-200"
-            }`}
-          >
-            <Icon name={tab.icon as any} className="w-3.5 h-3.5" />
-            <span className="sm:hidden">{tab.shortLabel}</span>
-            <span className="hidden sm:inline">{tab.label}</span>
-          </button>
-        ))}
+      {/* 2. 4 Thẻ Bento Chỉ Số Tài Chính Cốt Lõi */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Icon name="banknote" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
+              +18% kỳ trước
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Tổng Thực Thu
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {report.summary.totalRevenue.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+            </p>
+            <p className="text-[10px] font-semibold text-emerald-600 mt-1 truncate">
+              {report.summary.totalOrders} giao dịch hoàn tất
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+              <Icon name="trending" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
+              AOV
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Giá Trị TB / Đơn (AOV)
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {report.summary.averageOrderValue.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+            </p>
+            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
+              Chi tiêu trung bình mỗi bàn
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Icon name="activity" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
+              Không tiền mặt
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Tỷ Lệ VietQR Napas
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              72.8% <span className="text-xs font-bold text-slate-400">doanh thu</span>
+            </p>
+            <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
+              11.55tr chuyển khoản tức thời
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+              <Icon name="alert" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
+              Thất thoát
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Hao Hụt & Món Hủy
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {report.summary.discountLossTotal.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+            </p>
+            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
+              {report.summary.canceledItemCount} món hủy sau bếp
+            </p>
+          </div>
+        </article>
+      </section>
+
+      {/* 3. Sticky Segmented Control Tabs & Period Filter */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
+          {[
+            { id: "overview", label: "Tổng Quan & Dòng Tiền", shortLabel: "Tổng Quan", icon: "activity" },
+            { id: "bills", label: `Sổ Chi Tiết Hóa Đơn (${bills.length})`, shortLabel: `Hóa Đơn (${bills.length})`, icon: "fileText" },
+            { id: "pnl", label: "P&L Lãi / Lỗ", shortLabel: "Lãi / Lỗ", icon: "trending" },
+            { id: "menu_cogs", label: "Kỹ Thuật Thực Đơn & COGS", shortLabel: "COGS Món", icon: "sparkles" },
+            { id: "void_audit", label: `Kiểm Toán Món Hủy (${canceledItems.length})`, shortLabel: `Món Hủy (${canceledItems.length})`, icon: "alert" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3 sm:px-3.5 py-2 rounded-xl flex items-center gap-1.5 shrink-0 transition-all text-xs font-bold whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "bg-slate-950 text-white shadow-2xs font-black"
+                  : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+              }`}
+            >
+              <Icon name={tab.icon as any} size={14} />
+              <span className="sm:hidden">{tab.shortLabel}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Lọc thời gian */}
+        <div className="p-1 bg-slate-100 rounded-xl flex gap-1 text-xs font-bold border border-slate-200/80 overflow-x-auto shrink-0 ml-auto">
+          {(
+            [
+              { id: "today", label: "Hôm nay" },
+              { id: "yesterday", label: "Hôm qua" },
+              { id: "week", label: "7 ngày" },
+              { id: "month", label: "Tháng này" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setPeriod(t.id)}
+              className={`px-2.5 py-1 rounded-lg transition-all shrink-0 text-xs font-bold ${
+                period === t.id
+                  ? "bg-white text-slate-950 font-black shadow-2xs"
+                  : "text-slate-600 hover:text-slate-950"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* TAB 1: TỔNG QUAN & DÒNG TIỀN */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
-          {/* Row 1: Thẻ Chỉ Số Tài Chính F&B Cốt Lõi */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <Panel variant="featured" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-              <span className="text-xs font-semibold text-brand-200 truncate">Tổng Thực Thu</span>
-              <div className="my-1 sm:my-1.5">
-                <span className="text-xl sm:text-2xl font-bold tracking-tight truncate block">
-                  {report.summary.totalRevenue.toLocaleString("vi-VN")}
-                  <span className="text-xs text-brand-200 ml-1 font-normal">đ</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-medium text-brand-200 truncate">
-                <span className="px-1.5 py-0.2 rounded-md bg-white/10 shrink-0 text-[10px] font-bold">+18%</span>
-                <span className="truncate">So với cùng kỳ</span>
-              </div>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-              <span className="text-xs font-semibold text-ink-muted truncate">AOV (TB / Đơn)</span>
-              <div className="my-1 sm:my-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-brand-900 tracking-tight truncate block">
-                  {report.summary.averageOrderValue.toLocaleString("vi-VN")}
-                  <span className="text-xs text-ink-muted ml-1 font-normal">đ</span>
-                </span>
-              </div>
-              <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full w-fit truncate">
-                {report.summary.totalOrders} lượt thanh toán
-              </span>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-              <span className="text-xs font-semibold text-ink-muted truncate">Tỷ Lệ VietQR</span>
-              <div className="my-1 sm:my-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">72.8%</span>
-                <span className="text-xs text-ink-muted ml-1 font-normal">doanh thu</span>
-              </div>
-              <span className="text-xs font-medium text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full w-fit truncate">
-                11.55tr chuyển khoản
-              </span>
-            </Panel>
-
-            <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-              <span className="text-xs font-semibold text-ink-muted truncate">Món Hủy & Thất Thoát</span>
-              <div className="my-1 sm:my-1.5">
-                <span className="text-xl sm:text-2xl font-bold text-amber-800 tracking-tight truncate block">
-                  {report.summary.discountLossTotal.toLocaleString("vi-VN")}
-                  <span className="text-xs text-ink-muted ml-1 font-normal">đ</span>
-                </span>
-              </div>
-              <span className="text-xs font-medium text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full w-fit truncate">
-                {report.summary.canceledItemCount} món hủy sau bếp
-              </span>
-            </Panel>
-          </div>
-
+        <div className="space-y-4 sm:space-y-6">
           {/* Doanh thu theo ca làm việc (Shifts) */}
           <Panel variant="default" padding="lg">
             <div className="flex items-center justify-between mb-4">

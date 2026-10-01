@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
-import { TableZoneData } from "@/types/cms.types";
+import { TableZoneData, CmsTableManagementProps } from "@/types/cms.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
-export const CmsTableManagement: React.FC = () => {
+export const CmsTableManagement: React.FC<CmsTableManagementProps> = ({ currentRole = "STORE_OWNER" }) => {
+  const isWaiter = currentRole === "WAITER";
+  const isCashier = currentRole === "CASHIER";
   const [zones, setZones] = usePersistentState<TableZoneData[]>("tables_zones_data", [
     {
       id: "z1",
@@ -143,109 +145,202 @@ export const CmsTableManagement: React.FC = () => {
     }));
 
   return (
-    <div className="space-y-5 animate-fadeIn pb-16 lg:pb-0">
-      {/* Title & Header Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Sơ Đồ Bàn Ăn & Mã QR
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
+        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Tự Động Sinh VietQR
+              </span>
+              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
+                {zones.length} khu vực bàn ăn
+              </span>
+            </div>
+
+            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
+              {isWaiter
+                ? "Sơ Đồ Bàn Phục Vụ & Điều Phối Bàn"
+                : isCashier
+                ? "Sơ Đồ Bàn & Trạng Thái Thanh Toán"
+                : "Sơ Đồ Bàn Ăn & Mã QR Tự Phục Vụ"}
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Tự Động Sinh QR
-            </span>
+            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
+              {isWaiter
+                ? "Theo dõi tình trạng bàn trống, bàn đang ăn, chuyển ghép bàn và hỗ trợ gọi món tại chỗ."
+                : isCashier
+                ? "Theo dõi bàn yêu cầu thanh toán, bàn đang dùng bữa và in phiếu tạm tính cho khách."
+                : "Cấu hình phân khu bàn ăn, in thẻ mica QR để khách tự quét gọi món và thanh toán không tiền mặt."}
+            </p>
+
+            {/* Quick Live Stats Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="table" size={12} className="text-emerald-300" />
+                <span>{totalTables} Bàn hoạt động</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="checkCircle" size={12} className="text-teal-300" />
+                <span>{emptyTables} Bàn trống</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="users" size={12} className="text-blue-300" />
+                <span>{occupiedTables} Có khách</span>
+              </span>
+              {paymentPendingTables > 0 && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-400/30 text-[10px] sm:text-[10.5px] font-bold text-amber-200">
+                  <Icon name="cashier" size={12} className="text-amber-300" />
+                  <span>{paymentPendingTables} Chờ thanh toán</span>
+                </span>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Cấu hình khu vực bàn, in mã QR dán tại bàn để khách tự quét gọi món & thanh toán
-          </p>
+
+          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+            {!isWaiter && (
+              <button
+                type="button"
+                onClick={() => setIsBatchQrModalOpen(true)}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 sm:px-3.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
+              >
+                <Icon name="print" size={14} />
+                <span>In QR Hàng Loạt</span>
+              </button>
+            )}
+
+            {!isWaiter && !isCashier && (
+              <button
+                type="button"
+                onClick={() => setIsAddZoneOpen(true)}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition hover:bg-emerald-300 active:scale-95 shrink-0"
+              >
+                <Icon name="plus" size={14} />
+                <span>Thêm Khu Vực</span>
+              </button>
+            )}
+
+            {isWaiter && (
+              <button
+                type="button"
+                onClick={() => toast.success("Đã làm mới trạng thái sơ đồ bàn.")}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 sm:px-4 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
+              >
+                <Icon name="refresh" size={14} />
+                <span>Làm Mới Bàn</span>
+              </button>
+            )}
+          </div>
         </div>
+      </section>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl gap-2 text-xs bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold px-3.5 py-2 shadow-2xs"
-            onClick={() => setIsBatchQrModalOpen(true)}
-          >
-            <Icon name="print" className="w-3.5 h-3.5 text-ink-muted" />
-            <span>In QR<span className="hidden sm:inline"> Hàng Loạt</span></span>
-          </Button>
-
-          <Button
-            size="sm"
-            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
-            onClick={() => setIsAddZoneOpen(true)}
-            title="Thêm Khu Vực"
-            aria-label="Thêm Khu Vực"
-          >
-            <Icon name="plus" className="w-4 h-4 text-brand-400" />
-          </Button>
-        </div>
-      </div>
-
-      {/* 4 Thẻ Thống Kê Nhanh Bàn Ăn */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <Panel variant="featured" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-          <span className="text-xs font-semibold text-brand-200 truncate">Tổng Số Bàn Ăn</span>
-          <div>
-            <div className="my-1 sm:my-1.5">
-              <span className="text-xl sm:text-2xl font-bold text-white tracking-tight">{totalTables}</span>
-              <span className="text-xs text-brand-200 ml-1 font-normal">bàn ({zones.length} khu)</span>
-            </div>
-            <span className="text-xs text-brand-200 truncate font-medium block">QR bàn sẵn sàng</span>
-          </div>
-        </Panel>
-
-        <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-          <span className="text-xs font-semibold text-ink-muted truncate">Bàn Trống Sẵn Sàng</span>
-          <div>
-            <div className="my-1 sm:my-1.5">
-              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">{emptyTables}</span>
-              <span className="text-xs text-ink-muted ml-1 font-normal">bàn</span>
-            </div>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit truncate block">
-              Đón ~{emptyTables * 4} khách
+      {/* 2. 4 Thẻ Bento Chỉ Số Bàn Ăn */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Icon name="table" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
+              {zones.length} khu
             </span>
           </div>
-        </Panel>
-
-        <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-          <span className="text-xs font-semibold text-ink-muted truncate">Đang Phục Vụ</span>
           <div>
-            <div className="my-1 sm:my-1.5">
-              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">{occupiedTables}</span>
-              <span className="text-xs text-ink-muted ml-1 font-normal">bàn</span>
-            </div>
-            <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit truncate block">
-              {Math.round((occupiedTables / (totalTables || 1)) * 100)}% công suất
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Tổng Số Bàn Ăn
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {totalTables} <span className="text-xs font-bold text-slate-400">bàn</span>
+            </p>
+            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+              100% bàn đã cấp mã QR
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+              <Icon name="checkCircle" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
+              Sẵn sàng
             </span>
           </div>
-        </Panel>
-
-        <Panel variant="default" padding="sm" className="p-3.5 sm:p-5 flex flex-col justify-between min-h-[115px] sm:min-h-[135px] rounded-2xl">
-          <span className="text-xs font-semibold text-ink-muted truncate">Chờ Tính Tiền</span>
           <div>
-            <div className="my-1 sm:my-1.5">
-              <span className="text-xl sm:text-2xl font-bold text-ink-primary tracking-tight">{paymentPendingTables}</span>
-              <span className="text-xs text-ink-muted ml-1 font-normal">bàn</span>
-            </div>
-            <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit truncate block">
-              {paymentPendingTables > 0 ? "Yêu cầu thanh toán" : "Không có yêu cầu"}
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Bàn Trống Đón Khách
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {emptyTables} <span className="text-xs font-bold text-slate-400">bàn</span>
+            </p>
+            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
+              Sức chứa đón ~{emptyTables * 4} khách
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Icon name="users" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
+              {Math.round((occupiedTables / (totalTables || 1)) * 100)}% tải
             </span>
           </div>
-        </Panel>
-      </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Bàn Đang Phục Vụ
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {occupiedTables} <span className="text-xs font-bold text-slate-400">bàn</span>
+            </p>
+            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
+              Đang có order tại bếp
+            </p>
+          </div>
+        </article>
 
-      {/* Thanh Điều Hướng Khu Vực & Bộ Lọc Trạng Thái */}
-      <div className="p-3 sm:p-4 bg-white rounded-3xl border border-surface-border space-y-3 shadow-xs">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+              <Icon name="cashier" size={16} />
+            </span>
+            {paymentPendingTables > 0 && (
+              <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                Chờ bill
+              </span>
+            )}
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Chờ Thanh Toán
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {paymentPendingTables} <span className="text-xs font-bold text-slate-400">bàn</span>
+            </p>
+            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
+              {paymentPendingTables > 0 ? "Khách gọi tính tiền" : "Không có yêu cầu"}
+            </p>
+          </div>
+        </article>
+      </section>
+
+      {/* 3. Sticky Toolbar: Điều Hướng Khu Vực & Bộ Lọc Trạng Thái */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2.5 sm:p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 space-y-2.5 shadow-2xs">
         {/* Zone Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
           <button
+            type="button"
             onClick={() => setSelectedZoneTab("ALL")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
               selectedZoneTab === "ALL"
-                ? "bg-brand-900 text-white shadow-xs font-black"
-                : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+                ? "bg-slate-950 text-white shadow-2xs font-black"
+                : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
             }`}
           >
             Tất Cả Khu Vực ({totalTables})
@@ -253,11 +348,12 @@ export const CmsTableManagement: React.FC = () => {
           {zones.map((z) => (
             <button
               key={z.id}
+              type="button"
               onClick={() => setSelectedZoneTab(z.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                 selectedZoneTab === z.id
-                  ? "bg-brand-900 text-white shadow-xs font-black"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+                  ? "bg-slate-950 text-white shadow-2xs font-black"
+                  : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
               }`}
             >
               {z.name} ({z.tables.length})
@@ -266,15 +362,15 @@ export const CmsTableManagement: React.FC = () => {
         </div>
 
         {/* Search & Status Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1.5 border-t border-surface-border/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
           <div className="relative w-full sm:w-64">
-            <Icon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
+            <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchTableQuery}
               onChange={(e) => setSearchTableQuery(e.target.value)}
-              placeholder="Tìm kiếm bàn ăn theo tên..."
-              className="w-full h-9 pl-9 pr-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800 shadow-2xs"
+              placeholder="Tìm kiếm bàn theo tên..."
+              className="w-full h-8 sm:h-9 pl-8 pr-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-emerald-500 shadow-2xs"
             />
           </div>
 
@@ -287,11 +383,12 @@ export const CmsTableManagement: React.FC = () => {
             ].map((st) => (
               <button
                 key={st.id}
+                type="button"
                 onClick={() => setSelectedStatusFilter(st.id)}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap shrink-0 ${
+                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap shrink-0 ${
                   selectedStatusFilter === st.id
-                    ? "bg-brand-900 text-white shadow-2xs font-extrabold"
-                    : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+                    ? "bg-emerald-800 text-white shadow-2xs font-extrabold"
+                    : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
                 }`}
               >
                 {st.label}
@@ -301,28 +398,28 @@ export const CmsTableManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Danh Sách Các Khu Vực & Bàn Ăn */}
-      <div className="space-y-5">
+      {/* 4. Danh Sách Các Khu Vực & Bàn Ăn */}
+      <div className="space-y-4 sm:space-y-5">
         {displayedZones.map((zone) => (
-          <Panel key={zone.id} variant="default" padding="lg" className="space-y-3.5 p-4 sm:p-6">
-            <div className="flex items-center justify-between border-b border-surface-border pb-3">
+          <section key={zone.id} className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-3.5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-extrabold text-sm sm:text-base text-ink-primary">{zone.name}</h3>
-                <span className="text-[11px] text-ink-muted">{zone.tables.length} bàn</span>
+                <h3 className="font-extrabold text-sm sm:text-base text-slate-900">{zone.name}</h3>
+                <span className="text-[11px] font-medium text-slate-400">{zone.tables.length} bàn</span>
               </div>
-              <Button
-                size="sm"
-                className="rounded-xl h-8 w-8 p-0 flex items-center justify-center bg-brand-900 text-white shadow-xs shrink-0"
+              <button
+                type="button"
+                className="h-8 w-8 rounded-xl flex items-center justify-center bg-emerald-800 hover:bg-emerald-900 text-white shadow-2xs shrink-0 transition active:scale-95"
                 onClick={() => handleOpenAddTable(zone.id)}
-                title="Thêm Bàn"
-                aria-label="Thêm Bàn"
+                title="Thêm Bàn Mới"
+                aria-label="Thêm Bàn Mới"
               >
-                <Icon name="plus" className="w-3.5 h-3.5" />
-              </Button>
+                <Icon name="plus" size={14} />
+              </button>
             </div>
 
             {zone.tables.length === 0 ? (
-              <div className="py-8 text-center text-xs text-ink-muted font-bold">
+              <div className="py-8 text-center text-xs text-slate-400 font-bold">
                 Chưa có bàn nào trong khu vực này hoặc không khớp bộ lọc tìm kiếm
               </div>
             ) : (
@@ -330,20 +427,20 @@ export const CmsTableManagement: React.FC = () => {
                 {zone.tables.map((table) => (
                   <div
                     key={table.id}
-                    className="p-3 sm:p-4 rounded-2xl bg-surface-canvas border border-surface-border flex flex-col justify-between hover:border-brand-600 transition-all shadow-2xs min-h-[128px]"
+                    className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between hover:border-emerald-500 hover:shadow-xs transition-all shadow-2xs min-h-[132px]"
                   >
                     <div className="flex items-start justify-between gap-1">
                       <div className="min-w-0 flex-1">
-                        <h4 className="font-black text-sm sm:text-base text-ink-primary truncate">{table.name}</h4>
-                        <span className="text-[10px] sm:text-[11px] text-ink-muted block">~{table.capacity} chỗ</span>
+                        <h4 className="font-black text-sm sm:text-base text-slate-900 truncate">{table.name}</h4>
+                        <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 block">~{table.capacity} chỗ</span>
                       </div>
 
                       <span
-                        className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-extrabold whitespace-nowrap shrink-0 ${
+                        className={`px-2 py-0.5 rounded-md text-[9.5px] sm:text-[10px] font-black whitespace-nowrap shrink-0 ${
                           table.status === "EMPTY"
                             ? "bg-emerald-100 text-emerald-800"
                             : table.status === "PAYMENT_PENDING"
-                            ? "bg-amber-100 text-amber-800 font-black"
+                            ? "bg-rose-100 text-rose-800 font-black animate-pulse"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
@@ -351,88 +448,88 @@ export const CmsTableManagement: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-surface-border/60">
+                    <div className="flex items-center justify-between pt-2.5 mt-2 border-t border-slate-200/60">
                       <button
+                        type="button"
                         onClick={() => setSelectedQrTable({ name: table.name, qrUrl: table.qrCodeUrl })}
-                        className="flex items-center gap-1 text-[11px] font-bold text-brand-800 hover:text-brand-950 transition-all truncate"
+                        className="flex items-center gap-1.5 text-xs font-black text-emerald-800 hover:text-emerald-950 transition-all truncate"
                       >
                         <Icon name="vietqr" size={13} />
                         <span>Xem QR</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => handleDeleteTable(zone.id, table.id, table.name)}
-                        className="w-6 h-6 rounded-lg flex items-center justify-center text-ink-subtle hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all shrink-0"
                         title="Xóa bàn này"
                       >
-                        <Icon name="trash" size={13} />
+                        <Icon name="trash" size={14} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </Panel>
+          </section>
         ))}
       </div>
 
       {/* Modal Thêm Bàn Mới */}
       {isAddTableOpen && (
         <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 border border-surface-border space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                <h3 className="text-base font-bold text-ink-primary">Thêm Bàn Ăn Mới</h3>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 border border-slate-200/80 space-y-4 animate-scaleUp">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-extrabold text-slate-900">Thêm Bàn Ăn Mới</h3>
                 <button
+                  type="button"
                   onClick={() => setIsAddTableOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                 >
-                  <Icon name="x" className="w-4 h-4" />
+                  <Icon name="x" size={16} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddTableSubmit} className="space-y-3">
+              <form onSubmit={handleAddTableSubmit} className="space-y-3.5">
                 <div>
-                  <label className="text-xs font-bold text-ink-muted mb-1 block">Tên Bàn *</label>
+                  <label className="text-xs font-bold text-slate-600 mb-1.5 block">Tên Bàn *</label>
                   <input
                     type="text"
                     value={newTableName}
                     onChange={(e) => setNewTableName(e.target.value)}
                     placeholder="Ví dụ: Bàn 05, VIP 03..."
                     required
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-medium focus:outline-none focus:border-brand-800 bg-white"
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-ink-muted mb-1 block">Sức Chứa (Số Người)</label>
+                  <label className="text-xs font-bold text-slate-600 mb-1.5 block">Sức Chứa (Số Người)</label>
                   <input
                     type="number"
                     min={1}
                     max={50}
                     value={newTableCapacity}
                     onChange={(e) => setNewTableCapacity(Number(e.target.value))}
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-medium focus:outline-none focus:border-brand-800 bg-white"
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
-                  <Button
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl text-xs"
+                    className="rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs px-4 py-2 font-bold transition"
                     onClick={() => setIsAddTableOpen(false)}
                   >
                     Hủy
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="submit"
-                    size="sm"
-                    className="rounded-xl bg-brand-900 text-white text-xs px-5 shadow-sm"
+                    className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs px-5 py-2 shadow-2xs transition active:scale-95"
                   >
                     Tạo Bàn & Sinh QR
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -443,48 +540,46 @@ export const CmsTableManagement: React.FC = () => {
       {/* Modal Thêm Khu Vực Mới */}
       {isAddZoneOpen && (
         <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 border border-surface-border space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                <h3 className="text-base font-bold text-ink-primary">Thêm Khu Vực Mới</h3>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 border border-slate-200/80 space-y-4 animate-scaleUp">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-base font-extrabold text-slate-900">Thêm Khu Vực Mới</h3>
                 <button
+                  type="button"
                   onClick={() => setIsAddZoneOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                 >
-                  <Icon name="x" className="w-4 h-4" />
+                  <Icon name="x" size={16} />
                 </button>
               </div>
 
-              <form onSubmit={handleAddZoneSubmit} className="space-y-3">
+              <form onSubmit={handleAddZoneSubmit} className="space-y-3.5">
                 <div>
-                  <label className="text-xs font-bold text-ink-muted mb-1 block">Tên Khu Vực *</label>
+                  <label className="text-xs font-bold text-slate-600 mb-1.5 block">Tên Khu Vực *</label>
                   <input
                     type="text"
                     value={newZoneName}
                     onChange={(e) => setNewZoneName(e.target.value)}
                     placeholder="Ví dụ: Tầng 3 (Rooftop)..."
                     required
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-medium focus:outline-none focus:border-brand-800 bg-white"
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 bg-slate-50/50 focus:bg-white transition"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
-                  <Button
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl text-xs"
+                    className="rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs px-4 py-2 font-bold transition"
                     onClick={() => setIsAddZoneOpen(false)}
                   >
                     Hủy
-                  </Button>
-                  <Button
+                  </button>
+                  <button
                     type="submit"
-                    size="sm"
-                    className="rounded-xl bg-brand-900 text-white text-xs px-5 shadow-sm"
+                    className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs px-5 py-2 shadow-2xs transition active:scale-95"
                   >
                     Lưu Khu Vực
-                  </Button>
+                  </button>
                 </div>
               </form>
             </div>
@@ -495,31 +590,31 @@ export const CmsTableManagement: React.FC = () => {
       {/* Modal Xem Đơn Lẻ 1 Mã QR Bàn */}
       {selectedQrTable && (
         <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs select-none animate-fadeIn">
-            <div className="w-full max-w-sm bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-center shadow-2xl border border-surface-border animate-scaleUp">
-              <h3 className="text-lg sm:text-xl font-bold text-ink-primary mb-1">Mã QR {selectedQrTable.name}</h3>
-              <p className="text-xs text-ink-muted mb-4">In mã này dán lên mặt bàn để khách quét gọi món và thanh toán</p>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm select-none animate-fadeIn">
+            <div className="w-full max-w-sm bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-center shadow-2xl border border-slate-200/80 animate-scaleUp">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 mb-1">Mã QR {selectedQrTable.name}</h3>
+              <p className="text-xs text-slate-500 mb-4">In mã này dán lên mặt bàn để khách quét gọi món và thanh toán VietQR</p>
 
-              <div className="w-44 h-44 mx-auto p-2 bg-white rounded-2xl border-2 border-brand-900 shadow-md mb-4 flex items-center justify-center">
+              <div className="w-48 h-48 mx-auto p-2.5 bg-white rounded-2xl border-2 border-emerald-800 shadow-md mb-4 flex items-center justify-center">
                 <img src={selectedQrTable.qrUrl} alt="QR" className="w-full h-full object-contain" />
               </div>
 
               <div className="space-y-2">
-                <Button
-                  size="md"
-                  className="w-full rounded-xl sm:rounded-2xl bg-brand-900 text-white font-bold text-xs gap-2"
+                <button
+                  type="button"
+                  className="w-full py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs flex items-center justify-center gap-2 shadow-2xs transition active:scale-95"
                   onClick={() => {
                     toast.success(`Đang tải ảnh mã QR ${selectedQrTable.name} chất lượng cao...`);
                     setSelectedQrTable(null);
                   }}
                 >
-                  <Icon name="download" className="w-4 h-4" />
+                  <Icon name="download" size={15} />
                   <span>Tải File In Ép Plastic</span>
-                </Button>
+                </button>
                 <button
                   type="button"
                   onClick={() => setSelectedQrTable(null)}
-                  className="text-xs font-bold text-ink-muted hover:text-ink-primary py-2"
+                  className="text-xs font-bold text-slate-500 hover:text-slate-900 py-1 transition"
                 >
                   Đóng
                 </button>
@@ -532,58 +627,58 @@ export const CmsTableManagement: React.FC = () => {
       {/* Modal In Hàng Loạt Tất Cả Mã QR Bàn Trong Quán */}
       {isBatchQrModalOpen && (
         <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs select-none animate-fadeIn">
-            <div className="w-full max-w-3xl max-h-[88vh] bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-surface-border flex flex-col justify-between overflow-hidden animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-surface-border pb-3">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm select-none animate-fadeIn">
+            <div className="w-full max-w-3xl max-h-[88vh] bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-slate-200/80 flex flex-col justify-between overflow-hidden animate-scaleUp">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-ink-primary">In Hàng Loạt Mã QR Bàn ({allTables.length} Bàn)</h3>
-                  <p className="text-xs text-ink-muted">Xem trước thẻ để bàn chuẩn kích thước dán mica / ép plastic</p>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">In Hàng Loạt Mã QR Bàn ({allTables.length} Bàn)</h3>
+                  <p className="text-xs text-slate-500">Xem trước thẻ để bàn chuẩn kích thước dán mica / ép plastic</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsBatchQrModalOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-muted"
+                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
                 >
-                  <Icon name="x" className="w-4 h-4" />
+                  <Icon name="x" size={16} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 sm:p-4 my-3 bg-surface-canvas/50 rounded-2xl">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 my-3 bg-slate-50 rounded-2xl border border-slate-100">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {allTables.map((t) => (
-                    <div key={t.id} className="p-3 bg-white rounded-2xl border-2 border-brand-900/40 text-center shadow-sm flex flex-col items-center justify-between">
-                      <span className="font-black text-xs text-ink-primary">{t.name}</span>
-                      <span className="text-[10px] text-ink-muted">{t.zoneName}</span>
-                      <div className="w-28 h-28 my-2 p-1 bg-white border border-surface-border rounded-xl">
+                    <div key={t.id} className="p-3 bg-white rounded-2xl border border-slate-200 text-center shadow-2xs flex flex-col items-center justify-between">
+                      <span className="font-black text-xs text-slate-900">{t.name}</span>
+                      <span className="text-[10px] text-slate-400">{t.zoneName}</span>
+                      <div className="w-28 h-28 my-2 p-1.5 bg-white border border-slate-200 rounded-xl">
                         <img src={t.qrCodeUrl} alt={t.name} className="w-full h-full object-contain" />
                       </div>
-                      <span className="text-[9px] font-bold text-brand-900 bg-brand-50 px-2 py-0.5 rounded-full">
-                        Quét Để Gọi Món
+                      <span className="text-[9.5px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        Quét Gọi Món VietQR
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl text-xs"
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  className="rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs px-4 py-2 font-bold transition"
                   onClick={() => setIsBatchQrModalOpen(false)}
                 >
                   Đóng
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl bg-brand-900 text-white font-black text-xs gap-1.5 px-6 shadow-sm"
+                </button>
+                <button
+                  type="button"
+                  className="rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs flex items-center gap-1.5 px-6 py-2 shadow-2xs transition active:scale-95"
                   onClick={() => {
                     toast.success("Đang kết nối máy in để in toàn bộ thẻ để bàn...");
                     setIsBatchQrModalOpen(false);
                   }}
                 >
-                  <Icon name="print" className="w-4 h-4" />
+                  <Icon name="print" size={14} />
                   <span>In Tất Cả ({allTables.length} Thẻ)</span>
-                </Button>
+                </button>
               </div>
             </div>
           </div>

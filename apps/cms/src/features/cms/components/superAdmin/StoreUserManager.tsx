@@ -426,7 +426,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
         className={`transition-all duration-200 flex flex-col p-2.5 sm:p-5 lg:p-6 ${
           isMaximized
             ? "flex-1 min-h-0 h-full shadow-sm border border-slate-200"
-            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-2 z-10 shadow-sm"
+            : "flex-1 min-h-[calc(100dvh-5.5rem)] sm:min-h-[calc(100vh-6rem)] lg:min-h-[480px] lg:h-[calc(100vh-230px)] sticky top-0 sm:top-2 z-10 shadow-sm"
         }`}
       >
         {/* Header Toolbar */}
@@ -646,7 +646,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
           {/* Vùng cuộn nội bộ cho Bảng / Thẻ */}
           <div
             onScroll={handleInnerScroll}
-            className="flex-1 min-h-[280px] lg:min-h-0 overflow-y-auto overflow-x-auto scrollbar-thin rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/70 bg-transparent sm:bg-white shadow-none sm:shadow-2xs"
+            className="flex-1 min-h-[280px] lg:min-h-0 overflow-y-auto overflow-x-auto overscroll-y-contain scrollbar-thin rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/70 bg-transparent sm:bg-white shadow-none sm:shadow-2xs"
           >
             {/* Desktop Table View (>= lg) */}
             <StoreUserDesktopTable
@@ -662,7 +662,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
             />
 
             {/* Mobile / Tablet Cards View (< lg) với Cuộn Tải Thêm (Infinite Scroll) */}
-            <div className="block lg:hidden">
+            <div className="block lg:hidden pb-24 lg:pb-0">
               <StoreUserMobileCards
                 paginatedUsers={mobileUsers}
                 selectedUserIds={selectedUserIds}

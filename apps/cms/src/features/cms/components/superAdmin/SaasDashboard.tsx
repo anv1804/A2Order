@@ -282,7 +282,7 @@ export const SaasDashboard: React.FC<SaasDashboardProps> = ({
   }, [stores]);
 
   return (
-    <div className="space-y-3 sm:space-y-5 animate-fadeIn pb-16">
+    <div className="space-y-3 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
       {/* 1. Header Trung Tâm Điều Hành - Tinh gọn, responsive, 100% dữ liệu thực */}
       <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
         <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />

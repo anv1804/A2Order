@@ -3,7 +3,7 @@ import { z } from "zod";
 // Đăng nhập Chủ quán / Super Admin bằng Email & Password
 export const OwnerLoginSchema = z.object({
   email: z.string().email("Email không hợp lệ"),
-  password: z.string().min(6, "Mật khẩu tối thiểu 6 ký tự"),
+  password: z.string().min(4, "Mật khẩu tối thiểu 4 ký tự"),
 });
 
 export type OwnerLoginDto = z.infer<typeof OwnerLoginSchema>;

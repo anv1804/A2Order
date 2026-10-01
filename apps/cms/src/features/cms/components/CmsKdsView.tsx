@@ -1,30 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Button, Badge, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
+import { KdsStation, KdsStatus, KdsOrderItem, CmsKdsTicket } from "@/types/kds.types";
 
-type KdsStation = "KITCHEN" | "BAR" | "DESSERT";
-type KdsStatus = "NEW" | "IN_PROGRESS" | "DONE";
-
-interface KdsOrderItem {
-  dishName: string;
-  quantity: number;
-  notes?: string;
-}
-
-interface KdsTicket {
-  id: string;
-  ticketCode: string;
-  tableName: string;
-  orderTime: string;
-  orderTimestamp: number;
-  status: KdsStatus;
-  station: KdsStation;
-  items: KdsOrderItem[];
-  waiterName: string;
-  priority?: "URGENT" | "NORMAL";
-}
-
-const MOCK_TICKETS: KdsTicket[] = [
+const MOCK_TICKETS: CmsKdsTicket[] = [
   {
     id: "kt1",
     ticketCode: "#B04-001",
@@ -121,7 +100,7 @@ function minutesAgo(ts: number): number {
 }
 
 export const CmsKdsView: React.FC = () => {
-  const [tickets, setTickets] = usePersistentState<KdsTicket[]>("kds_tickets_data", MOCK_TICKETS);
+  const [tickets, setTickets] = usePersistentState<CmsKdsTicket[]>("kds_tickets_data", MOCK_TICKETS);
   const [stationFilter, setStationFilter] = usePersistentState<"ALL" | KdsStation>("kds_station_filter", "ALL");
   const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>("kds_sound_enabled", true);
   const [now, setNow] = useState(Date.now());
@@ -131,21 +110,21 @@ export const CmsKdsView: React.FC = () => {
     return () => clearInterval(t);
   }, []);
 
-  const handleStartCooking = (ticket: KdsTicket) => {
+  const handleStartCooking = (ticket: CmsKdsTicket) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
     );
     toast.info(`Bếp đã nhận chế biến vé ${ticket.ticketCode} - ${ticket.tableName}`);
   };
 
-  const handleDone = (ticket: KdsTicket) => {
+  const handleDone = (ticket: CmsKdsTicket) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "DONE" } : t))
     );
     toast.success(`Vé ${ticket.ticketCode} đã xong! Phục vụ mang ra bàn.`);
   };
 
-  const handleRecall = (ticket: KdsTicket) => {
+  const handleRecall = (ticket: CmsKdsTicket) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
     );
@@ -166,12 +145,12 @@ export const CmsKdsView: React.FC = () => {
     const isWarning = mins > 8;
     return (
       <span
-        className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+        className={`text-[10.5px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs border ${
           isOverdue
-            ? "bg-amber-100 text-amber-900 border border-amber-300 font-extrabold"
+            ? "bg-rose-50 text-rose-800 border-rose-200 animate-pulse"
             : isWarning
-            ? "bg-amber-50 text-amber-800 border border-amber-200"
-            : "bg-surface-canvas border border-surface-border text-ink-muted"
+            ? "bg-amber-50 text-amber-800 border-amber-200"
+            : "bg-emerald-50 text-emerald-800 border-emerald-200/80"
         }`}
       >
         <Icon name="clock" size={11} />
@@ -180,69 +159,98 @@ export const CmsKdsView: React.FC = () => {
     );
   };
 
-  const renderTicket = (ticket: KdsTicket, col: KdsStatus) => {
+  const renderTicket = (ticket: CmsKdsTicket, col: KdsStatus) => {
     return (
       <div
         key={ticket.id}
-        className={`rounded-2xl p-3.5 space-y-2.5 transition-all shadow-2xs ${
+        className={`rounded-2xl p-3.5 space-y-3 transition-all shadow-2xs bg-white border ${
           col === "NEW"
-            ? "bg-white border border-surface-border hover:border-amber-400"
+            ? "border-amber-200/90 hover:border-amber-400 hover:shadow-md"
             : col === "IN_PROGRESS"
-            ? "bg-white border border-surface-border hover:border-brand-600"
-            : "bg-white/80 border border-surface-border opacity-85 hover:opacity-100"
+            ? "border-emerald-300 hover:border-emerald-500 hover:shadow-md"
+            : "border-slate-200 opacity-80 hover:opacity-100"
         }`}
       >
         {/* Header vé */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-black text-sm text-ink-primary tracking-tight">
+            <span className="font-mono font-black text-sm text-slate-900 tracking-tight">
               {ticket.ticketCode}
             </span>
+            {ticket.priority === "REMAKE" && (
+              <span className="px-2 py-0.5 rounded-md text-[9px] font-black bg-rose-600 text-white shadow-2xs animate-pulse flex items-center gap-1">
+                <Icon name="flame" size={10} />
+                LÀM LẠI - GẤP
+              </span>
+            )}
             {ticket.priority === "URGENT" && (
-              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black bg-brand-900 text-white shadow-xs">
+              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-rose-600 text-white shadow-2xs">
                 GẤP
               </span>
             )}
             <span
-              className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+              className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${
                 ticket.station === "BAR"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-amber-100 text-amber-900"
+                  ? "bg-blue-50 text-blue-700 border-blue-200"
+                  : "bg-amber-50 text-amber-800 border-amber-200"
               }`}
             >
-              {ticket.station === "BAR" ? "BAR" : "BẾP"}
+              {ticket.station === "BAR" ? "QUẦY BAR" : "BẾP NẤU"}
             </span>
           </div>
           {renderTimer(ticket.orderTimestamp)}
         </div>
 
         {/* Thông tin bàn & nhân viên phục vụ */}
-        <div className="flex items-center gap-1.5 text-[11px] text-ink-muted flex-wrap">
-          <div className="flex items-center gap-1 font-bold text-ink-primary">
-            <Icon name="table" size={13} className="text-ink-subtle" />
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold flex-wrap bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-100">
+          <div className="flex items-center gap-1 font-black text-slate-900">
+            <Icon name="table" size={13} className="text-slate-400" />
             <span>{ticket.tableName}</span>
           </div>
-          <span>•</span>
+          <span className="text-slate-300">•</span>
           <span>Phục vụ: {ticket.waiterName}</span>
-          <span>•</span>
-          <span className="font-semibold">{ticket.orderTime}</span>
+          <span className="text-slate-300">•</span>
+          <span className="font-bold text-slate-700">{ticket.orderTime}</span>
         </div>
 
+        {/* Cảnh báo làm lại khẩn cấp nếu có */}
+        {ticket.remakeReason && (
+          <div className="bg-rose-50 border border-rose-200 text-rose-900 text-[10px] font-bold p-2 rounded-xl flex items-start gap-1.5">
+            <Icon name="alert" size={12} className="shrink-0 text-rose-600 mt-0.5" />
+            <span>Khách yêu cầu làm lại: <strong>{ticket.remakeReason}</strong></span>
+          </div>
+        )}
+
+        {/* Cảnh báo khách hủy món nếu có */}
+        {ticket.cancelReason && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-950 text-[10px] font-black p-2 rounded-xl flex items-start gap-1.5">
+            <Icon name="alert" size={12} className="shrink-0 text-amber-700 mt-0.5" />
+            <span>{ticket.cancelReason}</span>
+          </div>
+        )}
+
         {/* Danh sách món ăn cần làm */}
-        <div className="space-y-2 border-t border-surface-border/60 pt-2">
-          {ticket.items.map((item, idx) => (
-            <div key={idx} className="flex items-start justify-between gap-2">
+        <div className="space-y-2 border-t border-slate-100 pt-2.5">
+          {ticket.items.map((item: KdsOrderItem, idx: number) => (
+            <div key={idx} className={`flex items-start justify-between gap-2 ${item.isCanceled ? "opacity-50 line-through" : ""}`}>
               <div className="flex-1 min-w-0">
-                <span className="text-xs font-black text-ink-primary block leading-snug">
+                <span className="text-xs font-black text-slate-900 block leading-snug">
                   {item.dishName}
                 </span>
-                {item.notes && (
-                  <span className="text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-200/60 px-1.5 py-0.2 rounded-md inline-block mt-0.5">
+                {item.isCanceled && (
+                  <span className="text-[9px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded inline-block mt-0.5 no-underline">
+                    ĐÃ HỦY - DỪNG NẤU
+                  </span>
+                )}
+                {item.notes && !item.isCanceled && (
+                  <span className="text-[10px] text-amber-800 font-bold bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md inline-block mt-1">
                     Ghi chú: {item.notes}
                   </span>
                 )}
               </div>
-              <span className="text-sm font-black text-brand-900 shrink-0">
+              <span className={`text-xs font-black px-2 py-0.5 rounded-lg border shrink-0 ${
+                item.isCanceled ? "bg-rose-50 text-rose-800 border-rose-200" : "bg-emerald-50 text-emerald-950 border-emerald-200/70"
+              }`}>
                 x{item.quantity}
               </span>
             </div>
@@ -250,34 +258,34 @@ export const CmsKdsView: React.FC = () => {
         </div>
 
         {/* Nút hành động thao tác */}
-        <div className="pt-2 border-t border-surface-border/60">
+        <div className="pt-2.5 border-t border-slate-100">
           {col === "NEW" && (
-            <Button
-              size="sm"
-              className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black gap-2 h-9 shadow-xs"
+            <button
+              type="button"
+              className="w-full rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black gap-1.5 h-9 shadow-xs flex items-center justify-center active:scale-95 transition"
               onClick={() => handleStartCooking(ticket)}
             >
               <Icon name="flame" size={15} />
-              <span>Bắt Đầu Làm</span>
-            </Button>
+              <span>Bắt Đầu Nấu</span>
+            </button>
           )}
           {col === "IN_PROGRESS" && (
-            <Button
-              size="sm"
-              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black gap-2 h-9 shadow-xs"
+            <button
+              type="button"
+              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black gap-1.5 h-9 shadow-xs flex items-center justify-center active:scale-95 transition"
               onClick={() => handleDone(ticket)}
             >
               <Icon name="check" size={15} />
-              <span>Xong ➔ Đưa Ra Bàn</span>
-            </Button>
+              <span>Hoàn Thành ➔ Đưa Ra Bàn</span>
+            </button>
           )}
           {col === "DONE" && (
             <button
               type="button"
               onClick={() => handleRecall(ticket)}
-              className="text-[11px] text-ink-muted hover:text-brand-900 font-bold w-full text-center hover:underline py-1 transition-colors"
+              className="text-[11px] text-slate-500 hover:text-rose-700 font-bold w-full text-center hover:underline py-1 transition-colors"
             >
-              ↩ Thu hồi (làm lại)
+              ↩ Thu hồi (làm lại vé này)
             </button>
           )}
         </div>
@@ -286,47 +294,164 @@ export const CmsKdsView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 animate-fadeIn pb-20">
-      {/* Tiêu đề & Cài đặt âm thanh thông báo */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Màn Hình Bếp & Bar (KDS)
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
+        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Kitchen Display System (KDS)
+              </span>
+              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
+                {newTickets.length} Vé chờ nấu • {inProgressTickets.length} Đang trên bếp
+              </span>
+            </div>
+
+            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
+              Màn Hình Điều Phối Bếp Nóng & Quầy Bar
             </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              Live Đồng Bộ
+            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
+              Tự động tiếp nhận order từ bàn QR và nhân viên phục vụ, chia trạm Bếp/Bar tức thời với cảnh báo thời gian thực.
+            </p>
+
+            {/* Quick Live Stats Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="flame" size={12} className="text-amber-300" />
+                <span>Bếp nóng & Lẩu</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="activity" size={12} className="text-blue-300" />
+                <span>Quầy Bar & Pha chế</span>
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
+                <Icon name="clock" size={12} className="text-teal-300" />
+                <span>Thời gian chuẩn: &lt; 10 phút/món</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+            <button
+              type="button"
+              onClick={() => setSoundEnabled((v) => !v)}
+              className={`inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 sm:px-4 text-xs font-black shadow-sm transition active:scale-95 shrink-0 ${
+                soundEnabled
+                  ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                  : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
+              }`}
+              aria-label="Cài đặt âm báo bếp"
+            >
+              <Icon name="bell" size={14} className={soundEnabled ? "text-slate-950" : "text-emerald-300"} />
+              <span>Chuông Báo: {soundEnabled ? "Bật" : "Tắt"}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. 4 Thẻ Bento Chỉ Số KDS */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+              <Icon name="clock" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
+              Chờ làm
             </span>
           </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Vé chế biến tự động cập nhật từ đơn POS & QR • Xử lý theo thứ tự ưu tiên
-          </p>
-        </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Vé Chờ Chế Biến
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {newTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
+            </p>
+            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
+              Cần nhận làm ngay
+            </p>
+          </div>
+        </article>
 
-        <button
-          type="button"
-          onClick={() => setSoundEnabled((v) => !v)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all shadow-2xs self-start sm:self-auto active:scale-95 ${
-            soundEnabled
-              ? "bg-brand-950 text-white border-brand-950 shadow-xs"
-              : "bg-white text-ink-muted border-surface-border hover:bg-surface-canvas"
-          }`}
-          aria-label="Cài đặt âm báo bếp"
-        >
-          <Icon name="bell" size={14} className={soundEnabled ? "text-amber-300" : "text-ink-subtle"} />
-          <span>Âm Thanh: {soundEnabled ? "Bật" : "Tắt"}</span>
-        </button>
-      </div>
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
+              <Icon name="flame" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
+              Đang nấu
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Đang Chế Biến
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {inProgressTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
+            </p>
+            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
+              Đang trên bếp & quầy pha
+            </p>
+          </div>
+        </article>
 
-      {/* Bộ lọc trạm chế biến & Trạng thái cập nhật */}
-      <div className="flex items-center justify-between gap-2 flex-wrap p-2 bg-white rounded-2xl border border-surface-border shadow-2xs">
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Icon name="checkCircle" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
+              Hoàn tất
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Đã Ra Bàn Ca Này
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              {doneTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
+            </p>
+            <p className="text-[10px] font-semibold text-emerald-600 mt-1 truncate">
+              Đã phục vụ khách dùng
+            </p>
+          </div>
+        </article>
+
+        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-2">
+            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Icon name="activity" size={16} />
+            </span>
+            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
+              Tốc độ
+            </span>
+          </div>
+          <div>
+            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
+              Tốc Độ Ra Món TB
+            </h4>
+            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
+              8.5 <span className="text-xs font-bold text-slate-400">phút/món</span>
+            </p>
+            <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
+              Đạt chuẩn vận hành (&lt; 12p)
+            </p>
+          </div>
+        </article>
+      </section>
+
+      {/* 3. Sticky Station Toolbar */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {[
-            { id: "ALL", label: "Tất Cả", count: filtered.length },
+            { id: "ALL", label: "Tất Cả Trạm", count: filtered.length },
             {
               id: "KITCHEN",
-              label: "Bếp Nóng",
+              label: "Bếp Nóng & Lẩu",
               count: tickets.filter((t) => t.station === "KITCHEN").length,
             },
             {
@@ -341,16 +466,16 @@ export const CmsKdsView: React.FC = () => {
               onClick={() => setStationFilter(s.id as any)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 ${
                 stationFilter === s.id
-                  ? "bg-brand-900 text-white shadow-xs font-black"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+                  ? "bg-slate-950 text-white shadow-2xs font-black"
+                  : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
               }`}
             >
               <span>{s.label}</span>
               <span
-                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
                   stationFilter === s.id
                     ? "bg-white/20 text-white"
-                    : "bg-surface-muted text-ink-muted font-black"
+                    : "bg-white text-slate-700 border border-slate-200"
                 }`}
               >
                 {s.count}
@@ -359,10 +484,10 @@ export const CmsKdsView: React.FC = () => {
           ))}
         </div>
 
-        <div className="flex items-center gap-1.5 text-[11px] text-ink-muted font-bold px-2 ml-auto">
+        <div className="flex items-center gap-2 text-[11px] text-slate-500 font-bold px-2 ml-auto">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span>
-            Cập nhật:{" "}
+            Đồng bộ:{" "}
             {new Date(now).toLocaleTimeString("vi-VN", {
               hour: "2-digit",
               minute: "2-digit",
@@ -371,23 +496,23 @@ export const CmsKdsView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3 Cột Kanban tiến trình chế biến */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* 4. 3 Cột Kanban tiến trình chế biến */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Cột 1: Đơn Mới */}
-        <div className="space-y-3 bg-surface-canvas/60 p-3 rounded-3xl border border-surface-border/80">
+        <div className="space-y-3 bg-white/70 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-amber-500 shadow-xs" />
-              <span className="text-sm font-black text-ink-primary">Đơn Mới</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-xs animate-pulse" />
+              <span className="text-xs sm:text-sm font-black text-slate-900">1. Chờ Chế Biến</span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-900 shadow-2xs">
-              {newTickets.length}
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+              {newTickets.length} vé
             </span>
           </div>
 
           {newTickets.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-surface-border p-8 text-center bg-white/60">
-              <p className="text-xs text-ink-muted font-bold">Không có vé mới chờ làm</p>
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+              <p className="text-xs text-slate-400 font-bold">Không có vé mới chờ làm</p>
             </div>
           ) : (
             newTickets.map((t) => renderTicket(t, "NEW"))
@@ -395,20 +520,20 @@ export const CmsKdsView: React.FC = () => {
         </div>
 
         {/* Cột 2: Đang Chế Biến */}
-        <div className="space-y-3 bg-surface-canvas/60 p-3 rounded-3xl border border-surface-border/80">
+        <div className="space-y-3 bg-white/70 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-brand-900 shadow-xs" />
-              <span className="text-sm font-black text-ink-primary">Đang Chế Biến</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-xs" />
+              <span className="text-xs sm:text-sm font-black text-slate-900">2. Đang Trên Bếp</span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-brand-100 text-brand-900 shadow-2xs">
-              {inProgressTickets.length}
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-teal-50 text-teal-800 border border-teal-200 shadow-2xs">
+              {inProgressTickets.length} vé
             </span>
           </div>
 
           {inProgressTickets.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-surface-border p-8 text-center bg-white/60">
-              <p className="text-xs text-ink-muted font-bold">Bếp đang rảnh rỗi</p>
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+              <p className="text-xs text-slate-400 font-bold">Bếp đang rảnh rỗi</p>
             </div>
           ) : (
             inProgressTickets.map((t) => renderTicket(t, "IN_PROGRESS"))
@@ -416,20 +541,20 @@ export const CmsKdsView: React.FC = () => {
         </div>
 
         {/* Cột 3: Hoàn Thành */}
-        <div className="space-y-3 bg-surface-canvas/60 p-3 rounded-3xl border border-surface-border/80">
+        <div className="space-y-3 bg-white/70 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-2xs">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-600 shadow-xs" />
-              <span className="text-sm font-black text-ink-primary">Hoàn Thành</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs" />
+              <span className="text-xs sm:text-sm font-black text-slate-900">3. Đã Xong (Ra Bàn)</span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-900 shadow-2xs">
-              {doneTickets.length}
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+              {doneTickets.length} vé
             </span>
           </div>
 
           {doneTickets.length === 0 ? (
-            <div className="rounded-2xl border-2 border-dashed border-surface-border p-8 text-center bg-white/60">
-              <p className="text-xs text-ink-muted font-bold">Chưa có vé nào hoàn thành</p>
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-8 text-center bg-slate-50/50">
+              <p className="text-xs text-slate-400 font-bold">Chưa có vé nào hoàn thành</p>
             </div>
           ) : (
             doneTickets.map((t) => renderTicket(t, "DONE"))

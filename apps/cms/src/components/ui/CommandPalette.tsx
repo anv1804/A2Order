@@ -24,6 +24,8 @@ export interface ModuleItem {
   subActions: SubAction[];
 }
 
+import { CmsAppRole } from "@/types/cms.types";
+
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,7 +33,7 @@ interface CommandPaletteProps {
   setSearchQuery: (query: string) => void;
   matchingNavigation?: any[];
   onSelect: (menuId: string) => void;
-  currentRole?: "SUPER_ADMIN" | "STORE_OWNER";
+  currentRole?: CmsAppRole;
 }
 
 const SUPER_ADMIN_MODULES: ModuleItem[] = [
@@ -301,6 +303,267 @@ const STORE_OWNER_MODULES: ModuleItem[] = [
   },
 ];
 
+const CHEF_MODULES: ModuleItem[] = [
+  {
+    id: "kds",
+    label: "Màn Hình Bếp (KDS)",
+    hint: "Điều phối chế biến món, trạm Bếp Nóng & Trạm Pha Chế",
+    icon: "kitchen",
+    category: "operations",
+    categoryLabel: "KDS Bếp",
+    color: "text-amber-700",
+    bg: "bg-amber-50 border-amber-200/80",
+    badgeColor: "bg-amber-100 text-amber-800",
+    subActions: [
+      { id: "kds_hot", label: "Trạm Bếp Nóng", desc: "Các món chiên, xào, nấu, lẩu cần chế biến", icon: "flame" },
+      { id: "kds_bar", label: "Trạm Pha Chế / Bar", desc: "Đồ uống, cà phê, trà hoa quả", icon: "coffee" },
+      { id: "kds_done", label: "Báo Xong Món Trả Khách", desc: "Thông báo cho phục vụ bàn mang món ra", icon: "checkCircle" },
+    ],
+  },
+  {
+    id: "menu",
+    label: "Báo Hết Món & Kho Bếp",
+    hint: "Bật/tắt trạng thái còn/hết món tức thời cho nhân viên phục vụ",
+    icon: "grid",
+    category: "menu",
+    categoryLabel: "Bếp & Kho",
+    color: "text-emerald-800",
+    bg: "bg-emerald-50 border-emerald-200/80",
+    badgeColor: "bg-emerald-100 text-emerald-900",
+    subActions: [
+      { id: "menu_out_of_stock", label: "Báo Hết Món Tức Thời", desc: "Khóa món hết nguyên liệu để POS không nhận order thêm", icon: "alert" },
+      { id: "menu_in_stock", label: "Mở Lại Món Đã Sẵn Sàng", desc: "Mở lại món khi nguyên liệu mới đã sẵn sàng", icon: "checkCircle" },
+    ],
+  },
+  {
+    id: "profile",
+    label: "Hồ Sơ Trạm Bếp",
+    hint: "Tài khoản ca trực bếp & đổi mã PIN nhanh",
+    icon: "user",
+    category: "settings",
+    categoryLabel: "Tài Khoản",
+    color: "text-teal-800",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-900",
+    subActions: [
+      { id: "prof_pin", label: "Đổi Mã PIN Trạm Bếp", desc: "Đổi mã bảo mật đăng nhập ca làm việc", icon: "lock" },
+    ],
+  },
+];
+
+const WAITER_MODULES: ModuleItem[] = [
+  {
+    id: "tables",
+    label: "Sơ Đồ Bàn Phục Vụ",
+    hint: "Theo dõi bàn trống, bàn có khách & gọi thanh toán",
+    icon: "table",
+    category: "operations",
+    categoryLabel: "Sơ Đồ Bàn",
+    color: "text-teal-700",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-800",
+    subActions: [
+      { id: "table_status", label: "Trạng Thái Bàn Thời Gian Thực", desc: "Xem bàn có khách, bàn chờ dọn và bàn đã đặt trước", icon: "grid" },
+      { id: "table_qr", label: "Mã QR Bàn Gọi Món", desc: "Kiểm tra mã QR trên bàn khách quét", icon: "vietqr" },
+    ],
+  },
+  {
+    id: "staff_order",
+    label: "POS Cầm Tay Phục Vụ",
+    hint: "Chọn món tại bàn, thêm topping & gửi bếp tức thời",
+    icon: "cart",
+    category: "operations",
+    categoryLabel: "Order Bàn",
+    color: "text-blue-700",
+    bg: "bg-blue-50 border-blue-200/80",
+    badgeColor: "bg-blue-100 text-blue-800",
+    subActions: [
+      { id: "order_new", label: "Lên Đơn Mới Tại Bàn", desc: "Chọn món và gửi thẳng vào trạm bếp KDS", icon: "plus" },
+      { id: "order_extra", label: "Gọi Thêm Món & Đá Khăn", desc: "Thêm đồ ăn, nước uống cho bàn đang dùng bữa", icon: "list" },
+    ],
+  },
+  {
+    id: "reservations",
+    label: "Lịch Đặt Bàn Khách Hẹn",
+    hint: "Danh sách khách đã đặt chỗ trước trong ngày",
+    icon: "clock",
+    category: "operations",
+    categoryLabel: "Đặt Bàn",
+    color: "text-indigo-700",
+    bg: "bg-indigo-50 border-indigo-200/80",
+    badgeColor: "bg-indigo-100 text-indigo-800",
+    subActions: [
+      { id: "res_today", label: "Khách Đặt Bàn Hôm Nay", desc: "Xem giờ đến, số khách và ghi chú đặc biệt", icon: "calendar" },
+    ],
+  },
+  {
+    id: "profile",
+    label: "Hồ Sơ Phục Vụ",
+    hint: "Thông tin cá nhân & đổi mã PIN ca làm",
+    icon: "user",
+    category: "settings",
+    categoryLabel: "Tài Khoản",
+    color: "text-teal-800",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-900",
+    subActions: [
+      { id: "prof_pin", label: "Đổi Mã PIN Đăng Nhập", desc: "Đổi mã PIN đăng nhập trên điện thoại", icon: "lock" },
+    ],
+  },
+];
+
+const CASHIER_MODULES: ModuleItem[] = [
+  {
+    id: "staff_order",
+    label: "Quầy Thu Ngân & POS",
+    hint: "Tính tiền, in hóa đơn, quét mã VietQR và kiểm bill",
+    icon: "cart",
+    category: "operations",
+    categoryLabel: "Thu Ngân",
+    color: "text-blue-700",
+    bg: "bg-blue-50 border-blue-200/80",
+    badgeColor: "bg-blue-100 text-blue-800",
+    subActions: [
+      { id: "cashier_checkout", label: "Thanh Toán & In Bill Hóa Đơn", desc: "Chọn bàn, áp dụng voucher và xuất hóa đơn", icon: "print" },
+      { id: "cashier_vietqr", label: "Tạo Mã VietQR Động", desc: "Hiện QR ngân hàng đúng số tiền cho khách quét", icon: "vietqr" },
+      { id: "cashier_split", label: "Tách / Gộp Hóa Đơn", desc: "Hỗ trợ khách thanh toán riêng từng người", icon: "table" },
+    ],
+  },
+  {
+    id: "tables",
+    label: "Sơ Đồ Bàn & Yêu Cầu Bill",
+    hint: "Danh sách các bàn đang chờ thanh toán và in tạm tính",
+    icon: "table",
+    category: "operations",
+    categoryLabel: "Bàn & Bill",
+    color: "text-teal-700",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-800",
+    subActions: [
+      { id: "table_bill_req", label: "Bàn Yêu Cầu Thanh Toán", desc: "Bàn có tín hiệu xin bill từ khách", icon: "bell" },
+      { id: "table_provisional", label: "In Phiếu Tạm Tính", desc: "In trước danh sách món cho khách kiểm tra", icon: "fileText" },
+    ],
+  },
+  {
+    id: "dashboard",
+    label: "Tổng Quan Ca Thu Ngân",
+    hint: "Kiểm két tiền mặt, tổng kết ca và đối soát tiền thu",
+    icon: "home",
+    category: "core",
+    categoryLabel: "Két Tiền",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200/80",
+    badgeColor: "bg-emerald-100 text-emerald-800",
+    subActions: [
+      { id: "cashier_drawer", label: "Kiểm Két Tiền Mặt Ca Trực", desc: "Đối chiếu tiền mặt đầu ca và tiền thực tế trong két", icon: "banknote" },
+      { id: "cashier_shift_end", label: "Bàn Giao & Kết Ca", desc: "In phiếu tổng kết ca bán hàng cho thu ngân", icon: "checkCircle" },
+    ],
+  },
+  {
+    id: "reservations",
+    label: "Lịch Đặt Bàn Đón Khách",
+    hint: "Kiểm tra bàn đặt, đặt cọc giữ chỗ của khách",
+    icon: "clock",
+    category: "operations",
+    categoryLabel: "Đặt Bàn",
+    color: "text-indigo-700",
+    bg: "bg-indigo-50 border-indigo-200/80",
+    badgeColor: "bg-indigo-100 text-indigo-800",
+    subActions: [
+      { id: "res_deposit", label: "Ghi Nhận Tiền Đặt Cọc", desc: "Khách cọc bàn ăn tiệc hoặc phòng VIP", icon: "dollar" },
+    ],
+  },
+  {
+    id: "customers",
+    label: "Khách Hàng & VIP",
+    hint: "Tra cứu hội viên, tích điểm và giảm giá theo hạng thẻ",
+    icon: "userCheck",
+    category: "operations",
+    categoryLabel: "Khách Hàng",
+    color: "text-purple-700",
+    bg: "bg-purple-50 border-purple-200/80",
+    badgeColor: "bg-purple-100 text-purple-800",
+    subActions: [
+      { id: "cust_search", label: "Tra Cứu Khách Bằng SĐT", desc: "Xem điểm tích lũy và voucher quà tặng", icon: "search" },
+    ],
+  },
+  {
+    id: "profile",
+    label: "Hồ Sơ Thu Ngân",
+    hint: "Tài khoản thu ngân ca trực & bảo mật",
+    icon: "user",
+    category: "settings",
+    categoryLabel: "Tài Khoản",
+    color: "text-teal-800",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-900",
+    subActions: [
+      { id: "prof_pin", label: "Đổi Mã PIN Thu Ngân", desc: "Mã PIN thao tác mở két và in hóa đơn", icon: "lock" },
+    ],
+  },
+];
+
+const ACCOUNTANT_MODULES: ModuleItem[] = [
+  {
+    id: "analytics",
+    label: "Báo Cáo Doanh Thu & P&L",
+    hint: "Doanh số thực tế, chi phí giá vốn, lãi ròng và dòng tiền",
+    icon: "chart",
+    category: "finance",
+    categoryLabel: "Tài Chính",
+    color: "text-indigo-700",
+    bg: "bg-indigo-50 border-indigo-200/80",
+    badgeColor: "bg-indigo-100 text-indigo-800",
+    subActions: [
+      { id: "acc_pnl", label: "Báo Cáo Lãi Lỗ (P&L)", desc: "Doanh thu trừ giá vốn nguyên liệu và chi phí vận hành", icon: "trending" },
+      { id: "acc_payment_methods", label: "Đối Soát Tiền Mặt vs Chuyển Khoản", desc: "Bảng kê đối chiếu tiền mặt két vs tài khoản ngân hàng", icon: "banknote" },
+    ],
+  },
+  {
+    id: "inventory",
+    label: "Kho & Phiếu Nhập NCC",
+    hint: "Giá vốn hàng bán, công nợ nhà cung cấp và nhập kho",
+    icon: "building",
+    category: "operations",
+    categoryLabel: "Kho & Vốn",
+    color: "text-orange-700",
+    bg: "bg-orange-50 border-orange-200/80",
+    badgeColor: "bg-orange-100 text-orange-800",
+    subActions: [
+      { id: "acc_stock_receipt", label: "Hóa Đơn & Phiếu Nhập NCC", desc: "Theo dõi công nợ các nhà cung cấp thực phẩm", icon: "fileText" },
+      { id: "acc_cogs", label: "Bảng Tính Giá Vốn Từng Món", desc: "Định lượng nguyên liệu (BOM) và chi phí thực phẩm", icon: "fileText" },
+    ],
+  },
+  {
+    id: "dashboard",
+    label: "Tổng Quan Sổ Quỹ",
+    hint: "Sổ quỹ tiền mặt, doanh thu các ca và thu chi trong ngày",
+    icon: "home",
+    category: "core",
+    categoryLabel: "Sổ Quỹ",
+    color: "text-emerald-700",
+    bg: "bg-emerald-50 border-emerald-200/80",
+    badgeColor: "bg-emerald-100 text-emerald-800",
+    subActions: [
+      { id: "acc_cash_flow", label: "Tổng Kết Sổ Quỹ Cuối Ngày", desc: "Số dư đầu ngày, phát sinh thu chi và số dư cuối ngày", icon: "dollar" },
+    ],
+  },
+  {
+    id: "profile",
+    label: "Hồ Sơ Kế Toán",
+    hint: "Tài khoản kế toán viên & bảo mật",
+    icon: "user",
+    category: "settings",
+    categoryLabel: "Tài Khoản",
+    color: "text-teal-800",
+    bg: "bg-teal-50 border-teal-200/80",
+    badgeColor: "bg-teal-100 text-teal-900",
+    subActions: [
+      { id: "prof_security", label: "Bảo Mật & Mật Khẩu Kế Toán", desc: "Đổi mật khẩu truy cập phân hệ tài chính", icon: "lock" },
+    ],
+  },
+];
+
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
   isOpen,
   onClose,
@@ -313,9 +576,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [drilledModule, setDrilledModule] = useState<ModuleItem | null>(null);
 
-  // Lấy danh sách module theo role
+  // Lấy danh sách module tách biệt tuyệt đối theo từng Role
   const allModules = useMemo(() => {
-    return currentRole === "SUPER_ADMIN" ? SUPER_ADMIN_MODULES : STORE_OWNER_MODULES;
+    switch (currentRole) {
+      case "SUPER_ADMIN":
+        return SUPER_ADMIN_MODULES;
+      case "CHEF":
+        return CHEF_MODULES;
+      case "WAITER":
+        return WAITER_MODULES;
+      case "CASHIER":
+        return CASHIER_MODULES;
+      case "ACCOUNTANT":
+        return ACCOUNTANT_MODULES;
+      case "STORE_OWNER":
+      default:
+        return STORE_OWNER_MODULES;
+    }
   }, [currentRole]);
 
   // Reset drill-down khi mở modal hoặc khi query thay đổi

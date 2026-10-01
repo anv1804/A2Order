@@ -11,6 +11,8 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
   onOpenProfile,
   onOpenSearch,
   onSelectMenu,
+  currentRole,
+  onChangeRole,
 }) => {
   const [isNotiOpen, setIsNotiOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
@@ -71,7 +73,27 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
+          {onChangeRole && currentRole && (
+            <div className="relative flex items-center">
+              <label htmlFor="cms-role-switcher" className="sr-only">Chuyển vai trò quản trị</label>
+              <select
+                id="cms-role-switcher"
+                value={currentRole}
+                onChange={(e) => onChangeRole(e.target.value as any)}
+                aria-label="Chuyển chế độ xem vai trò"
+                className="text-[11px] sm:text-xs font-black text-emerald-950 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-300/80 rounded-xl px-2 sm:px-2.5 py-1.5 cursor-pointer outline-none transition focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+              >
+                <option value="STORE_OWNER">👑 Chủ Quán</option>
+                <option value="ACCOUNTANT">📊 Kế Toán</option>
+                <option value="CASHIER">💵 Thu Ngân</option>
+                <option value="CHEF">🍳 Bếp / KDS</option>
+                <option value="WAITER">🍽️ Phục Vụ</option>
+                <option value="SUPER_ADMIN">🛡️ Super Admin</option>
+              </select>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={onOpenSearch}

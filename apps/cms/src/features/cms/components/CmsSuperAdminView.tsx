@@ -15,13 +15,7 @@ import {
 import { APP_MODULE_CATALOG, StoreScale } from "@a2order/shared";
 import { BUSINESS_SCENARIOS } from "@/data/businessScenarios";
 import { storeApi } from "@/services/api/storeApi";
-import {
-  LicenseKeyRecord,
-  INITIAL_LICENSES,
-  INITIAL_STORES,
-  INITIAL_INVOICES,
-  INITIAL_AUDIT_LOGS,
-} from "./superAdmin/superAdminMockData";
+import { LicenseKeyRecord } from "./superAdmin/superAdminMockData";
 import { LicenseModal } from "./superAdmin/modals/LicenseModal";
 import { InvoiceModal } from "./superAdmin/modals/InvoiceModal";
 import { StoreOnboardingModal } from "./superAdmin/modals/StoreOnboardingModal";
@@ -118,29 +112,22 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const [viewingStoreDetails, setViewingStoreDetails] = useState<TenantStoreRecord | null>(null);
 
   // Quản lý & Cấp License Key (License Manager)
-  const [licenses, setLicenses] = useState<LicenseKeyRecord[]>(INITIAL_LICENSES);
-  const [stores, setStores] = useState<TenantStoreRecord[]>(INITIAL_STORES);
-  const [invoices, setInvoices] = useState<SoftwareInvoiceRecord[]>(INITIAL_INVOICES);
-  const [auditLogs, setAuditLogs] = useState<SystemAuditLogRecord[]>(INITIAL_AUDIT_LOGS);
+  const [licenses, setLicenses] = useState<LicenseKeyRecord[]>([]);
+  const [stores, setStores] = useState<TenantStoreRecord[]>([]);
+  const [invoices, setInvoices] = useState<SoftwareInvoiceRecord[]>([]);
+  const [auditLogs, setAuditLogs] = useState<SystemAuditLogRecord[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [connectedSources, setConnectedSources] = useState<string[]>([]);
 
-  // Thử đồng bộ dữ liệu từ Server API khi mount
+  // Tải toàn bộ dữ liệu từ Supabase qua Server API
   useEffect(() => {
-    storeApi
-      .getStores()
-      .then((serverStores) => {
-        if (serverStores && serverStores.length > 0) {
-          setStores(serverStores);
-          setConnectedSources((sources) => [...new Set([...sources, "stores"])]);
-        }
-      })
-      .catch(() => {});
-
-    storeApi
-      .getLicenses()
-      .then((serverLicenses) => {
+    setIsLoadingData(true);
+    Promise.allSettled([
+      storeApi.getStores().then((serverStores) => {
+        if (serverStores && serverStores.length > 0) setStores(serverStores);
+      }),
+      storeApi.getLicenses().then((serverLicenses) => {
         if (serverLicenses && serverLicenses.length > 0) {
-          setConnectedSources((sources) => [...new Set([...sources, "licenses"])]);
           setLicenses(
             serverLicenses.map((l) => ({
               id: l.id,
@@ -157,19 +144,13 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
             }))
           );
         }
-      })
-      .catch(() => {});
-
-    storeApi
-      .getInvoices()
-      .then((serverInvoices) => {
-        if (serverInvoices && serverInvoices.length > 0) {
-          setInvoices(serverInvoices);
-          setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
-        }
-      })
-      .catch(() => {});
+      }),
+      storeApi.getInvoices().then((serverInvoices) => {
+        if (serverInvoices && serverInvoices.length > 0) setInvoices(serverInvoices);
+      }),
+    ]).finally(() => setIsLoadingData(false));
   }, []);
+
 
   const [licenseSearch, setLicenseSearch] = useState("");
   const [licenseStatusFilter, setLicenseStatusFilter] = useState("ALL");

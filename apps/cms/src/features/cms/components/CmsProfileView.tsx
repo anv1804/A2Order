@@ -1,17 +1,36 @@
 import React, { useState } from "react";
 import { Icon, Modal } from "@/components/ui";
 import { AuthUser } from "@/types";
+import { CmsAppRole } from "@/types/cms.types";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
 interface CmsProfileViewProps {
   user: AuthUser;
-  currentRole: "STORE_OWNER" | "SUPER_ADMIN";
+  currentRole: CmsAppRole;
   onLogout: () => void;
 }
 
 export const CmsProfileView: React.FC<CmsProfileViewProps> = ({ user, currentRole, onLogout }) => {
   const isSuperAdmin = currentRole === "SUPER_ADMIN";
-  const roleLabel = isSuperAdmin ? "Super Admin Nền Tảng" : "Chủ Quán / Quản Lý Cơ Sở";
+  const getRoleTitle = (role: CmsAppRole) => {
+    switch (role) {
+      case "SUPER_ADMIN":
+        return "Super Admin Nền Tảng";
+      case "STORE_OWNER":
+        return "Chủ Quán / Quản Lý Cơ Sở";
+      case "ACCOUNTANT":
+        return "Kế Toán Trưởng";
+      case "CASHIER":
+        return "Thu Ngân";
+      case "CHEF":
+        return "Bếp Trưởng / Pha Chế";
+      case "WAITER":
+        return "Phục Vụ Bàn & POS";
+      default:
+        return role;
+    }
+  };
+  const roleLabel = getRoleTitle(currentRole);
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");

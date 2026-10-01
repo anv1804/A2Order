@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import bcrypt from "bcryptjs";
 import { OwnerLoginSchema, PinLoginSchema } from "@a2order/shared";
-import { prisma } from "../../core/database/prismaClient.js";
+import { staffRepository } from "../../core/database/repositoryFactory.js";
 
 export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   /**
@@ -18,15 +18,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     }
 
     const { email, password } = parseResult.data;
+    const cleanEmail = email.toLowerCase().trim();
 
     try {
-      // 1. Tìm tài khoản trong bảng Staff theo email
-      const staff = await prisma.staff.findUnique({
-        where: { email: email.toLowerCase().trim() },
-        include: {
-          store: true,
-        },
-      });
+      // 1. Tìm tài khoản trong Supabase
+      const staff = await staffRepository.getByEmail(cleanEmail);
 
       if (!staff || !staff.isActive) {
         return reply.status(401).send({
@@ -35,10 +31,14 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         });
       }
 
-      // 2. Kiểm tra mật khẩu (bcrypt hash)
+      // 2. Xác thực mật khẩu bằng bcrypt hash từ database Supabase
       let isMatch = false;
       if (staff.passwordHash) {
-        isMatch = await bcrypt.compare(password, staff.passwordHash);
+        try {
+          isMatch = await bcrypt.compare(password, staff.passwordHash);
+        } catch {
+          isMatch = false;
+        }
       }
 
       if (!isMatch) {
@@ -55,7 +55,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         email: staff.email,
         role: staff.role,
         storeId: staff.storeId,
-        storeName: staff.store?.name || null,
+        storeName: staff.storeName || null,
       };
 
       const token = (fastify as any).jwt.sign(tokenPayload, { expiresIn: "7d" });
@@ -70,7 +70,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           email: staff.email,
           role: staff.role,
           storeId: staff.storeId,
-          storeName: staff.store?.name || null,
+          storeName: staff.storeName || null,
         },
       };
     } catch (err: any) {
@@ -101,10 +101,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
         return reply.status(401).send({ success: false, message: "Token không hợp lệ" });
       }
 
-      const staff = await prisma.staff.findUnique({
-        where: { id: decoded.userId },
-        include: { store: true },
-      });
+      const staff = await staffRepository.getById(decoded.userId);
 
       if (!staff || !staff.isActive) {
         return reply.status(401).send({ success: false, message: "Tài khoản không tồn tại hoặc đã bị khóa" });
@@ -118,7 +115,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           email: staff.email,
           role: staff.role,
           storeId: staff.storeId,
-          storeName: staff.store?.name || null,
+          storeName: staff.storeName || null,
         },
       };
     } catch (err: any) {
@@ -142,12 +139,9 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
     const { storeId, staffId, pinCode } = parseResult.data;
 
     try {
-      const staff = await prisma.staff.findFirst({
-        where: { id: staffId, storeId, isActive: true },
-        include: { store: true },
-      });
+      const staff = await staffRepository.findByPin(storeId, staffId, pinCode);
 
-      if (!staff || staff.pinCode !== pinCode) {
+      if (!staff) {
         return reply.status(401).send({
           success: false,
           message: "Mã PIN không chính xác",
@@ -160,7 +154,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           name: staff.name,
           role: staff.role,
           storeId: staff.storeId,
-          storeName: staff.store?.name || null,
+          storeName: staff.storeName || null,
         },
         { expiresIn: "12h" }
       );
@@ -174,7 +168,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) =
           name: staff.name,
           role: staff.role,
           storeId: staff.storeId,
-          storeName: staff.store?.name || null,
+          storeName: staff.storeName || null,
         },
       };
     } catch (err: any) {

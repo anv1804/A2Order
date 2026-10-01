@@ -12,7 +12,9 @@ import {
   IMenuRepository,
   ILicenseRepository,
   IInvoiceRepository,
+  IStaffRepository,
   LicenseRecord,
+  StaffRecord,
 } from "../IRepository.js";
 import { prisma } from "../prismaClient.js";
 import { DEFAULT_BUSINESS_SCENARIOS } from "../../../mockData/businessScenariosData.js";
@@ -443,16 +445,20 @@ export class PrismaLicenseRepository implements ILicenseRepository {
   async create(data: Omit<LicenseRecord, "id">): Promise<LicenseRecord> {
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + (data.durationMonths || 12));
-    const created = await prisma.storeLicense.create({
-      data: {
-        ...(data.storeId ? { storeId: data.storeId } : {}),
-        licenseKey: data.keyCode,
-        planType: data.plan,
-        enabledModules: "CORE_POS",
-        maxTables: data.maxDevices,
-        endDate,
-        status: data.storeId ? data.status : "UNASSIGNED",
-      },
+    const createData: any = {
+      licenseKey: data.keyCode,
+      planType: data.plan,
+      enabledModules: "CORE_POS",
+      maxTables: data.maxDevices,
+      endDate,
+      status: data.storeId ? data.status : "UNASSIGNED",
+    };
+    if (data.storeId) {
+      createData.storeId = data.storeId;
+    }
+
+    const created: any = await (prisma.storeLicense as any).create({
+      data: createData,
       include: { store: true },
     });
 
@@ -639,6 +645,272 @@ export class PrismaInvoiceRepository implements IInvoiceRepository {
       paymentMethod: "VIETQR",
       createdAt: updated.createdAt.toLocaleDateString("vi-VN"),
       paidAt: updated.paidAt ? updated.paidAt.toLocaleDateString("vi-VN") : undefined,
+    };
+  }
+}
+
+// ==========================================
+// 6. PRISMA STAFF REPOSITORY
+// ==========================================
+export class PrismaStaffRepository implements IStaffRepository {
+  async getAll(params?: {
+    storeId?: string;
+    role?: string;
+    status?: string;
+    search?: string;
+  }): Promise<StaffRecord[]> {
+    const whereClause: any = {};
+    if (params?.storeId && params.storeId !== "ALL") whereClause.storeId = params.storeId;
+    if (params?.role && params.role !== "ALL") whereClause.role = params.role;
+    if (params?.status === "ACTIVE") whereClause.isActive = true;
+    else if (params?.status === "INACTIVE" || params?.status === "SUSPENDED") whereClause.isActive = false;
+
+    if (params?.search && params.search.trim()) {
+      const q = params.search.trim();
+      whereClause.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { pinCode: { contains: q } },
+        { store: { name: { contains: q, mode: "insensitive" } } },
+      ];
+    }
+
+    const list = await prisma.staff.findMany({
+      where: whereClause,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+      orderBy: [{ store: { name: "asc" } }, { createdAt: "desc" }],
+    });
+
+    return list.map((st: any) => ({
+      id: st.id,
+      storeId: st.storeId,
+      storeName: st.store?.name || "Cửa Hàng",
+      storeStatus: st.store?.status || "ACTIVE",
+      storePlan: st.store?.license?.planType || "STARTER",
+      name: st.name,
+      email: st.email,
+      passwordHash: st.passwordHash,
+      pinCode: st.pinCode,
+      role: st.role,
+      isActive: st.isActive,
+      createdAt: st.createdAt.toISOString(),
+    }));
+  }
+
+  async getById(id: string): Promise<StaffRecord | null> {
+    const st: any = await prisma.staff.findUnique({
+      where: { id },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    if (!st) return null;
+    return {
+      id: st.id,
+      storeId: st.storeId,
+      storeName: st.store?.name || "Cửa Hàng",
+      storeStatus: st.store?.status || "ACTIVE",
+      storePlan: st.store?.license?.planType || "STARTER",
+      name: st.name,
+      email: st.email,
+      passwordHash: st.passwordHash,
+      pinCode: st.pinCode,
+      role: st.role,
+      isActive: st.isActive,
+      createdAt: st.createdAt.toISOString(),
+    };
+  }
+
+  async getByEmail(email: string): Promise<StaffRecord | null> {
+    const st: any = await prisma.staff.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    if (!st) return null;
+    return {
+      id: st.id,
+      storeId: st.storeId,
+      storeName: st.store?.name || "Cửa Hàng",
+      storeStatus: st.store?.status || "ACTIVE",
+      storePlan: st.store?.license?.planType || "STARTER",
+      name: st.name,
+      email: st.email,
+      passwordHash: st.passwordHash,
+      pinCode: st.pinCode,
+      role: st.role,
+      isActive: st.isActive,
+      createdAt: st.createdAt.toISOString(),
+    };
+  }
+
+  async findByPin(storeId: string, staffId: string, pinCode: string): Promise<StaffRecord | null> {
+    const st: any = await prisma.staff.findFirst({
+      where: { id: staffId, storeId, pinCode, isActive: true },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    if (!st) return null;
+    return {
+      id: st.id,
+      storeId: st.storeId,
+      storeName: st.store?.name || "Cửa Hàng",
+      storeStatus: st.store?.status || "ACTIVE",
+      storePlan: st.store?.license?.planType || "STARTER",
+      name: st.name,
+      email: st.email,
+      passwordHash: st.passwordHash,
+      pinCode: st.pinCode,
+      role: st.role,
+      isActive: st.isActive,
+      createdAt: st.createdAt.toISOString(),
+    };
+  }
+
+  async create(data: {
+    storeId: string;
+    name: string;
+    email?: string | null;
+    passwordHash?: string | null;
+    pinCode?: string;
+    role: string;
+    isActive?: boolean;
+  }): Promise<StaffRecord> {
+    const created: any = await prisma.staff.create({
+      data: {
+        storeId: data.storeId,
+        name: data.name.trim(),
+        email: data.email ? data.email.trim().toLowerCase() : null,
+        passwordHash: data.passwordHash || null,
+        pinCode: data.pinCode || "1111",
+        role: data.role,
+        isActive: data.isActive !== undefined ? data.isActive : true,
+      },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    return {
+      id: created.id,
+      storeId: created.storeId,
+      storeName: created.store?.name || "Cửa Hàng",
+      storeStatus: created.store?.status || "ACTIVE",
+      storePlan: created.store?.license?.planType || "STARTER",
+      name: created.name,
+      email: created.email,
+      passwordHash: created.passwordHash,
+      pinCode: created.pinCode,
+      role: created.role,
+      isActive: created.isActive,
+      createdAt: created.createdAt.toISOString(),
+    };
+  }
+
+  async update(id: string, data: Partial<StaffRecord>): Promise<StaffRecord | null> {
+    const updated: any = await prisma.staff.update({
+      where: { id },
+      data: data as any,
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    return {
+      id: updated.id,
+      storeId: updated.storeId,
+      storeName: updated.store?.name || "Cửa Hàng",
+      storeStatus: updated.store?.status || "ACTIVE",
+      storePlan: updated.store?.license?.planType || "STARTER",
+      name: updated.name,
+      email: updated.email,
+      passwordHash: updated.passwordHash,
+      pinCode: updated.pinCode,
+      role: updated.role,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt.toISOString(),
+    };
+  }
+
+  async delete(id: string): Promise<boolean> {
+    await prisma.staff.delete({ where: { id } });
+    return true;
+  }
+
+  async toggleStatus(id: string): Promise<StaffRecord | null> {
+    const existing = await prisma.staff.findUnique({ where: { id } });
+    if (!existing) return null;
+    const updated: any = await prisma.staff.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+      include: {
+        store: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            license: { select: { planType: true } },
+          },
+        },
+      },
+    });
+    return {
+      id: updated.id,
+      storeId: updated.storeId,
+      storeName: updated.store?.name || "Cửa Hàng",
+      storeStatus: updated.store?.status || "ACTIVE",
+      storePlan: updated.store?.license?.planType || "STARTER",
+      name: updated.name,
+      email: updated.email,
+      passwordHash: updated.passwordHash,
+      pinCode: updated.pinCode,
+      role: updated.role,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt.toISOString(),
     };
   }
 }
