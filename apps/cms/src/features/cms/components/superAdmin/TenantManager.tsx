@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { TenantDesktopTable } from "./TenantDesktopTable";
 import { TenantMobileCards } from "./TenantMobileCards";
-import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption } from "@/components/ui";
+import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
 import { TenantStoreRecord } from "@/types/cms.types";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
@@ -574,71 +574,73 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
                 </div>
               </div>
 
-              {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar */}
-              <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
-                <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/30 bg-[#0e2720]/98 backdrop-blur-2xl p-1.5 px-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
-                  <div className="flex items-center gap-2 pl-1 min-w-0">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
-                      {selectedStoreIds.length}
-                    </span>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[11px] font-bold text-white leading-tight truncate">
-                        Đã chọn {selectedStoreIds.length} quán
+              {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar (Dùng Portal để thoát Stacking Context) */}
+              <Portal>
+                <div className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
+                  <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/40 bg-[#0e2720] shadow-[0_12px_36px_rgba(0,0,0,0.6)] ring-1 ring-black/30 p-1.5 px-3">
+                    <div className="flex items-center gap-2 pl-1 min-w-0">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
+                        {selectedStoreIds.length}
                       </span>
-                      {selectedStoreIds.length < filteredStores.length ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedStoreIds(filteredStores.map((s) => s.id))}
-                          className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 text-left leading-tight cursor-pointer active:underline"
-                        >
-                          Chọn hết ({filteredStores.length})
-                        </button>
-                      ) : (
-                        <span className="text-[9.5px] font-medium text-emerald-400/80 leading-tight">
-                          Toàn bộ quán
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[11px] font-bold text-white leading-tight truncate">
+                          Đã chọn {selectedStoreIds.length} quán
                         </span>
-                      )}
+                        {selectedStoreIds.length < filteredStores.length ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStoreIds(filteredStores.map((s) => s.id))}
+                            className="text-[10px] font-semibold text-emerald-300 hover:text-emerald-200 text-left leading-tight cursor-pointer active:underline"
+                          >
+                            Chọn hết ({filteredStores.length})
+                          </button>
+                        ) : (
+                          <span className="text-[9.5px] font-medium text-emerald-400/80 leading-tight">
+                            Toàn bộ quán
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const selectedStores = stores.filter((s) => selectedStoreIds.includes(s.id));
+                          downloadCsv(
+                            `a2order-da-chon-${selectedStoreIds.length}-quan.csv`,
+                            ["Tên quán", "Chủ quán", "Email", "Số điện thoại", "Địa chỉ", "Gói", "Trạng thái", "Ngày hết hạn", "License"],
+                            selectedStores.map((store) => [
+                              store.name,
+                              store.owner,
+                              store.ownerEmail || "",
+                              store.phone,
+                              store.address,
+                              store.plan,
+                              store.status,
+                              store.expiresAt,
+                              store.licenseKey,
+                            ])
+                          );
+                        }}
+                        className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                        title="Xuất file CSV các quán đã chọn"
+                      >
+                        <Icon name="download" size={12} />
+                        <span>Xuất</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStoreIds([])}
+                        className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
+                        title="Bỏ chọn tất cả"
+                      >
+                        Bỏ chọn
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const selectedStores = stores.filter((s) => selectedStoreIds.includes(s.id));
-                        downloadCsv(
-                          `a2order-da-chon-${selectedStoreIds.length}-quan.csv`,
-                          ["Tên quán", "Chủ quán", "Email", "Số điện thoại", "Địa chỉ", "Gói", "Trạng thái", "Ngày hết hạn", "License"],
-                          selectedStores.map((store) => [
-                            store.name,
-                            store.owner,
-                            store.ownerEmail || "",
-                            store.phone,
-                            store.address,
-                            store.plan,
-                            store.status,
-                            store.expiresAt,
-                            store.licenseKey,
-                          ])
-                        );
-                      }}
-                      className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
-                      title="Xuất file CSV các quán đã chọn"
-                    >
-                      <Icon name="download" size={12} />
-                      <span>Xuất</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStoreIds([])}
-                      className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
-                      title="Bỏ chọn tất cả"
-                    >
-                      Bỏ chọn
-                    </button>
-                  </div>
                 </div>
-              </div>
+              </Portal>
             </>
           )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { LicenseDesktopTable } from "./LicenseDesktopTable";
 import { LicenseMobileCards } from "./LicenseMobileCards";
-import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption } from "@/components/ui";
+import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
 import { LicenseKeyRecord } from "./superAdminMockData";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
@@ -453,55 +453,57 @@ export const LicenseManager: React.FC<LicenseManagerProps> = ({
               </div>
             </div>
 
-            {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar */}
-            <div className="fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
-              <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/30 bg-[#0e2720]/98 backdrop-blur-2xl p-1.5 px-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.5)] ring-1 ring-black/20">
-                <div className="flex items-center gap-2 pl-1 min-w-0">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
-                    {selectedLicenseIds.length}
-                  </span>
-                  <span className="text-[11px] font-bold text-white leading-tight truncate">
-                    Đã chọn {selectedLicenseIds.length} key
-                  </span>
-                </div>
+            {/* 2. Mobile: Nổi đè lên che phủ trọn vẹn Bottom Navigation Bar (Dùng Portal để thoát Stacking Context) */}
+            <Portal>
+              <div className="fixed inset-x-0 bottom-0 z-[60] px-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] pointer-events-none lg:hidden animate-slideUp">
+                <div className="pointer-events-auto mx-auto flex h-[58px] w-full max-w-[330px] items-center justify-between rounded-full border border-emerald-400/40 bg-[#0e2720] shadow-[0_12px_36px_rgba(0,0,0,0.6)] ring-1 ring-black/30 p-1.5 px-3">
+                  <div className="flex items-center gap-2 pl-1 min-w-0">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400 text-xs font-black text-[#0e2720] shadow-xs shrink-0">
+                      {selectedLicenseIds.length}
+                    </span>
+                    <span className="text-[11px] font-bold text-white leading-tight truncate">
+                      Đã chọn {selectedLicenseIds.length} key
+                    </span>
+                  </div>
 
-                <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const selectedList = licenses.filter((l) => selectedLicenseIds.includes(l.id));
-                      downloadCsv(
-                        "a2order-license-da-chon.csv",
-                        ["Mã license", "Cửa hàng", "Gói", "Thiết bị", "Thời hạn", "Ngày cấp", "Ngày hết hạn", "Trạng thái"],
-                        selectedList.map((lic) => [
-                          lic.keyCode,
-                          lic.storeName || "",
-                          lic.plan,
-                          lic.maxDevices,
-                          lic.durationMonths,
-                          lic.issuedAt,
-                          lic.expiresAt,
-                          lic.status,
-                        ])
-                      );
-                    }}
-                    className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
-                    title="Xuất file các key đã chọn"
-                  >
-                    <Icon name="download" size={12} />
-                    <span>Xuất</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedLicenseIds([])}
-                    className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
-                    title="Bỏ chọn tất cả"
-                  >
-                    Bỏ chọn
-                  </button>
+                  <div className="flex items-center gap-1.5 pr-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const selectedList = licenses.filter((l) => selectedLicenseIds.includes(l.id));
+                        downloadCsv(
+                          "a2order-license-da-chon.csv",
+                          ["Mã license", "Cửa hàng", "Gói", "Thiết bị", "Thời hạn", "Ngày cấp", "Ngày hết hạn", "Trạng thái"],
+                          selectedList.map((lic) => [
+                            lic.keyCode,
+                            lic.storeName || "",
+                            lic.plan,
+                            lic.maxDevices,
+                            lic.durationMonths,
+                            lic.issuedAt,
+                            lic.expiresAt,
+                            lic.status,
+                          ])
+                        );
+                      }}
+                      className="inline-flex h-8 items-center gap-1 px-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                      title="Xuất file các key đã chọn"
+                    >
+                      <Icon name="download" size={12} />
+                      <span>Xuất</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLicenseIds([])}
+                      className="inline-flex h-8 items-center px-2.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-emerald-100 hover:text-white text-xs font-semibold transition cursor-pointer"
+                      title="Bỏ chọn tất cả"
+                    >
+                      Bỏ chọn
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Portal>
           </>
         )}
 
