@@ -175,21 +175,23 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
                       </span>
                     )}
 
-                    <div className="flex items-center gap-1 pl-1.5 border-l border-slate-200">
+                    {/* Nút Action: Icon nhỏ gọn, thanh thoát, không thô */}
+                    <div className="flex items-center gap-0.5 ml-1">
                       <button
                         type="button"
                         onClick={() => handleEditDish(dish)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold text-slate-700 bg-slate-100/90 hover:bg-emerald-50 hover:text-emerald-800 transition active:scale-95"
-                        title="Chỉnh sửa món"
+                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition active:scale-90 cursor-pointer"
+                        title={`Sửa ${dish.name}`}
+                        aria-label="Chỉnh sửa món"
                       >
-                        <Icon name="edit" size={12} />
-                        <span>Sửa</span>
+                        <Icon name="edit" size={13} />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteDish(dish)}
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-95"
-                        title="Xóa món"
+                        className="inline-flex items-center justify-center w-[26px] h-[26px] rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition active:scale-90 cursor-pointer"
+                        title={`Xóa ${dish.name}`}
+                        aria-label="Xóa món"
                       >
                         <Icon name="trash" size={13} />
                       </button>
