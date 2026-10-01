@@ -157,7 +157,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={twMerge(
           clsx(
-            "w-full h-9 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-between gap-2 shadow-2xs select-none",
+            "w-full h-8 sm:h-9 px-2 sm:px-3 rounded-xl border text-[11px] sm:text-xs font-bold transition-all flex items-center justify-between gap-1 sm:gap-2 shadow-2xs select-none",
             isOpen
               ? "border-brand-800 ring-2 ring-brand-800/10 bg-white text-ink-primary"
               : "border-surface-border bg-white text-ink-secondary hover:text-ink-primary hover:border-brand-300 hover:bg-surface-canvas/40",
@@ -168,7 +168,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <div className="flex items-center gap-1.5 min-w-0 truncate">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 truncate">
           {selectedOption?.icon && (
             <span className="shrink-0 text-brand-800">
               {renderOptionIcon(selectedOption.icon, "text-brand-800")}
@@ -183,7 +183,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.badge !== undefined && (
-            <span className="px-1.5 py-0.2 rounded-full bg-brand-50 text-brand-900 border border-brand-200/60 text-[10px] font-bold shrink-0">
+            <span className="px-1.5 py-0.2 rounded-full bg-brand-50 text-brand-900 border border-brand-200/60 text-[9.5px] sm:text-[10px] font-black shrink-0 leading-none">
               {selectedOption.badge}
             </span>
           )}

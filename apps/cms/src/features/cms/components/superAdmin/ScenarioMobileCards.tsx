@@ -18,24 +18,24 @@ export interface ScenarioMobileCardsProps {
 const getStationInfo = (station?: "KITCHEN" | "BAR" | "DESSERT") => {
   switch (station) {
     case "BAR":
-      return { label: "Quầy Bar", dotColor: "bg-amber-500", textColor: "text-amber-800", bgColor: "bg-amber-50 border-amber-200/60" };
+      return { label: "Quầy Bar", dotColor: "bg-amber-500", textColor: "text-amber-800" };
     case "DESSERT":
-      return { label: "Quầy Bánh", dotColor: "bg-purple-500", textColor: "text-purple-800", bgColor: "bg-purple-50 border-purple-200/60" };
+      return { label: "Quầy Bánh", dotColor: "bg-purple-500", textColor: "text-purple-800" };
     case "KITCHEN":
     default:
-      return { label: "Bếp Nóng", dotColor: "bg-emerald-500", textColor: "text-emerald-800", bgColor: "bg-emerald-50 border-emerald-200/60" };
+      return { label: "Bếp Nóng", dotColor: "bg-emerald-500", textColor: "text-emerald-800" };
   }
 };
 
 const getMajorBadge = (major?: FnbMajorCategory) => {
   switch (major) {
     case "DRINK":
-      return { label: "Đồ Uống", className: "bg-sky-50 text-sky-700 border-sky-200/80", icon: "coffee" as const };
+      return { label: "Đồ Uống", icon: "coffee" as const };
     case "DESSERT":
-      return { label: "Tráng Miệng", className: "bg-purple-50 text-purple-700 border-purple-200/80", icon: "cake" as const };
+      return { label: "Tráng Miệng", icon: "cake" as const };
     case "FOOD":
     default:
-      return { label: "Đồ Ăn", className: "bg-orange-50 text-orange-700 border-orange-200/80", icon: "utensils" as const };
+      return { label: "Đồ Ăn", icon: "utensils" as const };
   }
 };
 
@@ -51,7 +51,7 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
   visibleCount,
 }) => {
   return (
-    <div className="block lg:hidden w-full space-y-2.5">
+    <div className="block lg:hidden w-full space-y-2">
       {dishes.length === 0 ? (
         <div className="py-8 text-center text-xs text-slate-400 font-bold bg-slate-50/70 rounded-2xl border border-dashed border-slate-200">
           <div className="flex flex-col items-center justify-center gap-1.5">
@@ -82,111 +82,113 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
             return (
               <div
                 key={dish.id}
-                className={`bg-white rounded-2xl border p-3 shadow-2xs transition-all space-y-2.5 ${
-                  isSelected ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500/20" : "border-slate-200/80 hover:border-slate-300"
+                className={`rounded-2xl border p-2.5 sm:p-3 transition-all ${
+                  isSelected
+                    ? "bg-emerald-50/40 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs"
+                    : "bg-white border-slate-200/90 shadow-2xs hover:border-slate-300"
                 }`}
               >
-                {/* Header Card: Checkbox + Ảnh + Tên + Nút Thao Tác */}
-                <div className="flex items-start justify-between gap-2.5">
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <div className="pt-0.5 shrink-0">
-                      <Checkbox
-                        checked={isSelected}
-                        onChange={() => onToggleSelectDish(dish.id)}
-                        title={`Chọn ${dish.name}`}
+                <div className="flex items-start gap-2.5">
+                  {/* 1. Checkbox chọn món */}
+                  <div className="pt-1 shrink-0">
+                    <Checkbox
+                      checked={isSelected}
+                      onChange={() => onToggleSelectDish(dish.id)}
+                      title={`Chọn ${dish.name}`}
+                      size="sm"
+                    />
+                  </div>
+
+                  {/* 2. Ảnh món ăn: Kích thước 60x60, bo góc tròn đẹp mắt, badge Hot trên ảnh */}
+                  <div className="relative w-15 h-15 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 shadow-2xs flex items-center justify-center">
+                    {dish.image ? (
+                      <img
+                        src={dish.image}
+                        alt={dish.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
                       />
+                    ) : (
+                      <Icon name={majorInfo.icon} size={22} className="text-slate-400" />
+                    )}
+
+                    {/* Huy hiệu Hot tinh tế ghim góc ảnh */}
+                    {dish.isBestSeller && (
+                      <span className="absolute top-0.5 left-0.5 bg-amber-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-0.5 leading-none">
+                        <Icon name="flame" size={8} className="fill-white" />
+                        Hot
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 3. Nội dung thông tin món */}
+                  <div className="flex-1 min-w-0">
+                    {/* Hàng 1: Tên món + Nút thao tác Sửa/Xóa tinh tế */}
+                    <div className="flex items-start justify-between gap-1.5">
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 leading-snug truncate">
+                        {dish.name}
+                      </h4>
+
+                      {/* Nút thao tác Icon-only */}
+                      <div className="flex items-center gap-1 shrink-0 -mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleEditDish(dish)}
+                          title={`Chỉnh sửa ${dish.name}`}
+                          aria-label="Chỉnh sửa món"
+                          className="w-6.5 h-6.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                        >
+                          <Icon name="edit" size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDish(dish)}
+                          title={`Xóa ${dish.name}`}
+                          aria-label="Xóa món"
+                          className="w-6.5 h-6.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 transition active:scale-95 flex items-center justify-center cursor-pointer shadow-2xs"
+                        >
+                          <Icon name="trash" size={12} />
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 flex items-center justify-center relative">
-                      {dish.image ? (
-                        <img
-                          src={dish.image}
-                          alt={dish.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Icon name={majorInfo.icon} size={20} className="text-slate-400" />
-                      )}
-                      {dish.isBestSeller && (
-                        <span
-                          className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-amber-500 ring-2 ring-white"
-                          title="Món bán chạy"
-                        />
-                      )}
+                    {/* Hàng 2: Phân loại & Trạm phục vụ - GỌN TRÊN 1 DÒNG DUY NHẤT (Chống bậc thang) */}
+                    <div className="flex items-center gap-1.5 mt-1 text-[10.5px] text-slate-500 font-medium truncate">
+                      <span className="font-bold text-slate-700 shrink-0">{majorInfo.label}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-600 truncate">{dish.category || "Món Chung"}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className={`font-semibold shrink-0 ${stationInfo.textColor}`}>
+                        {stationInfo.label}
+                      </span>
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h4 className="text-xs font-black text-slate-900 leading-tight">
-                          {dish.name}
-                        </h4>
-                        {dish.isBestSeller && (
-                          <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-black bg-amber-50 text-amber-700 border border-amber-200/70">
-                            <Icon name="flame" size={9} className="text-amber-500 fill-amber-400" />
-                            Hot
+                    {/* Hàng 3: Giá bán + Tỷ lệ lãi + Size/Topping (Đáy thẻ liền mạch) */}
+                    <div className="flex items-center justify-between gap-1.5 mt-2 pt-1.5 border-t border-slate-100">
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xs sm:text-sm font-black text-slate-950 font-mono tracking-tight">
+                          {dish.price.toLocaleString("vi-VN")} đ
+                        </span>
+                        {hasMargin && (
+                          <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 leading-none">
+                            +{marginPercent}% lãi
                           </span>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-black border ${majorInfo.className}`}>
-                          <Icon name={majorInfo.icon} size={9} />
-                          {majorInfo.label}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
-                          {dish.category || "Món Chung"}
-                        </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {variantCount > 1 && (
+                          <span className="text-[9px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 leading-none">
+                            {variantCount} size
+                          </span>
+                        )}
+                        {customGroupCount > 0 && (
+                          <span className="text-[9px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 leading-none">
+                            +{customGroupCount} topping
+                          </span>
+                        )}
                       </div>
                     </div>
-                  </div>
-
-                  {/* Nút thao tác (Icon-only) */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleEditDish(dish)}
-                      title={`Chỉnh sửa ${dish.name}`}
-                      aria-label="Chỉnh sửa món"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 active:scale-95 cursor-pointer"
-                    >
-                      <Icon name="edit" size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDish(dish)}
-                      title={`Xóa ${dish.name}`}
-                      aria-label="Xóa món"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-2xs hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 active:scale-95 cursor-pointer"
-                    >
-                      <Icon name="trash" size={12} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Footer Card: Giá bán, Giá vốn, Lợi nhuận và Trạm */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-black text-slate-900">
-                      {dish.price.toLocaleString("vi-VN")} đ
-                    </span>
-                    {hasMargin && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        +{marginPercent}% lãi
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    {variantCount > 1 && (
-                      <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200/70">
-                        {variantCount} size
-                      </span>
-                    )}
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${stationInfo.bgColor} ${stationInfo.textColor}`}>
-                      <span className={`w-1 h-1 rounded-full ${stationInfo.dotColor}`} />
-                      {stationInfo.label}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -205,3 +207,5 @@ export const ScenarioMobileCards: React.FC<ScenarioMobileCardsProps> = ({
     </div>
   );
 };
+
+export default ScenarioMobileCards;

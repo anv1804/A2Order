@@ -293,7 +293,7 @@ export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = (
   // Tùy chọn cho SearchableSelect
   const majorOptions: SearchableSelectOption[] = useMemo(
     () => [
-      { value: "ALL", label: "Tất Cả Trụ Cột", badge: dishes.length },
+      { value: "ALL", label: "Trụ Cột", badge: dishes.length },
       { value: "FOOD", label: "Đồ Ăn (Food)", badge: countsByMajor.FOOD },
       { value: "DRINK", label: "Đồ Uống (Drink)", badge: countsByMajor.DRINK },
       { value: "DESSERT", label: "Tráng Miệng", badge: countsByMajor.DESSERT },
@@ -303,7 +303,7 @@ export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = (
 
   const categoryOptions: SearchableSelectOption[] = useMemo(() => {
     const opts: SearchableSelectOption[] = [
-      { value: "ALL", label: "Tất Cả Danh Mục", badge: filteredDishes.length },
+      { value: "ALL", label: "Danh Mục", badge: filteredDishes.length },
     ];
     availableCategories.forEach((cat) => {
       opts.push({
@@ -316,14 +316,14 @@ export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = (
   }, [availableCategories, categoryDishCount, filteredDishes.length]);
 
   const propertyOptions: SearchableSelectOption[] = [
-    { value: "ALL", label: "Tất Cả Đặc Tính" },
+    { value: "ALL", label: "Đặc Tính" },
     { value: "BEST_SELLER", label: "Bán Chạy (Hot)" },
     { value: "HAS_VARIANTS", label: "Có Nhiều Size" },
     { value: "HAS_CUSTOMIZATIONS", label: "Có Topping" },
   ];
 
   const sortOptions: SearchableSelectOption[] = [
-    { value: "DEFAULT", label: "Sắp xếp: Mặc Định" },
+    { value: "DEFAULT", label: "Sắp Xếp" },
     { value: "PRICE_ASC", label: "Giá: Thấp → Cao" },
     { value: "PRICE_DESC", label: "Giá: Cao → Thấp" },
     { value: "MARGIN_DESC", label: "Lợi Nhuận Cao" },
