@@ -234,8 +234,8 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
           </div>
         </header>
 
-        {/* Scrollable Main Content Container with responsive padding px-3 */}
-        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-3 sm:pb-5 lg:pb-6 w-full max-w-full scroll-smooth">
+        {/* Scrollable Main Content Container with responsive padding px-3 và pb-28 an toàn cho mobile bottom dock */}
+        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-28 sm:pb-24 lg:pb-6 w-full max-w-full scroll-smooth">
           <div className="w-full min-w-0 flex-1 flex flex-col min-h-0">{children}</div>
         </main>
 

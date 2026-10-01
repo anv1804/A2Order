@@ -71,7 +71,7 @@ export const CmsProfileView: React.FC<CmsProfileViewProps> = ({ user, currentRol
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-12">
+    <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-6">
       {/* 1. HERO BANNER: Sang trọng, chuẩn nhận diện Donezo Forest Green */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a231b] via-[#0e2f24] to-[#154636] p-5 sm:p-7 text-white shadow-xl border border-emerald-900/40">
         <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-emerald-400/15 blur-3xl" />
@@ -332,12 +332,15 @@ export const CmsProfileView: React.FC<CmsProfileViewProps> = ({ user, currentRol
         <button
           type="button"
           onClick={handleLogoutClick}
-          className="shrink-0 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md shadow-rose-600/20 transition cursor-pointer"
+          className="shrink-0 w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 active:scale-95 text-white text-xs sm:text-sm font-bold shadow-md shadow-rose-600/20 transition cursor-pointer"
         >
           <Icon name="logout" size={16} />
           <span>Đăng Xuất Tài Khoản</span>
         </button>
       </section>
+
+      {/* 4. Khoảng đệm vật lý an toàn chống che khuất bởi Mobile Bottom Dock trên Safari/iOS */}
+      <div className="h-32 sm:h-20 lg:hidden w-full shrink-0 select-none pointer-events-none" aria-hidden="true" />
 
       {/* 4. MODAL ĐỔI MẬT KHẨU */}
       {isPasswordModalOpen && (
