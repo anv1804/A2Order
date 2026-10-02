@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { BusinessType, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
+import { BUSINESS_TYPE_ICONS } from "../../superAdmin/modals/StoreOnboardingModal";
 import { BUSINESS_SCENARIOS } from "@/data/businessScenarios";
 
 export interface ScenarioPickerModalProps {
@@ -65,7 +66,13 @@ export const ScenarioPickerModal: React.FC<ScenarioPickerModalProps> = ({
                     }`}
                   >
                     <div className="flex items-start justify-between">
-                      <span className="text-2xl">{cfg.emoji}</span>
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${
+                          isSelected ? "bg-brand-900 text-white" : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        <Icon name={BUSINESS_TYPE_ICONS[key] || "store"} className="w-4 h-4" />
+                      </div>
                       {isSelected && (
                         <span className="w-5 h-5 rounded-full bg-brand-900 flex items-center justify-center text-white">
                           <Icon name="check" className="w-3 h-3" />
@@ -95,7 +102,9 @@ export const ScenarioPickerModal: React.FC<ScenarioPickerModalProps> = ({
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-surface-border">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">{BUSINESS_TYPE_CONFIG[selectedScenarioType].emoji}</span>
+                        <div className="w-7 h-7 rounded-lg bg-brand-900 text-white flex items-center justify-center">
+                          <Icon name={BUSINESS_TYPE_ICONS[selectedScenarioType] || "store"} className="w-4 h-4" />
+                        </div>
                         <h4 className="text-sm font-black text-ink-primary">{scenario.label}</h4>
                         <span className="text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
                           {scenario.dishes.length} món có sẵn
@@ -118,7 +127,7 @@ export const ScenarioPickerModal: React.FC<ScenarioPickerModalProps> = ({
                     <div className="flex flex-wrap gap-1.5">
                       {scenario.categories.map((c) => (
                         <span key={c.id} className="text-xs font-bold bg-white text-ink-primary border border-surface-border px-3 py-1 rounded-xl shadow-xs">
-                          {c.emoji || "🍽️"} {c.name}
+                          {c.name}
                         </span>
                       ))}
                     </div>

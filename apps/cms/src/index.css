@@ -69,6 +69,18 @@ body {
   scrollbar-color: #cbd5e1 transparent;
 }
 
+/* Sidebar: Ngăn triệt để cuộn ngang và ẩn hoàn toàn thanh cuộn (vẫn cuộn mượt mà bằng lăn chuột/cảm ứng) */
+.sidebar-scroll {
+  overflow-x: hidden !important;
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE / Edge */
+}
+.sidebar-scroll::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+}
+
 
 @keyframes fadeIn {
   from {

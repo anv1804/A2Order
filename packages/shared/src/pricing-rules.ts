@@ -28,7 +28,50 @@ export const DEFAULT_PERIOD_DISCOUNTS: PeriodDiscountRule[] = [
   { durationMonths: 24, discountPercent: 30, label: "Gói 2 năm (Tiết kiệm 30%)" },
 ];
 
-import { AppModule, APP_MODULE_CATALOG, ModulePricingInfo } from "./license.js";
+export const DEFAULT_PROMO_VOUCHERS: PromoVoucher[] = [
+  {
+    id: "v-chaoban",
+    code: "A2CHAOBAN",
+    discountType: "PERCENT",
+    discountValue: 15,
+    minContractMonths: 6,
+    validUntil: "2026-12-31",
+    usageCount: 0,
+    maxUsage: 100,
+    isActive: true,
+  },
+  {
+    id: "v-quanmoi",
+    code: "QUANMOI100K",
+    discountType: "FIXED_AMOUNT",
+    discountValue: 100000,
+    minContractMonths: 3,
+    validUntil: "2026-12-31",
+    usageCount: 0,
+    maxUsage: 50,
+    isActive: true,
+  },
+  {
+    id: "v-nammoi",
+    code: "PROMO2026",
+    discountType: "PERCENT",
+    discountValue: 20,
+    minContractMonths: 12,
+    validUntil: "2026-12-31",
+    usageCount: 0,
+    maxUsage: 200,
+    isActive: true,
+  },
+];
+
+import { AppModule, APP_MODULE_CATALOG, ModulePricingInfo, PlanConfig } from "./license.js";
+
+export interface PricingSystemConfig {
+  plans: PlanConfig[];
+  modules: ModulePricingInfo[];
+  periodDiscounts: PeriodDiscountRule[];
+  vouchers: PromoVoucher[];
+}
 
 export function calculateContractPrice(
   selectedModules: AppModule[],

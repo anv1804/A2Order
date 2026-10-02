@@ -3,6 +3,7 @@ import {
   BusinessScenarioTemplate,
   FnbDishItem,
   TenantStoreRecord,
+  CreateStoreInput,
   SoftwareInvoiceRecord,
 } from "@a2order/shared";
 
@@ -23,7 +24,7 @@ export interface IScenarioRepository {
 export interface IStoreRepository {
   getAll(): Promise<TenantStoreRecord[]>;
   getById(id: string): Promise<TenantStoreRecord | null>;
-  create(data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord>;
+  create(data: CreateStoreInput): Promise<TenantStoreRecord>;
   update(id: string, data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord | null>;
   delete(id: string): Promise<boolean>;
 }

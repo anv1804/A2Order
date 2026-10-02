@@ -11,6 +11,7 @@ import { APP_MODULE_CATALOG } from "@a2order/shared";
 import { staffApi } from "@/services/api/staffApi";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { StoreUserModal } from "./StoreUserModal";
+import { BUSINESS_TYPE_ICONS } from "./StoreOnboardingModal";
 
 export interface StoreDossierModalProps {
   store: TenantStoreRecord | null;
@@ -21,6 +22,7 @@ export interface StoreDossierModalProps {
   onOpenRenewModal: (store: TenantStoreRecord) => void;
   onToggleModule: (storeId: string, moduleId: AppModule) => void;
   onToggleStoreStatus: (store: TenantStoreRecord) => void;
+  onDeleteStore?: (store: TenantStoreRecord) => void;
   onViewInvoice: (invoice: SoftwareInvoiceRecord) => void;
   onUpdateStore?: (store: TenantStoreRecord) => void;
 }
@@ -34,6 +36,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
   onOpenRenewModal,
   onToggleModule,
   onToggleStoreStatus,
+  onDeleteStore,
   onViewInvoice,
   onUpdateStore,
 }) => {
@@ -259,10 +262,11 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 sm:py-4 border-b border-surface-border bg-surface-canvas shrink-0 gap-2">
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-xl sm:text-2xl shadow-2xs shrink-0">
-                {store.businessType && BUSINESS_TYPE_CONFIG[store.businessType]?.emoji
-                  ? BUSINESS_TYPE_CONFIG[store.businessType].emoji
-                  : "🏪"}
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 shadow-2xs shrink-0">
+                <Icon
+                  name={store.businessType ? BUSINESS_TYPE_ICONS[store.businessType] || "store" : "store"}
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
@@ -555,7 +559,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                   </p>
                 </div>
                 <span className="text-[10px] text-brand-900 font-bold bg-brand-50 border border-brand-200 px-2.5 py-0.5 rounded-full shrink-0">
-                  Đang bật {store.modules.length}/6 modules
+                  Đang bật {store.modules.length}/{APP_MODULE_CATALOG.length} modules
                 </span>
               </div>
 
@@ -602,15 +606,15 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                           <button
                             type="button"
                             onClick={() => onToggleModule(store.id, mod.id)}
-                            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 ${
+                            className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-150 shadow-xs flex items-center gap-1.5 active:scale-95 cursor-pointer select-none ${
                               isEnabled
-                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                : "bg-surface-muted text-ink-subtle border border-surface-border hover:bg-white hover:text-ink-primary"
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/20"
+                                : "bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200 hover:text-slate-800"
                             }`}
                           >
                             <Icon
                               name={isEnabled ? "check" : "power"}
-                              className="w-3 h-3"
+                              className="w-3.5 h-3.5"
                             />
                             <span>{isEnabled ? "Đang Bật" : "Tắt"}</span>
                           </button>
@@ -789,39 +793,66 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                   className={`h-9 rounded-xl text-xs font-bold truncate ${
                     store.status === "SUSPENDED"
                       ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                      : "text-rose-700 border-rose-300 hover:bg-rose-50"
+                      : "text-amber-700 border-amber-300 hover:bg-amber-50"
                   }`}
                   onClick={() => onToggleStoreStatus(store)}
                 >
                   {store.status === "SUSPENDED" ? "Mở Khóa Quán" : "Tạm Khóa Quán"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9 rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
-                  onClick={onClose}
-                >
-                  Đóng Hồ Sơ
-                </Button>
+                {onDeleteStore && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-xl text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50 truncate flex items-center justify-center gap-1"
+                    onClick={() => onDeleteStore(store)}
+                  >
+                    <Icon name="trash" size={13} />
+                    <span>Xóa Quán</span>
+                  </Button>
+                )}
               </div>
-            </div>
-
-            {/* Desktop layout: standard 1-row layout */}
-            <div className="hidden sm:flex items-center justify-between">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className={`rounded-xl text-xs font-bold ${
-                  store.status === "SUSPENDED"
-                    ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                    : "text-rose-700 border-rose-300 hover:bg-rose-50"
-                }`}
-                onClick={() => onToggleStoreStatus(store)}
+                className="w-full h-9 rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
+                onClick={onClose}
               >
-                {store.status === "SUSPENDED" ? "Mở Khóa Quán" : "Tạm Khóa Quán Này"}
+                Đóng Hồ Sơ
               </Button>
+            </div>
+
+            {/* Desktop layout: standard 1-row layout */}
+            <div className="hidden sm:flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={`rounded-xl text-xs font-bold ${
+                    store.status === "SUSPENDED"
+                      ? "text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                      : "text-amber-700 border-amber-300 hover:bg-amber-50"
+                  }`}
+                  onClick={() => onToggleStoreStatus(store)}
+                >
+                  {store.status === "SUSPENDED" ? "Mở Khóa Quán" : "Tạm Khóa Quán Này"}
+                </Button>
+
+                {onDeleteStore && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 flex items-center gap-1.5"
+                    onClick={() => onDeleteStore(store)}
+                  >
+                    <Icon name="trash" size={13} />
+                    <span>Xóa Hồ Sơ Quán</span>
+                  </Button>
+                )}
+              </div>
 
               <div className="flex items-center gap-2">
                 <Button

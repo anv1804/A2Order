@@ -66,6 +66,7 @@ model Table {
   storeId          String
   zoneId           String
   name             String
+  code             String?
   status           String         @default("EMPTY")
   qrSecret         String         @default(uuid())
   currentSessionId String?
@@ -241,4 +242,13 @@ model StoreLandingPage {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model SystemConfig {
+  key         String   @id
+  value       String   @db.Text
+  category    String   @default("PRICING")
+  description String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }

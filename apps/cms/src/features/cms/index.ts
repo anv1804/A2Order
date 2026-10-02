@@ -15,3 +15,5 @@ export * from "./components/CmsLandingPageEditor.js";
 export * from "./components/CmsAdminPricingManager.js";
 export * from "./components/CmsSuperAdminView.js";
 export * from "./components/CmsStoreSettings.js";
+export * from "./components/CmsDeliveryIntegrations.js";
+export * from "./components/CmsEInvoiceManagement.js";

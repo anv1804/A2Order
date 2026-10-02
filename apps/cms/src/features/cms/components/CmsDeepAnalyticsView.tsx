@@ -40,259 +40,50 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   // Modal xem báo cáo chốt ca Z-Report
   const [isZReportOpen, setIsZReportOpen] = useState(false);
 
-  // Dữ liệu mẫu báo cáo tổng quan F&B
+  // Sổ chi tiết hóa đơn bán hàng (Sales Audit Ledger)
+  const [bills, setBills] = usePersistentState<SalesBillRecord[]>("sales_bills_data", []);
+
+  // Nhật ký món bị hủy sau khi in bếp (Void / Waste Audit)
+  const [canceledItems] = usePersistentState<CanceledItemRecord[]>("void_audit_canceled_items", []);
+
+  // Báo cáo tổng hợp – tính động từ dữ liệu hóa đơn thực tế
+  const totalRevenue = bills.reduce((sum, b) => sum + b.finalAmount, 0);
+  const totalOrders = bills.length;
+  const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+  const discountLossTotal = bills.reduce((sum, b) => sum + (b.discountAmount || 0), 0);
+
   const report: DeepAnalyticsReport = {
     period: period === "yesterday" ? "today" : period,
     summary: {
-      totalRevenue: period === "yesterday" ? 12450000 : period === "week" ? 98500000 : period === "month" ? 385000000 : 15850000,
-      totalOrders: period === "yesterday" ? 96 : period === "week" ? 720 : period === "month" ? 2850 : 118,
-      averageOrderValue: 134322,
-      discountLossTotal: 420000,
-      canceledItemCount: 3,
+      totalRevenue,
+      totalOrders,
+      averageOrderValue,
+      discountLossTotal,
+      canceledItemCount: canceledItems.length,
     },
-    hourlyHeatmap: [
-      { hourLabel: "06:00 - 08:30", revenue: 2150000, orderCount: 26, isPeak: false },
-      { hourLabel: "08:30 - 11:00", revenue: 1850000, orderCount: 16, isPeak: false },
-      { hourLabel: "11:00 - 13:30", revenue: 6450000, orderCount: 48, isPeak: true },
-      { hourLabel: "13:30 - 17:30", revenue: 1450000, orderCount: 10, isPeak: false },
-      { hourLabel: "17:30 - 21:30", revenue: 3950000, orderCount: 28, isPeak: true },
-    ],
-    paymentDistribution: [
-      { method: "VIETQR", label: "Chuyển khoản VietQR", totalAmount: 11550000, transactionCount: 86, percentage: 72.8 },
-      { method: "CASH", label: "Tiền mặt tại két", totalAmount: 3800000, transactionCount: 28, percentage: 24.0 },
-      { method: "CARD", label: "Quẹt thẻ POS", totalAmount: 500000, transactionCount: 4, percentage: 3.2 },
-    ],
-    menuMatrix: {
-      stars: [
-        {
-          id: "m1",
-          name: "Phở Bò Tái Nạm",
-          price: 65000,
-          costPrice: 26000,
-          marginPercent: 60,
-          totalSold: 68,
-          revenue: 4420000,
-          categoryType: MenuCategoryType.STARS,
-          advice: "Món ngôi sao sinh lời cao & bán chạy nhất. Luôn đảm bảo đủ nguyên liệu!",
-        },
-        {
-          id: "m2",
-          name: "Bún Chả Hà Nội Đặc Biệt",
-          price: 60000,
-          costPrice: 22000,
-          marginPercent: 63,
-          totalSold: 46,
-          revenue: 2760000,
-          categoryType: MenuCategoryType.STARS,
-          advice: "Doanh số buổi trưa rất cao. Tiếp tục giữ vị trí nổi bật trên thực đơn.",
-        },
-      ],
-      plowhorses: [
-        {
-          id: "m3",
-          name: "Bò Tái Thăn Thượng Hạng",
-          price: 85000,
-          costPrice: 48000,
-          marginPercent: 43,
-          totalSold: 32,
-          revenue: 2720000,
-          categoryType: MenuCategoryType.PLOWHORSES,
-          advice: "Khách gọi nhiều nhưng chi phí thịt thăn cao. Có thể điều chỉnh lên 89.000đ.",
-        },
-      ],
-      puzzles: [
-        {
-          id: "m4",
-          name: "Lẩu Đuôi Bò Nồi Đất",
-          price: 350000,
-          costPrice: 120000,
-          marginPercent: 65,
-          totalSold: 5,
-          revenue: 1750000,
-          categoryType: MenuCategoryType.PUZZLES,
-          advice: "Biên lãi cực cao (65%) nhưng ít lượt gọi. Gợi ý nhân viên tư vấn cho nhóm từ 3 người.",
-        },
-      ],
-      dogs: [
-        {
-          id: "m5",
-          name: "Bún Bò Giò Heo",
-          price: 60000,
-          costPrice: 39000,
-          marginPercent: 35,
-          totalSold: 4,
-          revenue: 240000,
-          categoryType: MenuCategoryType.DOGS,
-          advice: "Bán chậm và biên lãi thấp. Cân nhắc thay thế bằng món bò kho bánh mì.",
-        },
-      ],
-    },
+    hourlyHeatmap: [],
+    paymentDistribution: [],
+    menuMatrix: { stars: [], plowhorses: [], puzzles: [], dogs: [] },
   };
 
-  // Dữ liệu doanh thu theo ca làm việc (Shift Revenue Breakdown)
-  const shiftData = [
-    {
-      shiftId: "CA_SANG",
-      name: "Ca Sáng (06:00 - 14:00)",
-      inCharge: "Nguyễn Văn Hùng (Bếp) & Mai Trang (Thu ngân)",
-      orderCount: 78,
-      vietQrAmount: 7650000,
-      cashAmount: 2450000,
-      totalRevenue: 10100000,
-      cashDifference: 0, // Khớp két 100%
-      status: "Đã chốt ca",
-    },
-    {
-      shiftId: "CA_TOI",
-      name: "Ca Chiều & Tối (14:00 - 22:30)",
-      inCharge: "Trần Đức Minh (Thu ngân ca tối)",
-      orderCount: 40,
-      vietQrAmount: 3900000,
-      cashAmount: 1850000,
-      totalRevenue: 5750000,
-      cashDifference: 0,
-      status: "Đang diễn ra",
-    },
-  ];
-
-  // Sổ chi tiết hóa đơn bán hàng (Sales Audit Ledger)
-  const [bills] = useState<SalesBillRecord[]>([
-    {
-      id: "b-101",
-      billCode: "HD-20260928-0101",
-      tableName: "Bàn 04 (Tầng 1)",
-      cashierName: "Mai Trang",
-      shiftName: "CA_SANG",
-      openedAt: "11:25",
-      closedAt: "12:10",
-      items: [
-        { id: "i1", name: "Phở Bò Tái Nạm", quantity: 2, unitPrice: 65000, totalPrice: 130000 },
-        { id: "i2", name: "Quẩy Giòn Chiên", quantity: 2, unitPrice: 10000, totalPrice: 20000 },
-        { id: "i3", name: "Trà Đào Cam Sả", quantity: 2, unitPrice: 35000, totalPrice: 70000 },
-      ],
-      subTotal: 220000,
-      discountAmount: 20000,
-      vatAmount: 0,
-      finalAmount: 200000,
-      paymentMethod: "VIETQR",
-      status: "COMPLETED",
-      vietQrRef: "NAPAS-FT2627192801",
-    },
-    {
-      id: "b-102",
-      billCode: "HD-20260928-0102",
-      tableName: "Bàn 02 (Tầng 1)",
-      cashierName: "Mai Trang",
-      shiftName: "CA_SANG",
-      openedAt: "11:40",
-      closedAt: "12:22",
-      items: [
-        { id: "i4", name: "Bún Chả Hà Nội Đặc Biệt", quantity: 3, unitPrice: 60000, totalPrice: 180000 },
-        { id: "i5", name: "Nem Rán Giòn (2 chiếc)", quantity: 2, unitPrice: 20000, totalPrice: 40000 },
-      ],
-      subTotal: 220000,
-      discountAmount: 0,
-      vatAmount: 0,
-      finalAmount: 220000,
-      paymentMethod: "CASH",
-      status: "COMPLETED",
-    },
-    {
-      id: "b-103",
-      billCode: "HD-20260928-0103",
-      tableName: "Phòng VIP 01",
-      cashierName: "Mai Trang",
-      shiftName: "CA_SANG",
-      openedAt: "11:50",
-      closedAt: "13:15",
-      items: [
-        { id: "i6", name: "Lẩu Đuôi Bò Nồi Đất", quantity: 1, unitPrice: 350000, totalPrice: 350000 },
-        { id: "i7", name: "Thăn Bò Nhúng Thêm", quantity: 2, unitPrice: 85000, totalPrice: 170000 },
-        { id: "i8", name: "Bia Trúc Bạch (Lon)", quantity: 6, unitPrice: 25000, totalPrice: 150000 },
-      ],
-      subTotal: 670000,
-      discountAmount: 50000,
-      vatAmount: 0,
-      finalAmount: 620000,
-      paymentMethod: "VIETQR",
-      status: "COMPLETED",
-      vietQrRef: "NAPAS-FT2627192888",
-    },
-    {
-      id: "b-104",
-      billCode: "HD-20260928-0104",
-      tableName: "Bàn 07 (Tầng 2)",
-      cashierName: "Trần Đức Minh",
-      shiftName: "CA_TOI",
-      openedAt: "14:10",
-      closedAt: "14:45",
-      items: [
-        { id: "i9", name: "Cà Phê Muối Xứ Huế", quantity: 2, unitPrice: 32000, totalPrice: 64000 },
-        { id: "i10", name: "Trà Đào Cam Sả", quantity: 1, unitPrice: 35000, totalPrice: 35000 },
-      ],
-      subTotal: 99000,
-      discountAmount: 0,
-      vatAmount: 0,
-      finalAmount: 99000,
-      paymentMethod: "VIETQR",
-      status: "COMPLETED",
-      vietQrRef: "NAPAS-FT2627192902",
-    },
-    {
-      id: "b-105",
-      billCode: "HD-20260928-0105",
-      tableName: "Bàn 05 (Tầng 1)",
-      cashierName: "Trần Đức Minh",
-      shiftName: "CA_TOI",
-      openedAt: "18:20",
-      closedAt: "19:05",
-      items: [
-        { id: "i11", name: "Phở Bò Tái Nạm", quantity: 4, unitPrice: 65000, totalPrice: 260000 },
-        { id: "i12", name: "Trứng Trần", quantity: 3, unitPrice: 15000, totalPrice: 45000 },
-        { id: "i13", name: "Quẩy Giòn", quantity: 4, unitPrice: 10000, totalPrice: 40000 },
-      ],
-      subTotal: 345000,
-      discountAmount: 0,
-      vatAmount: 0,
-      finalAmount: 345000,
-      paymentMethod: "CASH",
-      status: "COMPLETED",
-    },
-  ]);
-
-  // Nhật ký món bị hủy sau khi in bếp (Void / Waste Audit)
-  const [canceledItems] = usePersistentState<CanceledItemRecord[]>("void_audit_canceled_items", [
-    {
-      id: "c-1",
-      dishName: "Phở Bò Tái Gầu",
-      quantity: 1,
-      price: 65000,
-      canceledAt: "12:15 Hôm nay",
-      tableName: "Bàn 06",
-      canceledBy: "Mai Trang (Thu ngân)",
-      reason: "Khách đổi ý muốn chuyển sang ăn Tái Nạm giòn",
-    },
-    {
-      id: "c-2",
-      dishName: "Trà Đào Cam Sả",
-      quantity: 1,
-      price: 35000,
-      canceledAt: "12:40 Hôm nay",
-      tableName: "Bàn 02",
-      canceledBy: "Hùng (Bếp trưởng)",
-      reason: "Hết đào ngâm trong quầy pha chế, đổi sang nước chanh sả",
-    },
-    {
-      id: "c-3",
-      dishName: "Bò Tái Thăn",
-      quantity: 1,
-      price: 85000,
-      canceledAt: "19:15 Tối nay",
-      tableName: "Bàn 11",
-      canceledBy: "Trần Đức Minh (Thu ngân)",
-      reason: "Khách giục lâu chưa có món nên xin hủy trước khi nhúng thịt",
-    },
-  ]);
+  // Doanh thu theo ca (Shift Revenue Breakdown) – tính động
+  const shiftGroups = bills.reduce<Record<string, { orderCount: number; vietQrAmount: number; cashAmount: number; totalRevenue: number }>>((acc, b) => {
+    const shift = b.shiftName || "UNKNOWN";
+    if (!acc[shift]) acc[shift] = { orderCount: 0, vietQrAmount: 0, cashAmount: 0, totalRevenue: 0 };
+    acc[shift].orderCount++;
+    acc[shift].totalRevenue += b.finalAmount;
+    if (b.paymentMethod === "VIETQR") acc[shift].vietQrAmount += b.finalAmount;
+    else if (b.paymentMethod === "CASH") acc[shift].cashAmount += b.finalAmount;
+    return acc;
+  }, {});
+  const shiftData = Object.entries(shiftGroups).map(([shiftId, data]) => ({
+    shiftId,
+    name: shiftId,
+    inCharge: "",
+    ...data,
+    cashDifference: 0,
+    status: "Đang diễn ra",
+  }));
 
   // Lọc hóa đơn bán hàng
   const filteredBills = bills.filter((b) => {
@@ -339,7 +130,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Financial & Revenue Intelligence
+                Báo Cáo
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
                 {report.summary.totalOrders} Đơn thanh toán • {report.summary.totalRevenue.toLocaleString("vi-VN")} đ
@@ -347,10 +138,10 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Báo Cáo Doanh Thu & Kỹ Thuật Tài Chính
+              Báo Cáo Doanh Thu
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Sổ chi tiết từng bill, doanh thu theo ca, cơ cấu thanh toán VietQR Napas và kiểm toán thất thoát.
+              Thống kê chi tiết doanh thu, số lượng đơn hàng và lịch sử thanh toán
             </p>
 
             {/* Quick Live Stats Chips */}

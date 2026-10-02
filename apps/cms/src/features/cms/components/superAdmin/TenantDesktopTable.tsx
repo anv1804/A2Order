@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
 import { TenantStoreRecord, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
+import { BUSINESS_TYPE_ICONS } from "./modals/StoreOnboardingModal";
 import { toast } from "@/stores/notificationStore";
 
 export interface TenantDesktopTableProps {
@@ -122,7 +123,11 @@ export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
                             : `Offline: Chưa có thiết bị POS kết nối (v${s.configVer || "1.0.0"})`
                         }
                       >
-                        {bConfig?.emoji || s.name.charAt(0).toUpperCase()}
+                        <Icon
+                          name={s.businessType ? BUSINESS_TYPE_ICONS[s.businessType] || "store" : "store"}
+                          size={16}
+                          className="shrink-0"
+                        />
 
                         {/* Chấm trạng thái nhỏ góc avatar */}
                         <span
@@ -158,8 +163,8 @@ export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
                         {/* Địa chỉ & Badge ngành */}
                         <div className="flex items-center gap-1.5 mt-0.5">
                           {bConfig && (
-                            <span className="text-[9.5px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded-md border border-purple-100 shrink-0">
-                              {bConfig.emoji} {bConfig.label}
+                            <span className="text-[9.5px] font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-100 shrink-0">
+                              {bConfig.label}
                             </span>
                           )}
                           {s.address && (
@@ -183,7 +188,7 @@ export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
                           : "bg-emerald-100 text-emerald-900 border border-emerald-200"
                       }`}
                     >
-                      {s.plan === "PRO" ? "Pro (599k)" : s.plan === "GROWTH" ? "Vừa (399k)" : "Nhỏ (199k)"}
+                      {s.plan === "PRO" ? "Pro (299k)" : s.plan === "GROWTH" ? "Vừa (199k)" : "Nhỏ (119k)"}
                     </span>
                   </td>
 

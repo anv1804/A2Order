@@ -15,89 +15,7 @@ const AVAILABLE_TABLES = [
 ];
 
 export const CmsReservationsManagement: React.FC = () => {
-  const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", [
-    {
-      id: "r1",
-      guestName: "Anh Hoàng Tuấn",
-      phone: "0903 111 222",
-      guestCount: 6,
-      reservationTime: "19:00 - Tối nay",
-      dateCategory: "TODAY",
-      tableAssigned: "Bàn 04 (Phòng VIP 1)",
-      occasion: "BUSINESS",
-      depositAmount: 500000,
-      depositStatus: "PAID",
-      notes: "Cần không gian yên tĩnh ký hợp đồng, chuẩn bị trước 1 lẩu đuôi bò hầm vang",
-      source: "LANDING_PAGE",
-      status: "CONFIRMED",
-      createdAt: "10:30 Hôm nay",
-    },
-    {
-      id: "r2",
-      guestName: "Chị Thảo Mai",
-      phone: "0982 333 444",
-      guestCount: 4,
-      reservationTime: "12:15 - Trưa nay",
-      dateCategory: "TODAY",
-      tableAssigned: "Bàn 08 (Ban công tầng 2)",
-      occasion: "BIRTHDAY",
-      depositAmount: 200000,
-      depositStatus: "PAID",
-      notes: "Sinh nhật bạn, chuẩn bị đĩa hoa quả có nến thắp sẵn",
-      source: "LANDING_PAGE",
-      status: "ARRIVED",
-      createdAt: "09:00 Hôm nay",
-    },
-    {
-      id: "r3",
-      guestName: "Bác Hùng - BQL",
-      phone: "0915 777 888",
-      guestCount: 10,
-      reservationTime: "18:30 - Ngày mai",
-      dateCategory: "TOMORROW",
-      tableAssigned: "Chưa gán bàn",
-      occasion: "FAMILY",
-      depositAmount: 0,
-      depositStatus: "UNPAID",
-      notes: "Liên hoan gia đình 3 thế hệ có 2 ghế trẻ em",
-      source: "PHONE_CALL",
-      status: "PENDING",
-      createdAt: "11:15 Hôm nay",
-    },
-    {
-      id: "r4",
-      guestName: "Cô Hương Lan",
-      phone: "0977 456 789",
-      guestCount: 2,
-      reservationTime: "20:00 - Tối nay",
-      dateCategory: "TODAY",
-      tableAssigned: "Chưa gán bàn",
-      occasion: "ANNIVERSARY",
-      depositAmount: 0,
-      depositStatus: "UNPAID",
-      notes: "Kỷ niệm ngày cưới, hoa hồng trang trí bàn",
-      source: "LANDING_PAGE",
-      status: "PENDING",
-      createdAt: "14:20 Hôm nay",
-    },
-    {
-      id: "r5",
-      guestName: "Anh Minh Quân (Trễ Hẹn)",
-      phone: "0934 888 999",
-      guestCount: 5,
-      reservationTime: "18:45 - Tối nay",
-      dateCategory: "TODAY",
-      tableAssigned: "Bàn 03 (Tầng 1 - 6 người)",
-      occasion: "BUSINESS",
-      depositAmount: 300000,
-      depositStatus: "PAID",
-      notes: "Báo kẹt xe trễ 15p, đang tính thời gian ân hạn giữ chỗ (Grace Period)",
-      source: "PHONE_CALL",
-      status: "LATE",
-      extendedMinutes: 0,
-      createdAt: "18:00 Hôm nay",
-    },
-  ]);
+  const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", []);
 
   // Bộ lọc & Phân trang
   const [filterDate, setFilterDate] = usePersistentState<"ALL" | "TODAY" | "TOMORROW" | "THIS_WEEK">("reservations_filter_date", "ALL");
@@ -421,14 +339,14 @@ export const CmsReservationsManagement: React.FC = () => {
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Lịch Đặt Bàn & Giữ Chỗ
+              Lịch Đặt Bàn
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200">
-              Hotline & Web
+              Đặt Chỗ
             </span>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Điều phối chỗ ngồi đón tiếp khách tự động, quản lý tiền cọc và xác nhận khách đến
+            Quản lý khách đặt trước, giờ nhận bàn và tiền cọc
           </p>
         </div>
 
@@ -610,7 +528,27 @@ export const CmsReservationsManagement: React.FC = () => {
 
       {/* Danh Sách Thẻ Đặt Bàn Kiểu Dáng Cao Cấp (Luxury Timeline Cards) */}
       <div className="space-y-3">
-        {filteredReservations.length === 0 ? (
+        {reservations.length === 0 ? (
+          <div className="p-12 text-center rounded-2xl bg-white border border-surface-border">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center mx-auto mb-3 text-brand-900">
+              <Icon name="calendarCheck" size={24} />
+            </div>
+            <h4 className="text-base font-black text-ink-primary">Chưa có lịch đặt bàn nào</h4>
+            <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
+              Tiếp nhận lịch đặt bàn từ hotline hoặc khách vãng lai để giữ chỗ và sắp xếp sơ đồ bàn hiệu quả.
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
+                onClick={() => openModal("PHONE_CALL")}
+              >
+                <Icon name="phone" className="w-3.5 h-3.5 text-brand-400" />
+                <span>Tiếp Nhận Đặt Bàn</span>
+              </Button>
+            </div>
+          </div>
+        ) : filteredReservations.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-white border border-surface-border">
             <div className="w-12 h-12 rounded-2xl bg-surface-canvas flex items-center justify-center mx-auto mb-3 text-ink-muted">
               <Icon name="calendar" size={20} />

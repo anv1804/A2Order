@@ -41,6 +41,9 @@ export interface CmsAnalyticsBar {
 export interface CmsTableItem {
   id: string;
   name: string;
+  code?: string;
+  pin?: string;
+  orderUrl?: string;
   capacity: number;
   status: "EMPTY" | "OCCUPIED" | "WAITING_FOOD" | "SERVED" | "PAYMENT_PENDING";
   qrCodeUrl: string;
@@ -339,10 +342,12 @@ export interface CmsMenuManagementProps {
 
 export interface CmsStaffOrderViewProps {
   currentRole?: CmsAppRole;
+  onNavigateTab?: (tab: string) => void;
 }
 
 export interface CmsTableManagementProps {
   currentRole?: CmsAppRole;
+  onNavigateToOrder?: (tableId: string) => void;
 }
 
 // Sales Audit & Reporting Types
@@ -634,10 +639,13 @@ export interface OrderDiscount {
 export interface WaiterTableOrder {
   tableId: string;
   tableName: string;
+  tableCode?: string;
+  pin?: string;
   zoneName: string;
   guestCount: number;
   status: "EMPTY" | "OCCUPIED" | "WAITING_FOOD" | "SERVED" | "BILL_REQUESTED";
   openedAt?: string;
+  openedAtMs?: number;
   items: WaiterOrderItem[];
   totalAmount: number;
   isSplit?: boolean;
@@ -675,4 +683,117 @@ export interface PlatformStoreUserRecord {
   storePlan?: string;
   hasPassword?: boolean;
 }
+
+// ================= APP GIAO HÀNG (DELIVERY APPS INTEGRATION) =================
+export type DeliveryPlatform = "GRAB_FOOD" | "SHOPEE_FOOD" | "BE_FOOD" | "GO_FOOD";
+
+export interface DeliveryChannelConfig {
+  id: DeliveryPlatform;
+  name: string;
+  logo: string;
+  badgeColor: string;
+  isConnected: boolean;
+  merchantStoreId?: string;
+  apiKey?: string;
+  secretKey?: string;
+  webhookUrl: string;
+  autoAccept: boolean;
+  autoSendToKds: boolean;
+  priceMarkupPercent: number; // Tăng giá bán trên app (VD: 15% bù chiết khấu sàn)
+  lastSyncAt?: string;
+}
+
+export interface DeliveryOrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  options?: string[];
+  notes?: string;
+}
+
+export interface DeliveryOrderRecord {
+  id: string;
+  platform: DeliveryPlatform;
+  platformOrderCode: string;
+  customerName: string;
+  customerPhone: string;
+  driverName?: string;
+  driverPhone?: string;
+  driverPlate?: string;
+  status: "WAITING_ACCEPT" | "COOKING" | "READY_FOR_PICKUP" | "DELIVERING" | "COMPLETED" | "CANCELLED";
+  items: DeliveryOrderItem[];
+  subtotal: number;
+  shippingFee: number;
+  discountAmount: number;
+  totalAmount: number;
+  platformCommission: number;
+  netPayout: number;
+  orderTime: string;
+  estimatedPickupTime?: string;
+}
+
+// ================= HÓA ĐƠN ĐIỆN TỬ (E-INVOICE MISA, VNPT, VIETTEL, BKAV) =================
+export type EInvoiceProvider = "MISA_MEINVOICE" | "VNPT_INVOICE" | "VIETTEL_SINVOICE" | "BKAV_EHOADON";
+
+export interface EInvoiceConfig {
+  provider: EInvoiceProvider;
+  isConnected: boolean;
+  taxCode: string;
+  companyName: string;
+  companyAddress: string;
+  invoiceTemplate: string; // Mẫu số HĐ (VD: 1/001)
+  invoiceSeries: string;   // Ký hiệu HĐ (VD: 1C26TBB)
+  signatureType: "CLOUD_CA" | "USB_TOKEN";
+  autoIssueOnCheckout: boolean;
+  minAmountForAutoIssue?: number;
+  accountUsername?: string;
+  accountPassword?: string;
+  apiEndpoint?: string;
+}
+
+export interface EInvoiceRecord {
+  id: string;
+  orderCode: string;
+  invoiceNumber: string; // Số HĐ (VD: 0000123)
+  invoiceSeries: string; // Ký hiệu
+  cqtCode?: string;      // Mã cơ quan thuế cấp
+  buyerName: string;
+  buyerTaxCode?: string;
+  buyerEmail?: string;
+  buyerAddress?: string;
+  totalBeforeTax: number;
+  vatRate: number;       // 8% hoặc 10%
+  vatAmount: number;
+  totalPayment: number;
+  issuedAt: string;
+  signedBy: string;
+  status: "ISSUED_WITH_CODE" | "WAITING_CQT_CODE" | "REJECTED" | "CANCELLED";
+  xmlDownloadUrl?: string;
+  pdfDownloadUrl?: string;
+}
+
+// ================= HỘI VIÊN & QUY TẮC TÍCH ĐIỂM (LOYALTY & CRM) =================
+export interface LoyaltyRuleConfig {
+  spendingPerPoint: number;    // Bao nhiêu tiền được 1 điểm (VD: 10000)
+  pointRedeemValue: number;    // 1 điểm bằng bao nhiêu tiền giảm trừ (VD: 100)
+  minPointsToRedeem: number;   // Tối thiểu bao nhiêu điểm để được đổi (VD: 50)
+  welcomePoints: number;       // Tặng điểm khi tạo mới (VD: 20)
+  birthdayBonusPoints: number; // Tặng điểm ngày sinh nhật (VD: 100)
+  autoUpgradeTier: boolean;
+}
+
+export interface CrmCampaign {
+  id: string;
+  name: string;
+  type: "BIRTHDAY" | "WIN_BACK" | "TIER_UPGRADE" | "HOLIDAY_BROADCAST";
+  targetAudience: string;
+  voucherDiscount: number;
+  voucherType: "PERCENT" | "FIXED";
+  channels: ("ZALO_ZNS" | "SMS_BRANDNAME" | "IN_APP")[];
+  isActive: boolean;
+  sentCount: number;
+  convertedCount: number;
+  lastRunAt?: string;
+}
+
 

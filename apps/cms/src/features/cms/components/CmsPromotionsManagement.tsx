@@ -1,89 +1,14 @@
 import React, { useState, useMemo } from "react";
 import { Icon, Button, Badge, Panel, Portal } from "@/components/ui";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { PromotionVoucherRecord, DiscountType } from "@/types/cms.types";
 
-const INITIAL_PROMOTIONS: PromotionVoucherRecord[] = [
-  {
-    id: "p1",
-    code: "CHAOBAN20",
-    title: "Chào Bạn Mới - Giảm 20%",
-    description: "Giảm 20% cho khách hàng lần đầu dùng bữa tại quán (Tối đa 60k).",
-    discountType: "PERCENTAGE",
-    discountValue: 20,
-    minOrderAmount: 150000,
-    maxDiscountAmount: 60000,
-    startDate: "01/09/2026",
-    endDate: "31/10/2026",
-    usageLimit: 500,
-    usedCount: 184,
-    isActive: true,
-  },
-  {
-    id: "p2",
-    code: "HAPPYHOUR",
-    title: "Giờ Vàng Trưa Phố Cổ - Giảm 30K",
-    description: "Khung giờ vàng từ 11h00 đến 13h30 trưa các ngày trong tuần.",
-    discountType: "FIXED_AMOUNT",
-    discountValue: 30000,
-    minOrderAmount: 120000,
-    startDate: "15/09/2026",
-    endDate: "15/11/2026",
-    usageLimit: 300,
-    usedCount: 128,
-    happyHourOnly: true,
-    happyHourTimeRange: "11:00 - 13:30",
-    isActive: true,
-  },
-  {
-    id: "p3",
-    code: "LAUXUMHUE",
-    title: "Combo Lẩu Tối Tặng 50K",
-    description: "Áp dụng cho hóa đơn lẩu gọi từ 350k trở lên vào buổi tối.",
-    discountType: "FIXED_AMOUNT",
-    discountValue: 50000,
-    minOrderAmount: 350000,
-    startDate: "20/09/2026",
-    endDate: "20/10/2026",
-    usageLimit: 150,
-    usedCount: 52,
-    isActive: true,
-  },
-  {
-    id: "p4",
-    code: "TRIANVIP",
-    title: "Tri Ân Khách VIP - Giảm 15%",
-    description: "Dành riêng cho hội viên hạng Vàng và Kim Cương của quán.",
-    discountType: "PERCENTAGE",
-    discountValue: 15,
-    minOrderAmount: 200000,
-    maxDiscountAmount: 150000,
-    startDate: "01/08/2026",
-    endDate: "31/12/2026",
-    usageLimit: 1000,
-    usedCount: 340,
-    isActive: true,
-  },
-  {
-    id: "p5",
-    code: "KHAITRUONG",
-    title: "Ưu Đãi Khai Trương Chi Nhánh",
-    description: "Chương trình tuần lễ khai trương cơ sở mới.",
-    discountType: "PERCENTAGE",
-    discountValue: 25,
-    minOrderAmount: 100000,
-    maxDiscountAmount: 100000,
-    startDate: "01/08/2026",
-    endDate: "15/08/2026",
-    usageLimit: 200,
-    usedCount: 200,
-    isActive: false,
-  },
-];
+const INITIAL_PROMOTIONS: PromotionVoucherRecord[] = [];
 
 export const CmsPromotionsManagement: React.FC = () => {
-  const [promotions, setPromotions] = useState<PromotionVoucherRecord[]>(INITIAL_PROMOTIONS);
+  const [promotions, setPromotions] = usePersistentState<PromotionVoucherRecord[]>("promotions_list", INITIAL_PROMOTIONS);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
 
@@ -268,14 +193,14 @@ export const CmsPromotionsManagement: React.FC = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Khuyến Mãi & Voucher Giảm Giá
+              Khuyến Mãi & Voucher
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Đồng Bộ POS Tức Thì
+              Giảm Giá
             </span>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">
-            Thiết lập chương trình giảm giá theo %, tiền mặt, giờ vàng và voucher
+            Chương trình giảm giá theo %, tiền mặt, giờ vàng và mã voucher
           </p>
         </div>
 
@@ -414,8 +339,30 @@ export const CmsPromotionsManagement: React.FC = () => {
             <tbody className="divide-y divide-surface-border font-medium">
               {displayedPromotions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-xs text-ink-muted font-bold">
-                    Không tìm thấy chương trình khuyến mãi nào
+                  <td colSpan={6} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900">
+                        <Icon name="tag" className="w-5 h-5" />
+                      </div>
+                      <p className="text-xs font-bold text-ink-primary">
+                        {promotions.length === 0 ? "Chưa có chương trình khuyến mãi nào" : "Không tìm thấy chương trình phù hợp"}
+                      </p>
+                      <p className="text-[11px] text-ink-muted max-w-sm">
+                        {promotions.length === 0
+                          ? "Tạo mã giảm giá theo %, số tiền cố định hoặc khung giờ vàng để thu hút khách hàng."
+                          : "Thử tìm kiếm với từ khóa khác hoặc bỏ bộ lọc trạng thái."}
+                      </p>
+                      {promotions.length === 0 && (
+                        <Button
+                          size="sm"
+                          className="mt-2 rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
+                          onClick={handleOpenCreateModal}
+                        >
+                          <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+                          <span>Tạo Voucher Đầu Tiên</span>
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

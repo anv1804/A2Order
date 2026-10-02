@@ -88,14 +88,14 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Cài Đặt Hệ Thống & Gói Cước
+              Cài Đặt Quán
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              VietQR & Bản Quyền
+              Cài Đặt
             </span>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">
-            Quản lý tài khoản VietQR nhận tiền, thông tin in bill và gói bản quyền phần mềm
+            Tài khoản nhận tiền VietQR, thông tin hóa đơn và gói dịch vụ
           </p>
         </div>
 

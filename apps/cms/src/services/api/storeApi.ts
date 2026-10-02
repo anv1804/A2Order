@@ -1,5 +1,5 @@
 import { requestApi } from "./apiClient";
-import { TenantStoreRecord, SoftwareInvoiceRecord, AppModule } from "@a2order/shared";
+import { TenantStoreRecord, SoftwareInvoiceRecord, AppModule, CreateStoreInput } from "@a2order/shared";
 
 export const storeApi = {
   /**
@@ -19,7 +19,7 @@ export const storeApi = {
   /**
    * Đăng ký quán mới
    */
-  async createStore(data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord> {
+  async createStore(data: CreateStoreInput): Promise<TenantStoreRecord> {
     return requestApi("/stores", {
       method: "POST",
       body: JSON.stringify(data),
@@ -33,6 +33,15 @@ export const storeApi = {
     return requestApi(`/stores/${storeId}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Xóa vĩnh viễn cửa hàng
+   */
+  async deleteStore(storeId: string): Promise<{ success: boolean; message: string }> {
+    return requestApi(`/stores/${encodeURIComponent(storeId)}`, {
+      method: "DELETE",
     });
   },
 

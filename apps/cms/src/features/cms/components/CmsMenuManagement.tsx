@@ -18,31 +18,33 @@ import { EditDishModal } from "./menu/modals/EditDishModal";
 import { StockEditModal } from "./menu/modals/StockEditModal";
 import { ScenarioPickerModal } from "./menu/modals/ScenarioPickerModal";
 
-const STORE_ID = "store-pho-noodles";
-
 export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRole = "STORE_OWNER" }) => {
   const isChef = currentRole === "CHEF";
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Lấy storeId thực tế từ phiên đăng nhập
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
+  const storeId = userStr ? JSON.parse(userStr).storeId || "store-bubble-tea" : "store-bubble-tea";
+
   const [dishes, setDishes] = usePersistentState<FnbDishItem[]>(
     "menu_dishes_data",
-    BUSINESS_SCENARIOS.COFFEE_SHOP.dishes
+    []
   );
 
-  // Thử đồng bộ dữ liệu từ Server API khi mount
+  // Đồng bộ thực đơn thực tế từ Database API theo cửa hàng đăng nhập
   useEffect(() => {
     menuApi
-      .getDishes(STORE_ID)
+      .getDishes(storeId)
       .then((serverDishes) => {
-        if (serverDishes && serverDishes.length > 0) {
+        if (Array.isArray(serverDishes)) {
           setDishes(serverDishes);
         }
       })
       .catch(() => {
-        // Nếu server chưa bật hoặc offline, giữ nguyên local state
+        // Nếu offline, giữ nguyên local state
       });
-  }, []);
+  }, [storeId]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -69,7 +71,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
     if (!scenario) return;
 
     try {
-      await scenarioApi.applyToStore(type, STORE_ID, mode);
+      await scenarioApi.applyToStore(type, storeId, mode);
     } catch {
       // Offline fallback
     }
@@ -98,7 +100,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
   // Lưu chỉnh sửa món ăn
   const handleSaveEditDish = async (updatedDish: FnbDishItem) => {
     try {
-      await menuApi.updateDish(STORE_ID, updatedDish.id, updatedDish);
+      await menuApi.updateDish(storeId, updatedDish.id, updatedDish);
     } catch {
       // Local fallback
     }
@@ -120,7 +122,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
     if (!ok) return;
 
     try {
-      await menuApi.deleteDish(STORE_ID, dish.id);
+      await menuApi.deleteDish(storeId, dish.id);
     } catch {
       // Local fallback
     }
@@ -142,7 +144,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       if (!ok) return;
 
       try {
-        await menuApi.updateStock(STORE_ID, dish.id, 0, false);
+        await menuApi.updateStock(storeId, dish.id, 0, false);
       } catch {
         // Local fallback
       }
@@ -162,7 +164,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       if (!ok) return;
 
       try {
-        await menuApi.updateStock(STORE_ID, dish.id, 50, true);
+        await menuApi.updateStock(storeId, dish.id, 50, true);
       } catch {
         // Local fallback
       }
@@ -176,7 +178,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
 
   const handleSaveStockCount = async (dishId: string, newStock: number) => {
     try {
-      await menuApi.updateStock(STORE_ID, dishId, newStock, newStock > 0);
+      await menuApi.updateStock(storeId, dishId, newStock, newStock > 0);
     } catch {
       // Local fallback
     }
@@ -208,7 +210,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
     };
 
     try {
-      await menuApi.createDish(STORE_ID, newDish);
+      await menuApi.createDish(storeId, newDish);
     } catch {
       // Local fallback
     }
@@ -276,7 +278,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {isChef ? "Chế Độ Bếp Trưởng (Kitchen Station)" : "Menu Engineering"}
+                Thực Đơn
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
                 {categories.length - 1} danh mục • {dishes.length} món ăn
@@ -284,12 +286,10 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              {isChef ? "Báo Hết Món & Tồn Kho Tức Thời" : "Quản Lý Thực Đơn & Kỹ Thuật Menu"}
+              Quản Lý Thực Đơn
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              {isChef
-                ? "Bật/tắt trạng thái hết món khi cạn nguyên liệu, điều chỉnh suất phục vụ tức thì đồng bộ tới quầy POS & QR."
-                : "Kiểm soát định lượng, giá vốn (COGS), lãi gộp và bật/tắt báo hết món ngay lập tức tới máy POS."}
+              Danh sách món ăn, giá bán và trạng thái còn món của quán
             </p>
 
             {/* Quick Live Stats Chips */}
@@ -321,7 +321,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
                 type="button"
                 onClick={() => {
                   menuApi
-                    .getDishes(STORE_ID)
+                    .getDishes(storeId)
                     .then((serverDishes) => {
                       if (serverDishes && serverDishes.length > 0) {
                         setDishes(serverDishes);
@@ -537,6 +537,27 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       </div>
 
       {/* 4. Grid Danh Sách Món Ăn */}
+      {dishes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/60">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
+            <Icon name="menu" size={28} className="text-emerald-500" />
+          </div>
+          <h3 className="text-base font-black text-slate-900 mb-1">Thực đơn đang trống</h3>
+          <p className="text-sm text-slate-500 mb-5 max-w-xs">
+            Thêm món mới theo cách thủ công, hoặc chọn kịch bản mẫu có sẵn để bắt đầu nhanh.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="sm" onClick={() => setIsAddModalOpen(true)}>
+              <Icon name="plus" size={14} />
+              Thêm Món Mới
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setIsScenarioModalOpen(true)}>
+              <Icon name="sparkles" size={14} />
+              Chọn Kịch Bản Mẫu
+            </Button>
+          </div>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
         {displayedDishes.map((dish) => {
           const grossProfit = dish.price - (dish.costPrice || 0);
@@ -694,8 +715,9 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
           );
         })}
       </div>
+      )}
 
-      {filteredDishes.length === 0 && (
+      {filteredDishes.length === 0 && dishes.length > 0 && (
         <div className="py-12 text-center bg-white rounded-3xl border border-slate-200/80 shadow-2xs">
           <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
             <Icon name="search" size={20} />

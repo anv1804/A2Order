@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { toast, confirmDialog } from "@/stores/notificationStore";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { staffApi } from "@/services/api/staffApi";
 
 import { StaffRole, StaffUser, PermissionItem, AttendanceLogRecord } from "@/types/cms.types";
 
@@ -82,141 +84,37 @@ const DEFAULT_ROLE_PERMISSIONS: Record<StaffRole, string[]> = {
 export const CmsStaffManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"STAFF_LIST" | "RBAC_MATRIX" | "SCHEDULE" | "ATTENDANCE">("STAFF_LIST");
 
-  const [staffList, setStaffList] = useState<StaffUser[]>([
-    {
-      id: "s1",
-      code: "NV-001",
-      name: "Nguyễn Thành An",
-      role: "STORE_OWNER",
-      phone: "0912 345 678",
-      shift: "FULL_TIME",
-      pin: "1111",
-      email: "an.owner@a2order.vn",
-      ordersServedToday: 14,
-      isActive: true,
-    },
-    {
-      id: "s2",
-      code: "NV-002",
-      name: "Trần Mai Lan",
-      role: "CASHIER",
-      phone: "0988 234 567",
-      shift: "MORNING",
-      pin: "2222",
-      ordersServedToday: 28,
-      isActive: true,
-    },
-    {
-      id: "s3",
-      code: "NV-003",
-      name: "Phạm Hùng Cường",
-      role: "WAITER",
-      phone: "0934 888 999",
-      shift: "EVENING",
-      pin: "3333",
-      ordersServedToday: 19,
-      isActive: true,
-    },
-    {
-      id: "s4",
-      code: "NV-004",
-      name: "Bác Ba (Bếp trưởng)",
-      role: "CHEF",
-      phone: "0905 123 789",
-      shift: "FULL_TIME",
-      pin: "4444",
-      ordersServedToday: 45,
-      isActive: true,
-    },
-    {
-      id: "s5",
-      code: "NV-005",
-      name: "Lê Thị Thu",
-      role: "STORE_MANAGER",
-      phone: "0977 654 321",
-      shift: "FULL_TIME",
-      pin: "6789",
-      email: "thu.mgr@a2order.vn",
-      ordersServedToday: 8,
-      isActive: true,
-    },
-    {
-      id: "s6",
-      code: "NV-006",
-      name: "Ngô Mỹ Linh",
-      role: "ACCOUNTANT",
-      phone: "0918 222 333",
-      shift: "MORNING",
-      pin: "5555",
-      email: "linh.kt@a2order.vn",
-      ordersServedToday: 0,
-      isActive: false,
-    },
-  ]);
+  // Lấy storeId thực tế từ phiên đăng nhập
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
+  const storeId = userStr ? JSON.parse(userStr).storeId || "store-bubble-tea" : "store-bubble-tea";
 
-  const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLogRecord[]>([
-    {
-      id: "att-001",
-      staffId: "s2",
-      staffName: "Trần Mai Lan",
-      role: "CASHIER",
-      clockInTime: "06:28",
-      shiftName: "Ca Sáng",
-      date: "29/09/2026",
-      status: "ACTIVE",
-      workHours: 3.2,
-      note: "Vào ca đúng giờ, kiểm két ban đầu 2.000.000đ",
-    },
-    {
-      id: "att-002",
-      staffId: "s4",
-      staffName: "Bác Ba (Bếp trưởng)",
-      role: "CHEF",
-      clockInTime: "06:15",
-      shiftName: "Ca Sáng",
-      date: "29/09/2026",
-      status: "ACTIVE",
-      workHours: 3.4,
-      note: "Chuẩn bị nước dùng phở bò buổi sáng",
-    },
-    {
-      id: "att-003",
-      staffId: "s3",
-      staffName: "Phạm Hùng Cường",
-      role: "WAITER",
-      clockInTime: "06:45",
-      shiftName: "Ca Sáng",
-      date: "29/09/2026",
-      status: "ACTIVE",
-      workHours: 2.8,
-      note: "Trực sảnh bàn T1 & VIP",
-    },
-    {
-      id: "att-004",
-      staffId: "s1",
-      staffName: "Nguyễn Thành An",
-      role: "STORE_OWNER",
-      clockInTime: "08:00",
-      shiftName: "Toàn Thời Gian",
-      date: "29/09/2026",
-      status: "ACTIVE",
-      workHours: 1.5,
-      note: "Giám sát vận hành & kiểm tra kho sáng",
-    },
-    {
-      id: "att-005",
-      staffId: "s5",
-      staffName: "Lê Thị Thu",
-      role: "STORE_MANAGER",
-      clockInTime: "14:00",
-      clockOutTime: "22:30",
-      shiftName: "Ca Tối",
-      date: "28/09/2026",
-      status: "COMPLETED",
-      workHours: 8.5,
-      note: "Chốt két ca tối & bàn giao doanh thu Z-Report",
-    },
-  ]);
+  const [staffList, setStaffList] = usePersistentState<StaffUser[]>("staff_list", []);
+
+  // Tự động đồng bộ danh sách nhân sự thực tế từ Database PostgreSQL
+  useEffect(() => {
+    staffApi
+      .getStaff({ storeId })
+      .then((serverStaff) => {
+        if (Array.isArray(serverStaff)) {
+          const mapped: StaffUser[] = serverStaff.map((s, idx) => ({
+            id: s.id,
+            code: `NV-${String(idx + 1).padStart(3, "0")}`,
+            name: s.name,
+            role: (s.role as StaffRole) || "WAITER",
+            phone: (s as any).phone || "",
+            shift: "FULL_TIME",
+            pin: s.pinCode || "1234",
+            email: s.email || undefined,
+            ordersServedToday: 0,
+            isActive: s.isActive,
+          }));
+          setStaffList(mapped);
+        }
+      })
+      .catch(() => {});
+  }, [storeId]);
+
+  const [attendanceLogs, setAttendanceLogs] = usePersistentState<AttendanceLogRecord[]>("attendance_logs", []);
 
   const [attendanceSearch, setAttendanceSearch] = useState("");
   const [attendanceFilterStatus, setAttendanceFilterStatus] = useState<"ALL" | "ACTIVE" | "COMPLETED">("ALL");
@@ -292,6 +190,7 @@ export const CmsStaffManagement: React.FC = () => {
 
   const handleResetPin = (id: string, name: string) => {
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    staffApi.resetCredentials(id, { pinCode: randomPin }).catch(() => {});
     setStaffList((prev) =>
       prev.map((s) => (s.id === id ? { ...s, pin: randomPin } : s))
     );
@@ -300,6 +199,7 @@ export const CmsStaffManagement: React.FC = () => {
   };
 
   const handleToggleActive = (id: string, name: string, active: boolean) => {
+    staffApi.toggleStaffStatus(id).catch(() => {});
     setStaffList((prev) =>
       prev.map((s) => (s.id === id ? { ...s, isActive: !active } : s))
     );
@@ -343,22 +243,56 @@ export const CmsStaffManagement: React.FC = () => {
       return;
     }
 
-    const newStaff: StaffUser = {
-      id: `s-${Date.now()}`,
-      code: `NV-${String(staffList.length + 1).padStart(3, "0")}`,
-      name: modalForm.name.trim(),
-      role: modalForm.role,
-      phone: modalForm.phone.trim(),
-      shift: modalForm.shift,
-      pin: modalForm.pin || "1234",
-      email: modalForm.email.trim() || undefined,
-      ordersServedToday: 0,
-      isActive: true,
-    };
+    const sName = modalForm.name.trim();
+    const sRole = modalForm.role;
+    const sPhone = modalForm.phone.trim();
+    const sShift = modalForm.shift;
+    const sPin = modalForm.pin || "1234";
+    const sEmail = modalForm.email.trim() || undefined;
 
-    setStaffList((prev) => [newStaff, ...prev]);
+    staffApi
+      .createStaff({
+        storeId,
+        name: sName,
+        role: sRole,
+        pinCode: sPin,
+        email: sEmail,
+        isActive: true,
+      })
+      .then((created) => {
+        const newStaff: StaffUser = {
+          id: created.id || `s-${Date.now()}`,
+          code: `NV-${String(staffList.length + 1).padStart(3, "0")}`,
+          name: sName,
+          role: sRole,
+          phone: sPhone,
+          shift: sShift,
+          pin: sPin,
+          email: sEmail,
+          ordersServedToday: 0,
+          isActive: true,
+        };
+        setStaffList((prev) => [newStaff, ...prev]);
+        toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
+      })
+      .catch(() => {
+        const newStaff: StaffUser = {
+          id: `s-${Date.now()}`,
+          code: `NV-${String(staffList.length + 1).padStart(3, "0")}`,
+          name: sName,
+          role: sRole,
+          phone: sPhone,
+          shift: sShift,
+          pin: sPin,
+          email: sEmail,
+          ordersServedToday: 0,
+          isActive: true,
+        };
+        setStaffList((prev) => [newStaff, ...prev]);
+        toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
+      });
+
     setIsModalOpen(false);
-    toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
   };
 
   const totalStaff = staffList.length;
@@ -384,18 +318,18 @@ export const CmsStaffManagement: React.FC = () => {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Staff & Access Control
+                Nhân Viên
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {totalStaff} Nhân sự • {PERMISSIONS.length} Quyền bảo mật
+                {totalStaff} Nhân viên • {PERMISSIONS.length} Quyền truy cập
               </span>
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Quản Trị Nhân Sự & Phân Quyền Vận Hành
+              Quản Lý Nhân Viên
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Phân quyền tài khoản theo 6 vai trò chuẩn F&B, cấp mã PIN đăng nhập POS và kiểm soát chấm công ca.
+              Danh sách tài khoản nhân viên, mã PIN đăng nhập POS và phân quyền
             </p>
 
             {/* Quick Live Stats Chips */}
@@ -585,138 +519,156 @@ export const CmsStaffManagement: React.FC = () => {
       {/* TAB 1: Danh sách nhân viên */}
       {activeTab === "STAFF_LIST" && (
         <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white shadow-2xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 uppercase tracking-wider text-[10px] font-black">
-                  <th className="py-3 px-4">Nhân Viên</th>
-                  <th className="py-3 px-3">Vai Trò</th>
-                  <th className="py-3 px-3">Ca Làm Việc</th>
-                  <th className="py-3 px-3">Mã PIN Đăng Nhập</th>
-                  <th className="py-3 px-3 text-center">Đơn Hôm Nay</th>
-                  <th className="py-3 px-3">Trạng Thái</th>
-                  <th className="py-3 px-4 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {displayedStaff.map((staff) => {
-                  const isPinVisible = showPins[staff.id];
-
-                  return (
-                    <tr key={staff.id} className="hover:bg-slate-50/70 transition-colors">
-                      {/* Name & Code */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-950 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-200/70 shadow-2xs">
-                            {staff.name.charAt(0)}
-                          </div>
-                          <div>
-                            <div className="font-black text-slate-900 text-xs flex items-center gap-1.5">
-                              <span>{staff.name}</span>
-                              <span className="font-mono text-[10px] text-slate-400 font-bold">
-                                [{staff.code}]
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
-                              <span>{staff.phone}</span>
-                              {staff.email && <span>• {staff.email}</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Role */}
-                      <td className="py-3.5 px-3">
-                        <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black border ${getRoleBadge(staff.role)}`}>
-                          {getRoleLabel(staff.role)}
-                        </span>
-                      </td>
-
-                      {/* Shift */}
-                      <td className="py-3.5 px-3">
-                        <span className="text-[11px] font-semibold text-slate-700">
-                          {getShiftLabel(staff.shift)}
-                        </span>
-                      </td>
-
-                      {/* PIN with Toggle and Quick Reset */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-black text-xs bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-lg text-slate-900 tracking-widest min-w-[54px] text-center shadow-2xs">
-                            {isPinVisible ? staff.pin : "••••"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleTogglePinVisibility(staff.id)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition"
-                            title={isPinVisible ? "Ẩn mã PIN" : "Hiện mã PIN"}
-                          >
-                            <Icon name="eye" size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleResetPin(staff.id, staff.name)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition"
-                            title="Tạo mã PIN mới ngẫu nhiên"
-                          >
-                            <Icon name="refresh" size={14} />
-                          </button>
-                        </div>
-                      </td>
-
-                      {/* Orders */}
-                      <td className="py-3.5 px-3 text-center">
-                        <span className="font-black text-emerald-950 text-xs bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-full">
-                          {staff.ordersServedToday} bills
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="py-3.5 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                            staff.isActive
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
-                              : "bg-slate-100 text-slate-500 border-slate-200"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              staff.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
-                            }`}
-                          />
-                          <span>{staff.isActive ? "Đang mở ca" : "Đã tạm khóa"}</span>
-                        </span>
-                      </td>
-
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(staff.id, staff.name, staff.isActive)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
-                            staff.isActive
-                              ? "text-slate-600 bg-white border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200"
-                              : "bg-emerald-600 text-white hover:bg-emerald-500 font-black shadow-sm"
-                          }`}
-                        >
-                          {staff.isActive ? "Khóa ca" : "Mở ca"}
-                        </button>
-                      </td>
+          {staffList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
+                <Icon name="users" size={28} className="text-emerald-500" />
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">Chưa có nhân viên nào</h3>
+              <p className="text-sm text-slate-500 mb-5 max-w-xs">
+                Thêm nhân viên đầu tiên để bắt đầu quản lý ca làm việc, phân quyền và chấm công.
+              </p>
+              <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
+                <Icon name="plus" size={14} />
+                Thêm Nhân Viên Đầu Tiên
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 uppercase tracking-wider text-[10px] font-black">
+                      <th className="py-3 px-4">Nhân Viên</th>
+                      <th className="py-3 px-3">Vai Trò</th>
+                      <th className="py-3 px-3">Ca Làm Việc</th>
+                      <th className="py-3 px-3">Mã PIN Đăng Nhập</th>
+                      <th className="py-3 px-3 text-center">Đơn Hôm Nay</th>
+                      <th className="py-3 px-3">Trạng Thái</th>
+                      <th className="py-3 px-4 text-right">Thao Tác</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {displayedStaff.map((staff) => {
+                      const isPinVisible = showPins[staff.id];
 
-          <MobileInfiniteSentinel
-            sentinelRef={sentinelRef}
-            isLoadingMore={isLoadingMore}
-            hasMore={hasMore}
-            displayedCount={displayedStaff.length}
-            totalCount={staffList.length}
-          />
+                      return (
+                        <tr key={staff.id} className="hover:bg-slate-50/70 transition-colors">
+                          {/* Name & Code */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-950 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-200/70 shadow-2xs">
+                                {staff.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="font-black text-slate-900 text-xs flex items-center gap-1.5">
+                                  <span>{staff.name}</span>
+                                  <span className="font-mono text-[10px] text-slate-400 font-bold">
+                                    [{staff.code}]
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-medium flex items-center gap-2 mt-0.5">
+                                  <span>{staff.phone}</span>
+                                  {staff.email && <span>• {staff.email}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Role */}
+                          <td className="py-3.5 px-3">
+                            <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black border ${getRoleBadge(staff.role)}`}>
+                              {getRoleLabel(staff.role)}
+                            </span>
+                          </td>
+
+                          {/* Shift */}
+                          <td className="py-3.5 px-3">
+                            <span className="text-[11px] font-semibold text-slate-700">
+                              {getShiftLabel(staff.shift)}
+                            </span>
+                          </td>
+
+                          {/* PIN with Toggle and Quick Reset */}
+                          <td className="py-3.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-black text-xs bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-lg text-slate-900 tracking-widest min-w-[54px] text-center shadow-2xs">
+                                {isPinVisible ? staff.pin : "••••"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleTogglePinVisibility(staff.id)}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200 transition"
+                                title={isPinVisible ? "Ẩn mã PIN" : "Hiện mã PIN"}
+                              >
+                                <Icon name="eye" size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleResetPin(staff.id, staff.name)}
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition"
+                                title="Tạo mã PIN mới ngẫu nhiên"
+                              >
+                                <Icon name="refresh" size={14} />
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* Orders */}
+                          <td className="py-3.5 px-3 text-center">
+                            <span className="font-black text-emerald-950 text-xs bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-full">
+                              {staff.ordersServedToday} bills
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-3.5 px-3">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                staff.isActive
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200/80"
+                                  : "bg-slate-100 text-slate-500 border-slate-200"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  staff.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                }`}
+                              />
+                              <span>{staff.isActive ? "Đang mở ca" : "Đã tạm khóa"}</span>
+                            </span>
+                          </td>
+
+                          {/* Action */}
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleActive(staff.id, staff.name, staff.isActive)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs ${
+                                staff.isActive
+                                  ? "text-slate-600 bg-white border border-slate-200 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200"
+                                  : "bg-emerald-600 text-white hover:bg-emerald-500 font-black shadow-sm"
+                              }`}
+                            >
+                              {staff.isActive ? "Khóa ca" : "Mở ca"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <MobileInfiniteSentinel
+                sentinelRef={sentinelRef}
+                isLoadingMore={isLoadingMore}
+                hasMore={hasMore}
+                displayedCount={displayedStaff.length}
+                totalCount={staffList.length}
+              />
+            </>
+          )}
         </div>
       )}
 

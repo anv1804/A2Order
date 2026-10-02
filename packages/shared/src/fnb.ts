@@ -249,6 +249,12 @@ export interface TenantStoreRecord {
   }>;
 }
 
+export interface CreateStoreInput extends Partial<TenantStoreRecord> {
+  ownerPassword?: string;
+  ownerPin?: string;
+  durationMonths?: number;
+}
+
 export interface SoftwareInvoiceRecord {
   id: string;
   invoiceCode: string;

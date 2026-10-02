@@ -3,6 +3,7 @@ import { CmsSidebar } from "./CmsSidebar";
 import { CmsTopNav } from "./CmsTopNav";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { Icon } from "@/components/ui";
+import { FloatingSupportGroup } from "@/components/ui/FloatingSupportGroup";
 import { IconName } from "@/types";
 import { usePersistentState } from "@/hooks/usePersistentState";
 
@@ -269,24 +270,26 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
                       scenarios: "Kịch Bản",
                       audit_logs: "Giám Sát",
                       profile: "Hồ Sơ",
-                    } as Record<string, string>)[activeMenu] || "Tổng Quan"
+                    } as Record<string, string>)[activeMenu] || "404 - Không tìm thấy"
                   : ({
                       dashboard: "Tổng Quan",
                       staff_order: "Gọi Món",
-                      tables: "Bàn Ăn",
+                      tables: "Phòng Bàn",
+                      delivery_integrations: "App Giao Hàng",
                       menu: "Thực Đơn",
-                      kds: "Màn Bếp",
+                      kds: "Bếp & Pha Chế",
                       analytics: "Báo Cáo",
                       inventory: "Kho Hàng",
-                      team: "Nhân Sự",
+                      team: "Nhân Viên",
                       customers: "Khách Hàng",
                       reservations: "Đặt Bàn",
                       promotions: "Khuyến Mãi",
                       settings: "Cài Đặt",
                       landing_page: "Trang Web",
                       hardware: "Thiết Bị",
+                      einvoice: "Hóa Đơn Điện Tử",
                       profile: "Hồ Sơ",
-                    } as Record<string, string>)[activeMenu] || "Tổng Quan"
+                    } as Record<string, string>)[activeMenu] || "404 - Không tìm thấy"
               }
               roleBadgeText={
                 currentRole === "SUPER_ADMIN"
@@ -309,7 +312,14 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
         </header>
 
         {/* Scrollable Main Content Container with responsive padding px-3 */}
-        <main id="cms-main-scroll" className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-3 sm:pb-5 lg:pb-6 w-full max-w-full scroll-smooth">
+        <main
+          id="cms-main-scroll"
+          className={`flex-1 flex flex-col min-h-0 w-full max-w-full ${
+            activeMenu === "staff_order"
+              ? "overflow-hidden px-2.5 sm:px-4 py-2 sm:py-2.5"
+              : "overflow-y-auto overflow-x-hidden px-3 sm:px-6 lg:px-8 py-3 sm:py-5 pb-3 sm:pb-5 lg:pb-6 scroll-smooth"
+          }`}
+        >
           <div className="w-full min-w-0 flex-1 flex flex-col min-h-0">{children}</div>
         </main>
 
@@ -406,7 +416,12 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
         </div>
       </div>
 
-
+      {/* Floating Support Group: Back to Top, Chat Drawer, and Admin Request Modal */}
+      <FloatingSupportGroup
+        storeName={displayStore}
+        storeId={(currentUser as any)?.storeId || "store-bubble-tea"}
+        currentUser={currentUser}
+      />
     </div>
   );
 };

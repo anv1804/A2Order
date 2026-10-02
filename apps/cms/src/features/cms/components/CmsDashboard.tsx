@@ -1,8 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Button, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { CmsDashboardProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { tableApi } from "@/services/api/tableApi";
+import { staffApi } from "@/services/api/staffApi";
+import { DashboardCalendarWidget } from "./dashboard/DashboardCalendarWidget";
 
 export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, currentRole = "STORE_OWNER" }) => {
   const [currentVersion, setCurrentVersion] = useState("v1.0.3");
@@ -12,6 +16,145 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
 
   const isAccountant = currentRole === "ACCOUNTANT";
   const isCashier = currentRole === "CASHIER";
+
+  // Lấy storeId thực tế từ phiên đăng nhập
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
+  const storeId = userStr ? JSON.parse(userStr).storeId || "store-bubble-tea" : "store-bubble-tea";
+
+  // Đọc dữ liệu thực từ localStorage của các module khác
+  const [bills] = usePersistentState<any[]>("sales_bills_data", []);
+  const [tablesZones, setTablesZones] = usePersistentState<any[]>("tables_zones_data", []);
+  const [staffList, setStaffList] = usePersistentState<any[]>("staff_list", []);
+  const [ingredients] = usePersistentState<any[]>("inventory_ingredients", []);
+  const [kdsTickets] = usePersistentState<any[]>("kds_tickets_data", []);
+
+  // Xác định ca làm việc theo thời gian thực
+  const now = new Date();
+  const currentHour = now.getHours();
+  const isMorningCurrent = currentHour >= 6 && currentHour < 14;
+  const isEveningCurrent = currentHour >= 14 && currentHour < 23;
+
+  // Slide xem ca làm việc: Vòng lặp vô tận (Infinite Circular Loop)
+  const [carouselIndex, setCarouselIndex] = useState<number>(isEveningCurrent ? 2 : 1);
+  const [enableTransition, setEnableTransition] = useState<boolean>(true);
+  const [isShiftPaused, setIsShiftPaused] = useState<boolean>(false);
+  const [autoCloseShift, setAutoCloseShift] = usePersistentState<boolean>("auto_close_shift_enabled", true);
+
+  const activeShift: "MORNING" | "EVENING" =
+    carouselIndex === 1 || carouselIndex === 3 ? "MORNING" : "EVENING";
+
+  const goNext = React.useCallback(() => {
+    setEnableTransition(true);
+    setCarouselIndex((prev) => prev + 1);
+  }, []);
+
+  const goPrev = React.useCallback(() => {
+    setEnableTransition(true);
+    setCarouselIndex((prev) => prev - 1);
+  }, []);
+
+  // Xử lý reset vị trí tức thì khi chạm biên clone (đảm bảo vòng lặp vô tận trượt 1 chiều)
+  useEffect(() => {
+    if (carouselIndex >= 3) {
+      const timer = setTimeout(() => {
+        setEnableTransition(false);
+        setCarouselIndex(1);
+      }, 510);
+      return () => clearTimeout(timer);
+    }
+    if (carouselIndex <= 0) {
+      const timer = setTimeout(() => {
+        setEnableTransition(false);
+        setCarouselIndex(2);
+      }, 510);
+      return () => clearTimeout(timer);
+    }
+  }, [carouselIndex]);
+
+  // Kích hoạt lại transition sau cú snap tức thì
+  useEffect(() => {
+    if (!enableTransition) {
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => {
+          setEnableTransition(true);
+        });
+        return () => cancelAnimationFrame(raf2);
+      });
+      return () => cancelAnimationFrame(raf1);
+    }
+  }, [enableTransition]);
+
+  // Tự động loop trượt ca làm việc theo vòng tròn tiến tới (mỗi 5s trượt tiếp, dừng khi rê chuột)
+  useEffect(() => {
+    if (isShiftPaused) return;
+    const timer = setInterval(() => {
+      goNext();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isShiftPaused, goNext]);
+
+  const selectShift = (target: "MORNING" | "EVENING") => {
+    if (target === activeShift) return;
+    goNext();
+  };
+
+  const morningStaff = useMemo(() => {
+    return staffList.filter((s: any) => s.isActive && (s.shift === "MORNING" || !s.shift));
+  }, [staffList]);
+
+  const eveningStaff = useMemo(() => {
+    return staffList.filter((s: any) => s.isActive && s.shift === "EVENING");
+  }, [staffList]);
+
+  // Tự động đồng bộ sơ đồ bàn thực tế từ Database PostgreSQL
+  useEffect(() => {
+    tableApi
+      .getTableZones(storeId)
+      .then((serverZones) => {
+        if (Array.isArray(serverZones) && serverZones.length > 0) {
+          setTablesZones(serverZones);
+        }
+      })
+      .catch(() => {});
+  }, [storeId]);
+
+  // Tự động đồng bộ nhân sự thực tế từ Database PostgreSQL
+  useEffect(() => {
+    staffApi
+      .getStaff({ storeId })
+      .then((serverStaff) => {
+        if (Array.isArray(serverStaff)) {
+          setStaffList(serverStaff);
+        }
+      })
+      .catch(() => {});
+  }, [storeId]);
+
+  // Tính các KPI động
+  const liveStats = useMemo(() => {
+    const totalRevenue = bills.reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
+    const totalOrders = bills.length;
+    const discountTotal = bills.reduce((s: number, b: any) => s + (b.discountAmount || 0), 0);
+    const vietqrTotal = bills.filter((b: any) => b.paymentMethod === "VIETQR").reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
+    const vietqrPct = totalRevenue > 0 ? Math.round((vietqrTotal / totalRevenue) * 100) : 0;
+    const cashTotal = bills.filter((b: any) => b.paymentMethod === "CASH").reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
+
+    // Tables
+    const allTables = tablesZones.flatMap((z: any) => z.tables || []);
+    const occupiedTables = allTables.filter((t: any) => t.status === "OCCUPIED" || t.status === "SERVING").length;
+    const totalTables = allTables.length;
+
+    // Staff on duty
+    const activeStaff = staffList.filter((s: any) => s.isActive).length;
+
+    // Inventory alerts (below min)
+    const lowStockCount = ingredients.filter((i: any) => i.currentStock <= (i.minStock || 0)).length;
+
+    // KDS pending tickets
+    const pendingTickets = kdsTickets.filter((t: any) => t.status === "PENDING" || t.status === "IN_PROGRESS").length;
+
+    return { totalRevenue, totalOrders, discountTotal, vietqrPct, cashTotal, vietqrTotal, occupiedTables, totalTables, activeStaff, lowStockCount, pendingTickets };
+  }, [bills, tablesZones, staffList, ingredients, kdsTickets]);
 
   // Xử lý Publish bản snapshot cấu hình quán
   const handlePublishChanges = async () => {
@@ -90,30 +233,26 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {isAccountant
-                  ? "Phân Hệ Kế Toán & Quản Trị Tài Chính"
-                  : isCashier
-                  ? "Ca Thu Ngân Đang Hoạt Động"
-                  : "Ca Đang Hoạt Động"}
+                {isAccountant ? "Sổ Quỹ Kế Toán" : isCashier ? "Ca Thu Ngân" : "Tổng Quan"}
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate font-mono">
-                {isAccountant ? "Sổ Quỹ Kế Toán" : isCashier ? "Két Ca #02" : `Snapshot ${currentVersion}`}
+                {isAccountant ? "Tài Chính" : isCashier ? "Két Ca #02" : "Hôm Nay"}
               </span>
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
               {isAccountant
-                ? "Sổ Quỹ & Tổng Quan Dòng Tiền"
+                ? "Sổ Quỹ & Doanh Thu"
                 : isCashier
-                ? "Tổng Kết Két Tiền & Doanh Số Ca Trực"
-                : "Trung Tâm Điều Hành & Vận Hành Quán"}
+                ? "Doanh Số Ca Thu Ngân"
+                : "Tổng Quan Quán"}
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
               {isAccountant
-                ? "Theo dõi doanh thu thực thu, tiền mặt két vs chuyển khoản VietQR, giá vốn hàng bán và kết ca kế toán."
+                ? "Theo dõi dòng tiền, tiền mặt, chuyển khoản VietQR và giá vốn"
                 : isCashier
-                ? "Kiểm tra số hóa đơn đã xuất trong ca, số tiền đã thu, tiền tip và chuẩn bị bàn giao ca thu ngân."
-                : "Theo dõi doanh số thời gian thực, bàn ăn đang phục vụ, tiến độ bếp KDS và điều phối ca làm."}
+                ? "Kiểm tra hóa đơn trong ca và tổng tiền thu thực tế"
+                : "Tình hình kinh doanh, bàn ăn và doanh số trong ngày"}
             </p>
 
             {/* Quick Live Stats Chips */}
@@ -122,57 +261,57 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
                 <>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="banknote" size={12} className="text-emerald-300" />
-                    <span>Thực thu: 4.850.000đ</span>
+                    <span>Thực thu: {liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "0đ"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="cashier" size={12} className="text-amber-300" />
-                    <span>Tiền mặt két: 1.250.000đ</span>
+                    <span>Tiền mặt két: {liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="vietqr" size={12} className="text-teal-300" />
-                    <span>VietQR / CK: 3.600.000đ</span>
+                    <span>VietQR: {liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "0đ"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="trending" size={12} className="text-blue-300" />
-                    <span>Tỷ suất lãi gộp: ~68.5%</span>
+                    <span>{liveStats.totalOrders} Đơn hoàn tất</span>
                   </span>
                 </>
               ) : isCashier ? (
                 <>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="checkCircle" size={12} className="text-emerald-300" />
-                    <span>32 Đơn đã thanh toán</span>
+                    <span>{liveStats.totalOrders} Đơn đã thanh toán</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="banknote" size={12} className="text-amber-300" />
-                    <span>Két tiền: 1.250.000đ</span>
+                    <span>Tiền mặt két: {liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="clock" size={12} className="text-rose-300" />
-                    <span>3 Bàn chờ tính tiền</span>
+                    <Icon name="table" size={12} className="text-rose-300" />
+                    <span>{liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="history" size={12} className="text-blue-300" />
-                    <span>Mở két lúc 07:30</span>
+                    <span>Ca bán hoạt động</span>
                   </span>
                 </>
               ) : (
                 <>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="table" size={12} className="text-emerald-300" />
-                    <span>8/12 Bàn có khách (67%)</span>
+                    <span>{liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="kitchen" size={12} className="text-amber-300" />
-                    <span>7 Món đang nấu (SLA 8.5p)</span>
+                    <span>{liveStats.pendingTickets > 0 ? `${liveStats.pendingTickets} Món đang nấu` : "Bếp trống"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="banknote" size={12} className="text-teal-300" />
-                    <span>4.850.000đ • 32 đơn</span>
+                    <span>{liveStats.totalRevenue > 0 ? `${formatCurrency(liveStats.totalRevenue)} • ${liveStats.totalOrders} đơn` : "0đ • 0 đơn hôm nay"}</span>
                   </span>
                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                     <Icon name="activity" size={12} className="text-blue-300" />
-                    <span>3/3 Trạm POS/KDS online</span>
+                    <span>Hệ thống trực tuyến</span>
                   </span>
                 </>
               )}
@@ -218,9 +357,13 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
         </div>
       </section>
 
-      {/* 3. Bento Grid: 4 Chỉ Số Cốt Lõi Ca Bán Theo Từng Role */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        {/* Metric 1 */}
+      {/* 3. Main Dashboard: Cột Trái (Vận hành & Số liệu) + Cột Phải (Đồng hồ, Lịch & Ghi chú) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-3.5 sm:gap-5 items-start">
+        {/* CỘT TRÁI: VẬN HÀNH & BÁO CÁO */}
+        <div className="space-y-3.5 sm:space-y-5 min-w-0">
+          {/* Bento Grid: 4 Chỉ Số Cốt Lõi Ca Bán Theo Từng Role */}
+          <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        {/* Metric 1: Doanh thu */}
         <article
           onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "analytics")}
           className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-emerald-200 flex flex-col justify-between cursor-pointer"
@@ -230,23 +373,23 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
               <Icon name="banknote" size={16} />
             </span>
             <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              +18.5%
+              {liveStats.vietqrPct > 0 ? `${liveStats.vietqrPct}% VietQR` : "—"}
             </span>
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Doanh Thu Thực Thu" : isCashier ? "Doanh Thu Trong Ca" : "Doanh Thu Ca Bán"}
+              {isAccountant ? "Thực Thu" : isCashier ? "Thu Trong Ca" : "Doanh Thu"}
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              4.850.000 <span className="text-xs font-bold text-slate-400">đ</span>
+              {liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.totalRevenue > 0 ? "" : "chưa có dữ liệu"}</span>
             </p>
             <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              32 đơn • <span className="text-emerald-600 font-bold">85% VietQR</span>
+              {liveStats.totalOrders > 0 ? `${liveStats.totalOrders} đơn` : "Chưa có đơn"}
             </p>
           </div>
         </article>
 
-        {/* Metric 2 */}
+        {/* Metric 2: Bàn / Két */}
         <article
           onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "tables")}
           className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-blue-200 flex flex-col justify-between cursor-pointer"
@@ -256,27 +399,27 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
               <Icon name={isAccountant || isCashier ? "cashier" : "table"} size={16} />
             </span>
             <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
-              {isAccountant ? "Đối soát két" : isCashier ? "Khớp sổ két" : "67% lấp đầy"}
+              {isAccountant ? "Đối soát" : isCashier ? "Khớp két" : liveStats.totalTables > 0 ? `${liveStats.totalTables > 0 ? Math.round((liveStats.occupiedTables / liveStats.totalTables) * 100) : 0}% lấp đầy` : "—"}
             </span>
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant || isCashier ? "Tiền Mặt Tại Két" : "Công Suất Bàn Ăn"}
+              {isAccountant || isCashier ? "Tiền Mặt Tại Két" : "Bàn Ăn"}
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
               {isAccountant || isCashier ? (
-                <>1.250.000 <span className="text-xs font-bold text-slate-400">đ</span></>
+                <>{liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.cashTotal === 0 ? "chưa có dữ liệu" : ""}</span></>
               ) : (
-                <>8 <span className="text-xs font-bold text-slate-400">/ 12 bàn</span></>
+                <>{liveStats.occupiedTables} <span className="text-xs font-bold text-slate-400">/ {liveStats.totalTables} bàn</span></>
               )}
             </p>
             <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant || isCashier ? "Đã kiểm đếm đầu ca & thực tế" : "2 bàn chờ thanh toán • 2 bàn trống"}
+              {isAccountant || isCashier ? "Tiền mặt trong ca" : liveStats.totalTables === 0 ? "Chưa có sơ đồ bàn" : `${liveStats.totalTables - liveStats.occupiedTables} bàn trống`}
             </p>
           </div>
         </article>
 
-        {/* Metric 3 */}
+        {/* Metric 3: KDS / VietQR */}
         <article
           onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "tables" : "kds")}
           className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-amber-200 flex flex-col justify-between cursor-pointer"
@@ -286,33 +429,29 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
               <Icon name={isAccountant ? "vietqr" : isCashier ? "clock" : "kitchen"} size={16} />
             </span>
             <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
-              {isAccountant ? "Tự động" : isCashier ? "Cần in bill" : "SLA 8.5p"}
+              {isAccountant ? "VietQR" : isCashier ? "In bill" : "KDS"}
             </span>
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Chuyển Khoản & VietQR" : isCashier ? "Bàn Chờ Thanh Toán" : "Bếp Nấu & Pha Chế (KDS)"}
+              {isAccountant ? "Chuyển Khoản & VietQR" : isCashier ? "Chờ Thanh Toán" : "Bếp (KDS)"}
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
               {isAccountant ? (
-                <>3.600.000 <span className="text-xs font-bold text-slate-400">đ</span></>
+                <>{liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.vietqrTotal === 0 ? "" : ""}</span></>
               ) : isCashier ? (
-                <>3 <span className="text-xs font-bold text-slate-400">bàn gọi bill</span></>
+                <>{liveStats.pendingTickets} <span className="text-xs font-bold text-slate-400">ticket</span></>
               ) : (
-                <>7 <span className="text-xs font-bold text-slate-400">món đang nấu</span></>
+                <>{liveStats.pendingTickets} <span className="text-xs font-bold text-slate-400">món đang nấu</span></>
               )}
             </p>
             <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant
-                ? "Tài khoản nhận tiền VietQR động"
-                : isCashier
-                ? "Bàn 101, Bàn 202, Bàn 204"
-                : "5 món bếp chảo • 2 món quầy bar"}
+              {isAccountant ? "Thanh toán không tiền mặt" : isCashier ? "Từ KDS" : liveStats.pendingTickets === 0 ? "Bếp trống" : "Đang chế biến"}
             </p>
           </div>
         </article>
 
-        {/* Metric 4 */}
+        {/* Metric 4: Kho / VietQR % */}
         <article
           onClick={() => onNavigateTab?.(isAccountant ? "inventory" : isCashier ? "staff_order" : "inventory")}
           className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-rose-200 flex flex-col justify-between cursor-pointer"
@@ -321,147 +460,114 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
             <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
               <Icon name={isAccountant ? "fileText" : isCashier ? "vietqr" : "alert"} size={16} />
             </span>
-            <span className="text-[9.5px] font-bold text-rose-700 bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded-md">
-              {isAccountant ? "31.3% Doanh số" : isCashier ? "Không tiền mặt" : "Cần xử lý"}
+            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md ${liveStats.lowStockCount > 0 ? "text-rose-700 bg-rose-50 border border-rose-100" : "text-slate-400 bg-slate-100"}`}>
+              {isAccountant ? "COGS" : isCashier ? "VietQR" : liveStats.lowStockCount > 0 ? "Cần xử lý" : "Ổn định"}
             </span>
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Giá Vốn Hàng Bán (COGS)" : isCashier ? "Tỷ Lệ Quét VietQR" : "Cảnh Báo Tồn Kho"}
+              {isAccountant ? "Giá Vốn (COGS)" : isCashier ? "Tỷ Lệ VietQR" : "Tồn Kho"}
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
               {isAccountant ? (
-                <>1.520.000 <span className="text-xs font-bold text-slate-400">đ</span></>
+                <span className="text-sm text-slate-400 font-semibold">Chưa có dữ liệu</span>
               ) : isCashier ? (
-                <>74.2 <span className="text-xs font-bold text-slate-400">%</span></>
+                <>{liveStats.vietqrPct} <span className="text-xs font-bold text-slate-400">%</span></>
               ) : (
-                <>2 <span className="text-xs font-bold text-slate-400">cảnh báo</span></>
+                <>{liveStats.lowStockCount} <span className="text-xs font-bold text-slate-400">cảnh báo</span></>
               )}
             </p>
             <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant
-                ? "Dựa trên định lượng BOM và phiếu nhập"
-                : isCashier
-                ? "Khách quét mã chuyển khoản nhanh"
-                : "1 nguyên liệu sắp cạn • 1 tạm dừng"}
+              {isAccountant ? "Cần dữ liệu định lượng" : isCashier ? "Khách quét mã" : liveStats.lowStockCount === 0 ? "Kho ổn định" : "Có nguyên liệu dưới ngưỡng"}
             </p>
           </div>
         </article>
       </section>
 
       {/* 4. Thân Chính: Cảnh Báo Vận Hành Khẩn Cấp & Phân Luồng Trạm */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-5">
-        {/* Cột 1 & 2: Cảnh Báo Cần Xử Lý Ngay & Phân Trạm Bếp/Bar */}
-        <div className="lg:col-span-2 space-y-3.5 sm:space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">
+        {/* Cột 1 & 2 */}
+        <div className="lg:col-span-7 flex flex-col justify-between gap-3.5 sm:gap-5">
           {/* Cảnh báo việc cần xử lý ngay */}
-          <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
-                  <Icon name="bell" size={15} />
+          <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs flex-1 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-50 text-rose-600">
+                    <Icon name="bell" size={15} />
+                  </span>
+                  <h3 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                    Cảnh Báo Vận Hành Ca
+                  </h3>
+                  {liveStats.lowStockCount > 0 && (
+                    <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                      {liveStats.lowStockCount} cảnh báo kho
+                    </span>
+                  )}
+                </div>
+                <span className="hidden sm:inline text-[11px] font-medium text-slate-400">
+                  Đồng bộ từ dữ liệu thực tế
                 </span>
-                <h3 className="font-extrabold text-xs sm:text-sm text-slate-900">
-                  Cảnh Báo Vận Hành Ca
-                </h3>
-                <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
-                  3 việc cần xử lý
-                </span>
-              </div>
-              <span className="hidden sm:inline text-[11px] font-medium text-slate-400">
-                Tự động đồng bộ thời gian thực
-              </span>
-            </div>
-
-            <div className="space-y-2.5">
-              {/* Alert 1: Bàn gọi tính tiền */}
-              <div className="p-3 rounded-2xl bg-rose-50/60 border border-rose-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                    <Icon name="cashier" size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h5 className="font-bold text-xs text-slate-900 truncate">Bàn 202 gọi tính tiền</h5>
-                      <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 bg-rose-200 text-rose-900 rounded shrink-0">VietQR</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      Hóa đơn <strong>420.000đ</strong> • Khách yêu cầu 2 phút trước
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onNavigateTab) onNavigateTab("tables");
-                    toast.success("Đang mở sơ đồ bàn đối soát thanh toán Bàn 202");
-                  }}
-                  className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs px-3.5 py-2 shrink-0 font-black shadow-2xs whitespace-nowrap active:scale-95 transition"
-                >
-                  Thu Tiền
-                </button>
               </div>
 
-              {/* Alert 2: Nguyên liệu kho dưới mức tối thiểu */}
-              <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                    <Icon name="alert" size={16} />
+              {liveStats.lowStockCount === 0 && liveStats.pendingTickets === 0 ? (
+                <div className="flex flex-col items-center justify-center py-6 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-2">
+                    <Icon name="checkCircle" size={20} className="text-emerald-500" />
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h5 className="font-bold text-xs text-slate-900 truncate">Thịt Bò Phi Lê sắp hết!</h5>
-                      <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 bg-amber-200 text-amber-900 rounded shrink-0">Kho Hàng</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      Tồn <strong>4.5kg</strong> • Ngưỡng an toàn tối thiểu 5.0kg
-                    </p>
-                  </div>
+                  <p className="text-sm font-bold text-slate-700">Không có cảnh báo</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Vận hành ca ổn định</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onNavigateTab) onNavigateTab("inventory");
-                    toast.info("Chuyển tới phân hệ Kho & Nhập Hàng");
-                  }}
-                  className="rounded-xl border border-amber-300 text-amber-900 bg-white hover:bg-amber-50 text-xs px-3.5 py-2 shrink-0 font-black shadow-2xs whitespace-nowrap active:scale-95 transition"
-                >
-                  Nhập Kho
-                </button>
-              </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {liveStats.lowStockCount > 0 && (
+                    <div className="p-3 rounded-2xl bg-amber-50/60 border border-amber-100 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                          <Icon name="alert" size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-xs text-slate-900">{liveStats.lowStockCount} nguyên liệu dưới ngưỡng an toàn!</h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Cần nhập kho sớm để không gián đoạn chế biến</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { if (onNavigateTab) onNavigateTab("inventory"); }}
+                        className="rounded-xl border border-amber-300 text-amber-900 bg-white hover:bg-amber-50 text-xs px-3.5 py-2 shrink-0 font-black shadow-2xs whitespace-nowrap active:scale-95 transition"
+                      >
+                        Nhập Kho
+                      </button>
+                    </div>
+                  )}
 
-              {/* Alert 3: Khách đặt bàn sắp đến */}
-              <div className="p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                    <Icon name="calendarCheck" size={16} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h5 className="font-bold text-xs text-slate-900 truncate">Khách đặt bàn sắp đến (25p)</h5>
-                      <span className="text-[9.5px] font-extrabold px-1.5 py-0.2 bg-emerald-200 text-emerald-900 rounded shrink-0">Đặt Bàn</span>
+                  {liveStats.pendingTickets > 0 && (
+                    <div className="p-3 rounded-2xl bg-blue-50/60 border border-blue-100 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center shrink-0">
+                          <Icon name="kitchen" size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h5 className="font-bold text-xs text-slate-900">{liveStats.pendingTickets} ticket KDS đang xử lý</h5>
+                          <p className="text-[11px] text-slate-500 mt-0.5">Bếp đang chế biến, theo dõi tại màn hình KDS</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { if (onNavigateTab) onNavigateTab("kds"); }}
+                        className="rounded-xl border border-blue-300 text-blue-900 bg-white hover:bg-blue-50 text-xs px-3.5 py-2 shrink-0 font-black shadow-2xs whitespace-nowrap active:scale-95 transition"
+                      >
+                        Xem KDS
+                      </button>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                      Anh Tuấn (6 khách) • Bàn 04 VIP (Đã cọc 500k)
-                    </p>
-                  </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (onNavigateTab) onNavigateTab("reservations");
-                    toast.info("Chuyển tới Lịch Đặt Bàn");
-                  }}
-                  className="rounded-xl border border-emerald-300 text-emerald-900 bg-white hover:bg-emerald-50 text-xs px-3.5 py-2 shrink-0 font-black shadow-2xs whitespace-nowrap active:scale-95 transition"
-                >
-                  Xem Bàn
-                </button>
-              </div>
+              )}
             </div>
           </section>
 
-          {/* Phân Luồng Trạm Chế Biến: Bếp Nấu KDS vs Quầy Bar */}
+          {/* Phân Luồng Trạm: KDS Summary */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {/* Trạm Bếp */}
             <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
                 <div className="flex items-center gap-2 min-w-0">
@@ -469,170 +575,274 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
                   <h4 className="font-black text-xs text-slate-900 uppercase tracking-wide truncate">Trạm Bếp Nấu (KDS)</h4>
                 </div>
                 <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md shrink-0">
-                  5 món chờ
+                  {liveStats.pendingTickets} ticket
                 </span>
               </div>
-              <div className="space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between gap-2 border border-slate-100">
-                  <span className="font-bold text-slate-800 truncate">Bàn 02: 2x Phở Bò Tái Nạm</span>
-                  <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded shrink-0">Nấu (4m)</span>
+              {liveStats.pendingTickets === 0 ? (
+                <div className="py-5 text-center text-slate-400 text-xs">
+                  <Icon name="checkCircle" size={18} className="mx-auto mb-1 text-emerald-400" />
+                  Bếp trống – Chờ đơn mới
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between gap-2 border border-slate-100">
-                  <span className="font-bold text-slate-800 truncate">Bàn 03: 1x Bún Chả Nướng</span>
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">Chờ bưng</span>
-                </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between gap-2 border border-slate-100">
-                  <span className="font-bold text-slate-800 truncate">Bàn 201: 1x Lẩu Đuôi Bò</span>
-                  <span className="text-[10px] font-bold text-slate-400 shrink-0">Mới gửi (1m)</span>
-                </div>
-              </div>
+              ) : (
+                <p className="text-xs text-slate-500 py-3 text-center">
+                  {liveStats.pendingTickets} ticket đang xử lý. <button type="button" onClick={() => onNavigateTab?.("kds")} className="text-emerald-700 font-bold underline">Mở KDS →</button>
+                </p>
+              )}
             </section>
 
-            {/* Trạm Quầy Pha Chế */}
             <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0" />
-                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-wide truncate">Trạm Pha Chế (Bar)</h4>
+                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-wide truncate">Đơn Hàng Ca Bán</h4>
                 </div>
                 <span className="text-[11px] font-black text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md shrink-0">
-                  2 món chờ
+                  {liveStats.totalOrders} đơn
                 </span>
               </div>
-              <div className="space-y-2 text-xs">
-                <div className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between gap-2 border border-slate-100">
-                  <span className="font-bold text-slate-800 truncate">Bàn 01: 2x Cà Phê Muối</span>
-                  <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">Đã xong</span>
+              {liveStats.totalOrders === 0 ? (
+                <div className="py-5 text-center text-slate-400 text-xs">
+                  <Icon name="cart" size={18} className="mx-auto mb-1 text-slate-300" />
+                  Chưa có đơn hàng trong ca
                 </div>
-                <div className="p-2.5 rounded-xl bg-slate-50 flex items-center justify-between gap-2 border border-slate-100">
-                  <span className="font-bold text-slate-800 truncate">Bàn 203: 1x Trà Đào Cam Sả</span>
-                  <span className="text-[10px] font-black text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded shrink-0">Đang pha (2m)</span>
-                </div>
-              </div>
+              ) : (
+                <p className="text-xs text-slate-500 py-3 text-center">
+                  {liveStats.totalOrders} đơn • {formatCurrency(liveStats.totalRevenue)} doanh thu
+                </p>
+              )}
             </section>
           </div>
         </div>
 
-        {/* Cột 3: Khung Giờ Cao Điểm & Nhân Viên Đang Trực Ca */}
-        <div className="space-y-3.5 sm:space-y-5">
-          {/* Biểu đồ mật độ giờ cao điểm */}
-          <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-2.5">
-              <div>
-                <h4 className="font-black text-xs text-slate-900 uppercase tracking-wide">Giờ Cao Điểm (Rush Hours)</h4>
-                <p className="text-[11px] text-slate-400">Mật độ order theo khung giờ</p>
-              </div>
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
-                <Icon name="clock" size={15} />
-              </span>
-            </div>
-
-            <div className="space-y-2.5 pt-1">
-              {[
-                { time: "06:30 - 08:30 (Sáng)", percent: 80, isPeak: true, label: "Đông khách" },
-                { time: "08:30 - 11:30 (Cà phê)", percent: 45, isPeak: false, label: "Ổn định" },
-                { time: "11:30 - 13:30 (Trưa)", percent: 95, isPeak: true, label: "Đỉnh điểm" },
-                { time: "13:30 - 17:30 (Chiều)", percent: 25, isPeak: false, label: "Thấp điểm" },
-                { time: "17:30 - 21:00 (Tối)", percent: 85, isPeak: true, label: "Đông đúc" },
-              ].map((slot, i) => (
-                <div key={i} className="space-y-1">
-                  <div className="flex justify-between text-[11px] font-bold">
-                    <span className="text-slate-800">{slot.time}</span>
-                    <span className={slot.isPeak ? "text-emerald-700 font-extrabold" : "text-slate-400"}>
-                      {slot.label}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        slot.isPeak ? "bg-emerald-600" : "bg-emerald-400/60"
-                      }`}
-                      style={{ width: `${slot.percent}%` }}
-                    />
+        {/* Cột 3: Nhân viên ca này (Dạng Slide Vòng Lặp Vô Tận - Infinite Circular Carousel) */}
+        <div className="lg:col-span-5 flex flex-col h-full">
+          <section
+            onMouseEnter={() => setIsShiftPaused(true)}
+            onMouseLeave={() => setIsShiftPaused(false)}
+            className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-4 shadow-2xs h-full flex flex-col justify-between space-y-2.5"
+          >
+            <div className="flex-1 flex flex-col min-w-0">
+              {/* Header: Tiêu đề + Dots + Nút điều hướng */}
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2 shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <h4 className="font-black text-xs sm:text-sm text-slate-900 uppercase tracking-wide truncate">
+                    Nhân Viên Theo Ca
+                  </h4>
+                  {/* Dots Indicator */}
+                  <div className="flex items-center gap-1">
+                    <span className={`h-1.5 rounded-full transition-all duration-300 ${activeShift === "MORNING" ? "w-3.5 bg-emerald-600" : "w-1.5 bg-slate-300"}`} />
+                    <span className={`h-1.5 rounded-full transition-all duration-300 ${activeShift === "EVENING" ? "w-3.5 bg-emerald-600" : "w-1.5 bg-slate-300"}`} />
                   </div>
                 </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Nhân sự đang trực ca */}
-          <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-              <div>
-                <h4 className="font-black text-xs text-slate-900 uppercase tracking-wide">Nhân Viên Trực Ca</h4>
-                <p className="text-[11px] text-slate-400">Ca Sáng (06:00 - 14:00)</p>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={goPrev}
+                    title="Ca trước"
+                    aria-label="Ca trước"
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95"
+                  >
+                    <Icon name="chevronLeft" size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNext}
+                    title="Ca tiếp theo"
+                    aria-label="Ca tiếp theo"
+                    className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition active:scale-95"
+                  >
+                    <Icon name="chevronRight" size={13} />
+                  </button>
+                </div>
               </div>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                3 nhân sự
-              </span>
+
+              {/* Tabs chuyển ca: Đồng bộ chính xác 100% với slide đang hiển thị */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100/90 mb-2.5 text-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={() => selectShift("MORNING")}
+                  className={`py-1.5 px-2 rounded-lg font-bold transition-all flex items-center justify-between gap-1 whitespace-nowrap ${
+                    activeShift === "MORNING"
+                      ? "bg-white text-slate-900 shadow-2xs font-black ring-1 ring-slate-200/60"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {isMorningCurrent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
+                    <span className={activeShift === "MORNING" && isMorningCurrent ? "text-emerald-700 font-black" : "text-slate-700"}>Sáng</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-400 font-semibold">06:00-14:00</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => selectShift("EVENING")}
+                  className={`py-1.5 px-2 rounded-lg font-bold transition-all flex items-center justify-between gap-1 whitespace-nowrap ${
+                    activeShift === "EVENING"
+                      ? "bg-white text-slate-900 shadow-2xs font-black ring-1 ring-slate-200/60"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {isEveningCurrent && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
+                    <span className={activeShift === "EVENING" && isEveningCurrent ? "text-emerald-700 font-black" : "text-slate-700"}>Tối</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-400 font-semibold">14:00-22:30</span>
+                </button>
+              </div>
+
+              {/* CAROUSEL VIEWPORT: Track 4 slide vòng lặp vô tận (Luôn trượt vòng tròn tiến tới, không bao giờ bị giật lùi) */}
+              <div className="relative overflow-hidden w-full flex-1 min-h-[95px]">
+                <div
+                  className="flex h-full w-[400%]"
+                  style={{
+                    transform: `translateX(-${carouselIndex * 25}%)`,
+                    transition: enableTransition ? "transform 500ms ease-in-out" : "none",
+                  }}
+                >
+                  {[
+                    { type: "EVENING" as const, key: "clone-evening" },
+                    { type: "MORNING" as const, key: "real-morning" },
+                    { type: "EVENING" as const, key: "real-evening" },
+                    { type: "MORNING" as const, key: "clone-morning" },
+                  ].map((slide) => {
+                    const isMorning = slide.type === "MORNING";
+                    const staff = isMorning ? morningStaff : eveningStaff;
+                    const isCurrent = isMorning ? isMorningCurrent : isEveningCurrent;
+
+                    return (
+                      <div key={slide.key} className="w-1/4 px-1 flex flex-col justify-center shrink-0 overflow-hidden h-[95px]">
+                        {staff.length === 0 ? (
+                          <div className="h-full rounded-xl bg-slate-50/80 border border-dashed border-slate-200 px-3 py-2 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                                <Icon name="users" size={13} />
+                              </div>
+                              <div className="min-w-0">
+                                <h5 className="font-bold text-xs text-slate-700 truncate leading-tight">Chưa xếp ca</h5>
+                                <p className="text-[10px] text-slate-400 truncate leading-tight mt-0.5">Thu ngân & phục vụ</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onNavigateTab?.("team")}
+                              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10.5px] transition active:scale-95 shadow-2xs shrink-0 whitespace-nowrap"
+                            >
+                              + Xếp Ca
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 overflow-y-auto max-h-[95px] pr-0.5">
+                            {staff.map((s: any) => (
+                              <div key={s.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-50/90 border border-slate-100 hover:border-slate-200 transition">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className={`w-8 h-8 rounded-lg ${isMorning ? "bg-[#102d25]" : "bg-slate-700"} text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs`}>
+                                    {s.name?.charAt(0) || "?"}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h5 className="font-bold text-xs text-slate-900 truncate leading-tight">{s.name}</h5>
+                                    <span className="text-[10px] text-slate-400 block truncate mt-0.5">
+                                      {s.role === "STORE_OWNER" ? "Chủ Quán" : s.role === "CASHIER" ? "Thu Ngân" : s.role === "WAITER" ? "Phục Vụ" : s.role === "CHEF" ? "Bếp Trưởng" : s.role}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md border shrink-0 whitespace-nowrap ${
+                                  isCurrent ? "text-emerald-700 bg-emerald-50 border-emerald-100 font-black" : "text-slate-400 bg-slate-100 border-slate-200 font-medium"
+                                }`}>
+                                  {isCurrent ? "Đang trực" : isMorning ? "Đã xong" : "Chưa tới"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-900 text-white flex items-center justify-center font-black text-xs">
-                    H
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-900">Nguyễn Văn Hùng</h5>
-                    <span className="text-[10px] text-slate-400">Bếp Trưởng • PIN: ••••</span>
+            {/* PHẦN AUTO CHỐT CA: Luôn đồng bộ với ca đang hiển thị */}
+            <div className="pt-2 border-t border-slate-100 space-y-2 shrink-0">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-200/70">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-lg shrink-0 ${
+                    autoCloseShift ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"
+                  }`}>
+                    <Icon name="clock" size={13} />
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-slate-900 whitespace-nowrap">Auto Chốt Ca</span>
+                      <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded border whitespace-nowrap ${
+                        autoCloseShift
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                      }`}>
+                        {activeShift === "MORNING" ? "14:00" : "22:30"}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 truncate">
+                      {autoCloseShift ? "Tự khóa sổ & kết ca" : "Chưa kích hoạt"}
+                    </p>
                   </div>
                 </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                  Tại Bếp
-                </span>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoCloseShift}
+                  onClick={() => {
+                    const nextState = !autoCloseShift;
+                    setAutoCloseShift(nextState);
+                    if (nextState) {
+                      toast.success(`Đã BẬT Auto Chốt Ca (${activeShift === "MORNING" ? "14:00" : "22:30"}). Tự động lưu Z-Report.`);
+                    } else {
+                      toast.info("Đã TẮT Auto Chốt Ca. Bạn sẽ chốt ca thủ công.");
+                    }
+                  }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                    autoCloseShift ? "bg-emerald-600" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      autoCloseShift ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
               </div>
 
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-blue-700 text-white flex items-center justify-center font-black text-xs">
-                    L
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-900">Chị Lan</h5>
-                    <span className="text-[10px] text-slate-400">Thu Ngân Quầy • PIN: ••••</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                  Tại Két
-                </span>
+              {/* Bottom Action Buttons - Ngắn gọn, không rớt dòng */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab?.("team")}
+                  className="py-1.5 px-2 rounded-xl border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-98 shadow-2xs flex items-center justify-center gap-1.5 whitespace-nowrap"
+                >
+                  <Icon name="users" size={13} className="shrink-0 text-slate-500" />
+                  <span className="whitespace-nowrap font-bold">+ NV</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    toast.info("Chuyển tới Báo Cáo Doanh Thu & Kiểm Kê Ca Làm Việc (Z-Report)");
+                    onNavigateTab?.("analytics");
+                  }}
+                  className="py-1.5 px-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-xs font-black text-emerald-800 transition active:scale-98 shadow-2xs flex items-center justify-center gap-1.5 whitespace-nowrap"
+                >
+                  <Icon name="checkCircle" size={13} className="shrink-0 text-emerald-600" />
+                  <span className="whitespace-nowrap font-black">Chốt Ca</span>
+                </button>
               </div>
-
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-amber-700 text-white flex items-center justify-center font-black text-xs">
-                    A
-                  </div>
-                  <div>
-                    <h5 className="font-bold text-xs text-slate-900">Tuấn Anh</h5>
-                    <span className="text-[10px] text-slate-400">Phục Vụ Bàn • PIN: ••••</span>
-                  </div>
-                </div>
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                  Sàn Bàn
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  toast.info("Chuyển tới Báo Cáo Doanh Thu & Kiểm Kê Ca Làm Việc (Z-Report)");
-                  onNavigateTab?.("analytics");
-                }}
-                className="w-full py-2 px-3 rounded-xl border border-slate-200 text-xs font-black text-slate-700 hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-200 transition active:scale-98 shadow-2xs"
-              >
-                Chốt Ca & Bàn Giao Két Tiền
-              </button>
             </div>
           </section>
         </div>
       </div>
 
-      {/* 5. Biểu Đồ Doanh Thu Ca & Top Món Bán Chạy */}
+      {/* 5. Biểu Đồ Doanh Thu & Top Món */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5">
-        {/* Biểu Đồ Doanh Thu (Col 7/12) */}
+        {/* Doanh Thu Ca (Col 7) */}
         <section className="lg:col-span-7 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
@@ -644,59 +854,46 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
                   Nhịp Độ Doanh Thu Theo Giờ Trong Ca
                 </h4>
               </div>
-              <p className="text-[11px] text-slate-400">Biểu đồ đối soát doanh số và số lượng order thực tế</p>
+              <p className="text-[11px] text-slate-400">Biểu đồ đối soát doanh số thực tế</p>
             </div>
-            <span className="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg">
-              Đỉnh điểm: 12:00 - 13:00
-            </span>
           </div>
 
-          <div className="h-44 flex items-end justify-between gap-2 pt-4 pb-2 px-1 sm:px-2">
-            {[
-              { hour: "07:00", amount: 320000, orders: 4, isPeak: false },
-              { hour: "08:00", amount: 650000, orders: 8, isPeak: false },
-              { hour: "09:00", amount: 480000, orders: 5, isPeak: false },
-              { hour: "10:00", amount: 390000, orders: 3, isPeak: false },
-              { hour: "11:00", amount: 890000, orders: 11, isPeak: false },
-              { hour: "12:00", amount: 1450000, orders: 18, isPeak: true },
-              { hour: "13:00", amount: 670000, orders: 7, isPeak: false },
-            ].map((slot) => {
-              const maxVal = 1450000;
-              const heightPct = Math.max((slot.amount / maxVal) * 100, 12);
-              return (
-                <div key={slot.hour} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
-                  {/* Tooltip hover */}
-                  <div className="absolute -top-11 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded-lg whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-md">
-                    <div>{slot.hour}: {formatCurrency(slot.amount)}</div>
-                    <div className="text-emerald-300 font-normal">{slot.orders} đơn order</div>
-                  </div>
-
-                  {/* Bar */}
-                  <div
-                    className={`w-full max-w-[36px] rounded-t-xl transition-all duration-300 ${
-                      slot.isPeak
-                        ? "bg-emerald-800 shadow-sm"
-                        : "bg-emerald-500/70 hover:bg-emerald-600"
-                    }`}
-                    style={{ height: `${heightPct}%` }}
-                  />
-
-                  {/* Hour */}
-                  <span className="text-[10px] font-bold text-slate-400 mt-2 group-hover:text-slate-900">
-                    {slot.hour}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          {bills.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Icon name="trending" size={28} className="text-slate-200 mb-3" />
+              <p className="text-sm font-bold text-slate-500">Chưa có dữ liệu doanh thu</p>
+              <p className="text-xs text-slate-400 mt-1">Bắt đầu gọi món và thanh toán để hiện biểu đồ</p>
+            </div>
+          ) : (
+            <div className="h-44 flex items-end justify-between gap-2 pt-4 pb-2 px-1 sm:px-2">
+              {(() => {
+                const hourlyMap: Record<string, number> = {};
+                bills.forEach((b: any) => {
+                  const hour = b.closedAt ? b.closedAt.slice(0, 2) + ":00" : "?";
+                  hourlyMap[hour] = (hourlyMap[hour] || 0) + (b.finalAmount || 0);
+                });
+                const slots = Object.entries(hourlyMap).sort(([a], [b]) => a.localeCompare(b));
+                const maxVal = Math.max(...slots.map(([, v]) => v), 1);
+                return slots.map(([hour, amount]) => {
+                  const heightPct = Math.max((amount / maxVal) * 100, 12);
+                  return (
+                    <div key={hour} className="flex-1 flex flex-col items-center h-full justify-end group relative cursor-pointer">
+                      <div className="w-full max-w-[36px] rounded-t-xl bg-emerald-600 hover:bg-emerald-800 transition-all duration-300" style={{ height: `${heightPct}%` }} />
+                      <span className="text-[10px] font-bold text-slate-400 mt-2">{hour}</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
 
           <div className="flex items-center justify-between text-xs border-t border-slate-100 pt-3 text-slate-500">
-            <span>Tổng thời gian ca: <strong className="text-slate-800">7 giờ</strong></span>
-            <span>Giá trị TB / bàn: <strong className="text-slate-800">151.000đ</strong></span>
+            <span>Tổng đơn: <strong className="text-slate-800">{liveStats.totalOrders}</strong></span>
+            <span>Doanh thu: <strong className="text-slate-800">{liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "—"}</strong></span>
           </div>
         </section>
 
-        {/* Top 5 Món Bán Chạy (Col 5/12) */}
+        {/* Top Món (Col 5) */}
         <section className="lg:col-span-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-3.5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
@@ -708,57 +905,52 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
               </div>
               <p className="text-[11px] text-slate-400">Xếp hạng theo số lượng đã phục vụ</p>
             </div>
-            <button
-              type="button"
-              onClick={() => onNavigateTab?.("menu")}
-              className="text-xs font-black text-emerald-800 hover:underline"
-            >
+            <button type="button" onClick={() => onNavigateTab?.("menu")} className="text-xs font-black text-emerald-800 hover:underline">
               Thực đơn →
             </button>
           </div>
 
-          <div className="space-y-2">
-            {[
-              { rank: 1, name: "Phở Bò Tái Nạm Gầu", sold: 28, revenue: 1820000, category: "Món Nước", trend: "+12%" },
-              { rank: 2, name: "Cà Phê Muối Kem Béo", sold: 34, revenue: 1190000, category: "Đồ Uống", trend: "+25%" },
-              { rank: 3, name: "Cơm Tấm Sườn Bì Chả", sold: 19, revenue: 1235000, category: "Cơm Mặn", trend: "+8%" },
-              { rank: 4, name: "Bún Chả Nướng Than Hoa", sold: 16, revenue: 960000, category: "Món Nước", trend: "+5%" },
-              { rank: 5, name: "Trà Đào Cam Sả Tươi", sold: 22, revenue: 770000, category: "Đồ Uống", trend: "+14%" },
-            ].map((dish) => (
-              <div
-                key={dish.name}
-                className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 hover:border-emerald-200 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
-                      dish.rank === 1
-                        ? "bg-amber-400 text-amber-950 shadow-2xs"
-                        : dish.rank === 2
-                        ? "bg-slate-200 text-slate-800"
-                        : dish.rank === 3
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {dish.rank}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 truncate">{dish.name}</p>
-                    <p className="text-[10px] text-slate-400">{dish.category} • Đã bán {dish.sold}</p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-black text-slate-900 block">{formatCurrency(dish.revenue)}</span>
-                  <span className="text-[10px] font-bold text-emerald-700">{dish.trend}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {bills.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Icon name="flame" size={28} className="text-slate-200 mb-3" />
+              <p className="text-sm font-bold text-slate-500">Chưa có dữ liệu</p>
+              <p className="text-xs text-slate-400 mt-1">Top món sẽ hiện khi có đơn hàng</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {(() => {
+                const dishCount: Record<string, { name: string; sold: number; revenue: number }> = {};
+                bills.forEach((b: any) => {
+                  (b.items || []).forEach((item: any) => {
+                    if (!dishCount[item.name]) dishCount[item.name] = { name: item.name, sold: 0, revenue: 0 };
+                    dishCount[item.name].sold += item.quantity || 1;
+                    dishCount[item.name].revenue += item.totalPrice || 0;
+                  });
+                });
+                return Object.values(dishCount)
+                  .sort((a, b) => b.sold - a.sold)
+                  .slice(0, 5)
+                  .map((dish, idx) => (
+                    <div key={dish.name} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${idx === 0 ? "bg-amber-400 text-amber-950" : idx === 1 ? "bg-slate-200 text-slate-800" : "bg-slate-100 text-slate-500"}`}>
+                          {idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 truncate">{dish.name}</p>
+                          <p className="text-[10px] text-slate-400">Đã bán {dish.sold}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-slate-900 shrink-0">{formatCurrency(dish.revenue)}</span>
+                    </div>
+                  ));
+              })()}
+            </div>
+          )}
         </section>
       </div>
 
-      {/* 6. Dòng Đơn Hàng Gần Nhất (Live Order Stream) */}
+      {/* 6. Dòng Đơn Gần Nhất */}
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-3.5">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
@@ -772,49 +964,46 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
             </div>
             <p className="text-[11px] text-slate-400">Theo dõi trạng thái phục vụ và thanh toán các bàn đang ăn</p>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigateTab?.("tables")}
-            className="text-xs font-black text-emerald-800 hover:underline"
-          >
+          <button type="button" onClick={() => onNavigateTab?.("tables")} className="text-xs font-black text-emerald-800 hover:underline">
             Sơ đồ bàn →
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {[
-            { id: "ord-881", table: "Bàn 04", time: "1 phút trước", amount: 260000, items: "2x Phở Bò, 1x Trà Đào", status: "COOKING", payMethod: "VietQR" },
-            { id: "ord-880", table: "Bàn 02", time: "5 phút trước", amount: 185000, items: "1x Cơm Tấm, 1x Cafe Muối", status: "SERVED", payMethod: "Tiền mặt" },
-            { id: "ord-879", table: "Mang Về #12", time: "8 phút trước", amount: 130000, items: "2x Cà Phê Muối", status: "PAID", payMethod: "VietQR" },
-            { id: "ord-878", table: "Bàn VIP 01", time: "15 phút trước", amount: 850000, items: "1x Lẩu Đuôi Bò, 4x Bia", status: "SERVED", payMethod: "Chờ thanh toán" },
-          ].map((ord) => (
-            <div
-              key={ord.id}
-              className="p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:shadow-2xs transition-all space-y-2"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-black text-xs text-slate-900">{ord.table}</span>
-                <span
-                  className={`text-[9.5px] font-black px-1.5 py-0.5 rounded-md ${
-                    ord.status === "COOKING"
-                      ? "bg-amber-100 text-amber-800"
-                      : ord.status === "PAID"
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-blue-100 text-blue-800"
-                  }`}
-                >
-                  {ord.status === "COOKING" ? "Bếp nấu" : ord.status === "PAID" ? "Đã trả tiền" : "Đang ăn"}
-                </span>
+        {bills.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <Icon name="cart" size={28} className="text-slate-200 mb-3" />
+            <p className="text-sm font-bold text-slate-500">Chưa có đơn hàng</p>
+            <p className="text-xs text-slate-400 mt-1">Đơn hàng mới sẽ hiện ở đây khi được tạo</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[...bills].reverse().slice(0, 4).map((b: any) => (
+              <div key={b.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:shadow-2xs transition-all space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs text-slate-900">{b.tableName || "—"}</span>
+                  <span className="text-[9.5px] font-black px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
+                    {b.status === "COMPLETED" ? "Đã trả tiền" : "Đang ăn"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 truncate font-medium">
+                  {(b.items || []).slice(0, 2).map((i: any) => `${i.quantity}x ${i.name}`).join(", ")}
+                </p>
+                <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+                  <span className="font-black text-slate-900">{formatCurrency(b.finalAmount || 0)}</span>
+                  <span className="text-[10px] text-slate-400">{b.paymentMethod}</span>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-500 truncate font-medium">{ord.items}</p>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
-                <span className="font-black text-slate-900">{formatCurrency(ord.amount)}</span>
-                <span className="text-[10px] text-slate-400">{ord.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
+        </div>
+
+        {/* CỘT PHẢI: ĐỒNG HỒ THỜI GIAN THỰC, LỊCH THÁNG & GHI CHÚ QUAN TRỌNG */}
+        <div className="xl:sticky xl:top-1.5 self-start space-y-3 sm:space-y-3.5">
+          <DashboardCalendarWidget onNavigateTab={onNavigateTab} />
+        </div>
+      </div>
     </div>
   );
 };

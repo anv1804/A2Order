@@ -18,12 +18,12 @@ test("calculateContractPrice - 1 month basic core pos", () => {
 
 test("calculateContractPrice - 6 months with 10% period discount", () => {
   const result = calculateContractPrice([AppModule.CORE_POS, AppModule.MODULE_KDS], 6);
-  // 99k + 39k = 138k / month
-  assert.strictEqual(result.monthlySum, 138000);
-  assert.strictEqual(result.rawTotal, 138000 * 6); // 828000
+  // 99k + 49k (KDS) = 148k / month
+  assert.strictEqual(result.monthlySum, 148000);
+  assert.strictEqual(result.rawTotal, 148000 * 6); // 888000
   assert.strictEqual(result.periodDiscountPercent, 10);
-  assert.strictEqual(result.periodDiscountAmount, 82800);
-  assert.strictEqual(result.finalTotal, 828000 - 82800); // 745200
+  assert.strictEqual(result.periodDiscountAmount, 88800);
+  assert.strictEqual(result.finalTotal, 888000 - 88800); // 799200
 });
 
 test("calculateContractPrice - 12 months with 20% discount and percent voucher", () => {
@@ -45,11 +45,22 @@ test("calculateContractPrice - 12 months with 20% discount and percent voucher",
     voucher
   );
 
-  // 99k + 49k = 148k / month
-  // 148k * 12 = 1,776,000
-  // 20% period discount = 355,200 => 1,420,800
-  // 10% voucher discount = 142,080 => 1,278,720
-  assert.strictEqual(result.monthlySum, 148000);
+  // 99k + 69k (Landing page Add-on) = 168k / month
+  // 168k * 12 = 2,016,000
+  // 20% period discount = 403,200 => 1,612,800
+  // 10% voucher discount = 161,280 => 1,451,520
+  assert.strictEqual(result.monthlySum, 168000);
   assert.strictEqual(result.periodDiscountPercent, 20);
-  assert.strictEqual(result.finalTotal, 1278720);
+  assert.strictEqual(result.finalTotal, 1451520);
 });
+
+test("calculateContractPrice - Core POS + Chấm công HRM + Bộ đàm Intercom", () => {
+  const result = calculateContractPrice(
+    [AppModule.CORE_POS, AppModule.MODULE_ATTENDANCE_HRM, AppModule.MODULE_STAFF_INTERCOM],
+    1
+  );
+  // 99k + 49k + 29k = 177k / month
+  assert.strictEqual(result.monthlySum, 177000);
+  assert.strictEqual(result.finalTotal, 177000);
+});
+

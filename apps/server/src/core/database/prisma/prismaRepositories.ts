@@ -4,6 +4,7 @@ import {
   FnbDishItem,
   AppModule,
   TenantStoreRecord,
+  CreateStoreInput,
   SoftwareInvoiceRecord,
 } from "@a2order/shared";
 import {
@@ -18,6 +19,7 @@ import {
 } from "../IRepository.js";
 import { prisma } from "../prismaClient.js";
 import { DEFAULT_BUSINESS_SCENARIOS } from "../../../mockData/businessScenariosData.js";
+import bcrypt from "bcryptjs";
 
 const getStoreAdminStatus = (
   storeStatus: string,
@@ -169,70 +171,191 @@ export class PrismaStoreRepository implements IStoreRepository {
     };
   }
 
-  async create(data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord> {
+  async create(data: CreateStoreInput): Promise<TenantStoreRecord> {
     const slug = (data.name || "store").toLowerCase().replace(/[^a-z0-9]/g, "-") + "-" + Date.now();
-    const planType = data.plan || "STARTER";
+    const planType = data.plan || "GROWTH";
     const licenseKey = data.licenseKey || `A2-${planType}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const created = await prisma.$transaction(async (transaction) => {
-      const store = await transaction.store.create({
+    const durationMonths = data.durationMonths && data.durationMonths > 0 ? data.durationMonths : 12;
+    const startDate = new Date();
+    const endDate = new Date(Date.now() + durationMonths * 30 * 86400000);
+    const tableCount = data.tableCount && data.tableCount > 0 ? data.tableCount : 12;
+    const ownerEmail = data.ownerEmail ? data.ownerEmail.toLowerCase().trim() : null;
+
+    if (ownerEmail) {
+      const existing = await prisma.staff.findUnique({
+        where: { email: ownerEmail },
+      });
+      if (existing) {
+        throw new Error(`Email "${ownerEmail}" đã được sử dụng bởi một tài khoản khác trong hệ thống.`);
+      }
+    }
+
+    const rawPassword = data.ownerPassword || "123456";
+    const passwordHash = await bcrypt.hash(rawPassword, 10);
+    const pinCode = data.ownerPin && data.ownerPin.trim() ? data.ownerPin.trim() : "1234";
+
+    const { store, staff } = await prisma.$transaction(async (transaction) => {
+      // 1. Tạo Store
+      const storeRecord = await transaction.store.create({
         data: {
           name: data.name || "Quán Mới",
           slug,
           phone: data.phone,
           address: data.address,
           bankOwnerName: data.owner,
-          status: data.status || "ACTIVE",
+          status: "ACTIVE",
           configVersion: data.configVer || "v1.0.0",
         },
       });
-      const pendingPaymentExpiry = new Date();
-      await transaction.storeLicense.create({
+
+      // 2. Tạo Staff (Tài khoản Chủ Quán)
+      const staffRecord = await transaction.staff.create({
         data: {
-          storeId: store.id,
-          licenseKey,
-          planType,
-          enabledModules: (data.modules || []).join(","),
-          // Chưa mở license cho đến khi hóa đơn đầu tiên được xác nhận.
-          status: "EXPIRED",
-          startDate: pendingPaymentExpiry,
-          endDate: pendingPaymentExpiry,
-          maxTables: data.tableCount || 30,
-          maxStaff: 20,
+          storeId: storeRecord.id,
+          name: data.owner || "Chủ Quán",
+          email: ownerEmail,
+          passwordHash,
+          pinCode,
+          role: "STORE_OWNER",
+          isActive: true,
         },
       });
-      return store;
+
+      // 3. Tạo StoreLicense (Kích hoạt dùng ngay)
+      const enabledModules = (data.modules && data.modules.length > 0 ? data.modules : ["CORE_POS", "MODULE_QR_ORDER"]).join(",");
+      const maxTables = planType === "PRO" ? 150 : planType === "GROWTH" ? 50 : 20;
+      const maxStaff = planType === "PRO" ? 50 : planType === "GROWTH" ? 15 : 5;
+
+      const licenseRecord = await transaction.storeLicense.create({
+        data: {
+          storeId: storeRecord.id,
+          licenseKey,
+          planType,
+          enabledModules,
+          status: "ACTIVE",
+          startDate,
+          endDate,
+          maxTables: Math.max(tableCount, maxTables),
+          maxStaff,
+        },
+      });
+
+      // 4. Tạo Khu vực bàn & Danh sách bàn ban đầu
+      const zone = await transaction.tableZone.create({
+        data: {
+          storeId: storeRecord.id,
+          name: "Khu Vực Chính",
+          sortOrder: 1,
+        },
+      });
+
+      const tablesData = [];
+      for (let i = 1; i <= tableCount; i++) {
+        const padIndex = i < 10 ? `0${i}` : `${i}`;
+        tablesData.push({
+          storeId: storeRecord.id,
+          zoneId: zone.id,
+          name: `Bàn ${padIndex}`,
+          status: "EMPTY",
+        });
+      }
+      await transaction.table.createMany({
+        data: tablesData,
+      });
+
+      // 5. Tạo Hóa đơn thuê bao bản quyền lấy trực tiếp từ cấu hình DB
+      let pricePerMonth = planType === "STARTER" ? 119000 : planType === "GROWTH" ? 199000 : 299000;
+      try {
+        const plansConfigRow = await transaction.systemConfig.findUnique({ where: { key: "pricing_plans" } });
+        if (plansConfigRow?.value) {
+          const plansData = JSON.parse(plansConfigRow.value);
+          const matchedPlan = Array.isArray(plansData)
+            ? plansData.find((p: any) => p.id === planType)
+            : plansData[planType];
+          if (matchedPlan?.monthlyPrice) {
+            pricePerMonth = matchedPlan.monthlyPrice;
+          }
+        }
+      } catch {
+        // Fallback to defaults
+      }
+
+      const subTotal = pricePerMonth * durationMonths;
+      const discount = durationMonths >= 12 ? Math.round(subTotal * 0.2) : durationMonths >= 6 ? Math.round(subTotal * 0.1) : 0;
+      const finalAmount = subTotal - discount;
+      const invoiceCode = `INV-${Date.now().toString().slice(-6)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      await transaction.softwareInvoice.create({
+        data: {
+          storeLicenseId: licenseRecord.id,
+          invoiceCode,
+          amount: finalAmount,
+          durationMonths,
+          periodStart: startDate,
+          periodEnd: endDate,
+          status: "PAID",
+          paidAt: startDate,
+          paymentMethod: "VIETQR",
+        },
+      });
+
+      return { store: storeRecord, staff: staffRecord };
     });
 
+    // 6. Nạp thực đơn mẫu theo mô hình F&B trực tiếp vào CSDL PostgreSQL
+    if (data.businessType) {
+      const menuRepo = new PrismaMenuRepository();
+      try {
+        await menuRepo.applyScenarioToStore(store.id, data.businessType, "REPLACE");
+      } catch (err) {
+        console.warn(`[StoreRepo] Seeding scenario dishes failed for store ${store.id}:`, err);
+      }
+    }
+
     return {
-      id: created.id,
-      name: created.name,
-      owner: data.owner || "Chưa cập nhật",
-      phone: created.phone || "",
-      address: created.address || "",
-      tableCount: data.tableCount || 0,
+      id: store.id,
+      name: store.name,
+      owner: data.owner || "Chủ Quán",
+      ownerEmail: ownerEmail || undefined,
+      phone: store.phone || "",
+      address: store.address || "",
+      tableCount,
       licenseKey,
-      plan: planType,
-      status: "EXPIRED",
-      activatedAt: created.createdAt.toLocaleDateString("vi-VN"),
-      expiresAt: new Date().toLocaleDateString("vi-VN"),
-      daysLeft: 0,
+      plan: planType as any,
+      status: "ACTIVE",
+      activatedAt: startDate.toLocaleDateString("vi-VN"),
+      expiresAt: endDate.toLocaleDateString("vi-VN"),
+      daysLeft: durationMonths * 30,
       pingMs: 0,
       activeDevices: 0,
-      configVer: created.configVersion,
+      configVer: store.configVersion,
       modules: data.modules || [],
+      businessType: data.businessType,
+      staffList: [
+        {
+          id: staff.id,
+          name: staff.name,
+          email: staff.email,
+          role: staff.role,
+          isActive: staff.isActive,
+        },
+      ],
     };
   }
 
   async update(id: string, data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord | null> {
-    const updated = await prisma.store.update({
-      where: { id },
-      data: {
-        name: data.name,
-        phone: data.phone,
-        address: data.address,
-        status: data.status,
-      },
-    });
+    const storeUpdateData: Record<string, any> = {};
+    if (data.name !== undefined) storeUpdateData.name = data.name;
+    if (data.phone !== undefined) storeUpdateData.phone = data.phone;
+    if (data.address !== undefined) storeUpdateData.address = data.address;
+    if (data.status !== undefined) storeUpdateData.status = data.status;
+
+    if (Object.keys(storeUpdateData).length > 0) {
+      await prisma.store.update({
+        where: { id },
+        data: storeUpdateData,
+      });
+    }
 
     if (data.modules) {
       const planType = data.plan || "STARTER";
@@ -255,11 +378,28 @@ export class PrismaStoreRepository implements IStoreRepository {
         },
       });
     }
-    return this.getById(updated.id);
+    return this.getById(id);
   }
 
   async delete(id: string): Promise<boolean> {
-    await prisma.store.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      await tx.auditLog.deleteMany({ where: { storeId: id } });
+      await tx.bill.deleteMany({ where: { storeId: id } });
+      await tx.orderSession.deleteMany({ where: { storeId: id } });
+      await tx.menuItem.deleteMany({ where: { storeId: id } });
+      await tx.category.deleteMany({ where: { storeId: id } });
+      await tx.table.deleteMany({ where: { storeId: id } });
+      await tx.tableZone.deleteMany({ where: { storeId: id } });
+      await tx.staff.deleteMany({ where: { storeId: id } });
+      await tx.storeTelemetry.deleteMany({ where: { storeId: id } });
+      await tx.storeLandingPage.deleteMany({ where: { storeId: id } });
+      const license = await tx.storeLicense.findUnique({ where: { storeId: id } });
+      if (license) {
+        await tx.softwareInvoice.deleteMany({ where: { storeLicenseId: license.id } });
+        await tx.storeLicense.delete({ where: { id: license.id } });
+      }
+      await tx.store.delete({ where: { id } });
+    });
     return true;
   }
 }

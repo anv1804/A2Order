@@ -35,7 +35,7 @@ export const ToastContainer: React.FC = () => {
   };
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[10001] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none">
       {toasts.map((toast) => {
         const config = getToastConfig(toast.type);
         return (

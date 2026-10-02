@@ -3,95 +3,7 @@ import { Button, Badge, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { KdsStation, KdsStatus, KdsOrderItem, CmsKdsTicket } from "@/types/kds.types";
 
-const MOCK_TICKETS: CmsKdsTicket[] = [
-  {
-    id: "kt1",
-    ticketCode: "#B04-001",
-    tableName: "Bàn 04 (VIP 1)",
-    orderTime: "18:42",
-    orderTimestamp: Date.now() - 8 * 60 * 1000,
-    status: "NEW",
-    station: "KITCHEN",
-    waiterName: "Minh Tuấn",
-    priority: "URGENT",
-    items: [
-      { dishName: "Lẩu Thái Chua Cay", quantity: 1, notes: "Cay vừa, bỏ sả" },
-      { dishName: "Thịt Bò Nhúng Mỡ Hành", quantity: 2 },
-      { dishName: "Đậu Hũ Chiên Sốt Tứ Xuyên", quantity: 1, notes: "Không hành lá" },
-    ],
-  },
-  {
-    id: "kt2",
-    ticketCode: "#B08-002",
-    tableName: "Bàn 08 (Tầng 2)",
-    orderTime: "18:39",
-    orderTimestamp: Date.now() - 11 * 60 * 1000,
-    status: "NEW",
-    station: "KITCHEN",
-    waiterName: "Thu Hà",
-    items: [
-      { dishName: "Cơm Chiên Hải Sản", quantity: 1 },
-      { dishName: "Canh Chua Cá Lộc", quantity: 1 },
-    ],
-  },
-  {
-    id: "kt3",
-    ticketCode: "#B02-003",
-    tableName: "Bàn 02 (Tầng 1)",
-    orderTime: "18:35",
-    orderTimestamp: Date.now() - 15 * 60 * 1000,
-    status: "IN_PROGRESS",
-    station: "KITCHEN",
-    waiterName: "Hồng Nhung",
-    items: [
-      { dishName: "Bò Nướng Lá Lốt", quantity: 2, notes: "Chín hoàn toàn" },
-      { dishName: "Nem Nướng Nha Trang", quantity: 1 },
-    ],
-  },
-  {
-    id: "kt4",
-    ticketCode: "#B12-004",
-    tableName: "Bàn 12 (Sân Vườn)",
-    orderTime: "18:41",
-    orderTimestamp: Date.now() - 9 * 60 * 1000,
-    status: "NEW",
-    station: "BAR",
-    waiterName: "Đức Minh",
-    items: [
-      { dishName: "Coca Cola Tươi", quantity: 3 },
-      { dishName: "Bia Tiger Lon Bạc", quantity: 6 },
-      { dishName: "Nước Suối Khoáng", quantity: 4 },
-    ],
-  },
-  {
-    id: "kt5",
-    ticketCode: "#B03-005",
-    tableName: "Bàn 03 (Tầng 1)",
-    orderTime: "18:30",
-    orderTimestamp: Date.now() - 20 * 60 * 1000,
-    status: "IN_PROGRESS",
-    station: "BAR",
-    waiterName: "Ngọc Ánh",
-    items: [
-      { dishName: "Sinh Tố Bơ Đắk Lắk", quantity: 2, notes: "Ít đường" },
-      { dishName: "Trà Đào Cam Sả", quantity: 2 },
-    ],
-  },
-  {
-    id: "kt6",
-    ticketCode: "#B04-006",
-    tableName: "Bàn 04 (VIP 1)",
-    orderTime: "18:20",
-    orderTimestamp: Date.now() - 30 * 60 * 1000,
-    status: "DONE",
-    station: "KITCHEN",
-    waiterName: "Minh Tuấn",
-    items: [
-      { dishName: "Gỏi Cuốn Tôm Thịt", quantity: 2 },
-      { dishName: "Chả Giò Chiên Giòn", quantity: 1 },
-    ],
-  },
-];
+const MOCK_TICKETS: CmsKdsTicket[] = [];
 
 import { usePersistentState } from "@/hooks/usePersistentState";
 
@@ -100,7 +12,7 @@ function minutesAgo(ts: number): number {
 }
 
 export const CmsKdsView: React.FC = () => {
-  const [tickets, setTickets] = usePersistentState<CmsKdsTicket[]>("kds_tickets_data", MOCK_TICKETS);
+  const [tickets, setTickets] = usePersistentState<CmsKdsTicket[]>("kds_tickets_data", []);
   const [stationFilter, setStationFilter] = usePersistentState<"ALL" | KdsStation>("kds_station_filter", "ALL");
   const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>("kds_sound_enabled", true);
   const [now, setNow] = useState(Date.now());
@@ -304,7 +216,7 @@ export const CmsKdsView: React.FC = () => {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Kitchen Display System (KDS)
+                Bếp & Pha Chế
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
                 {newTickets.length} Vé chờ nấu • {inProgressTickets.length} Đang trên bếp
@@ -312,10 +224,10 @@ export const CmsKdsView: React.FC = () => {
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Màn Hình Điều Phối Bếp Nóng & Quầy Bar
+              Bếp & Pha Chế
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Tự động tiếp nhận order từ bàn QR và nhân viên phục vụ, chia trạm Bếp/Bar tức thời với cảnh báo thời gian thực.
+              Nhận món từ bàn, điều phối chế biến và thông báo trả món
             </p>
 
             {/* Quick Live Stats Chips */}

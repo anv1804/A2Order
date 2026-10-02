@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
+import { configApi } from "@/services/api/configApi";
+import { PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
 
 export interface CreateLicenseKeyModalProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const [plans, setPlans] = useState<PlanConfig[]>(Object.values(PLAN_CONFIGS));
   const [storeId, setStoreId] = useState<string>("UNASSIGNED");
   const [plan, setPlan] = useState<"STARTER" | "GROWTH" | "PRO">("PRO");
   const [durationMonths, setDurationMonths] = useState<number>(12);
@@ -28,7 +31,19 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
   const { requestClose } = useUnsavedEditor("create_license_key", isOpen, JSON.stringify({ storeId, plan, durationMonths, maxDevices }), onClose);
 
   useEffect(() => {
-    if (isOpen) { setStoreId("UNASSIGNED"); setPlan("PRO"); setDurationMonths(12); setMaxDevices(8); }
+    if (isOpen) {
+      setStoreId("UNASSIGNED");
+      setPlan("PRO");
+      setDurationMonths(12);
+      setMaxDevices(8);
+
+      configApi.getPricingConfig().then((cfg) => {
+        if (cfg?.plans) {
+          const list = (Array.isArray(cfg.plans) ? cfg.plans : Object.values(cfg.plans)) as PlanConfig[];
+          if (list.length > 0) setPlans(list);
+        }
+      }).catch(() => {});
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -107,7 +122,7 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
                   {
                     id: "STARTER",
                     name: "STARTER",
-                    price: "199.000đ/tháng",
+                    price: `${((plans.find((x) => x.id === "STARTER")?.monthlyPrice || 119000)).toLocaleString("vi-VN")}đ/tháng`,
                     devices: "Max 2 máy",
                     desc: "POS Thu ngân + QR Menu",
                     border: "hover:border-emerald-400",
@@ -116,18 +131,18 @@ export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
                   {
                     id: "GROWTH",
                     name: "GROWTH",
-                    price: "399.000đ/tháng",
-                    devices: "Max 4 máy",
-                    desc: "POS + QR + Màn hình Bếp KDS",
+                    price: `${((plans.find((x) => x.id === "GROWTH")?.monthlyPrice || 199000)).toLocaleString("vi-VN")}đ/tháng`,
+                    devices: "Max 5 máy (KDS tự do)",
+                    desc: "POS + QR + Bếp KDS + Kế toán",
                     border: "hover:border-blue-400",
                     active: "border-blue-600 bg-blue-50 text-blue-950",
                   },
                   {
                     id: "PRO",
                     name: "PRO",
-                    price: "599.000đ/tháng",
-                    devices: "Max 10 máy",
-                    desc: "Toàn bộ module + Kế toán & Web",
+                    price: `${((plans.find((x) => x.id === "PRO")?.monthlyPrice || 299000)).toLocaleString("vi-VN")}đ/tháng`,
+                    devices: "Không giới hạn",
+                    desc: "Full 6 Modules + Web Landing Page",
                     border: "hover:border-purple-400",
                     active: "border-purple-600 bg-purple-50 text-purple-950",
                   },

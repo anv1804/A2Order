@@ -2,7 +2,7 @@ import { FastifyInstance } from "fastify";
 import { prisma } from "../../core/database/prismaClient.js";
 import { storeRepository } from "../../core/database/repositoryFactory.js";
 import { emitToStore, getStoreTelemetryStats } from "../../core/websocket/socketServer.js";
-import { SocketEvents, TenantStoreRecord } from "@a2order/shared";
+import { SocketEvents, TenantStoreRecord, CreateStoreInput } from "@a2order/shared";
 import { enforceDataPrivacy } from "../../core/middlewares/privacyMiddleware.js";
 
 export async function storeRoutes(fastify: FastifyInstance) {
@@ -64,7 +64,7 @@ export async function storeRoutes(fastify: FastifyInstance) {
    * POST /api/stores
    */
   fastify.post("/", async (request, reply) => {
-    const body = request.body as Partial<TenantStoreRecord>;
+    const body = request.body as CreateStoreInput;
     if (!body || !body.name || !body.phone) {
       return reply.status(400).send({ success: false, error: "Tên quán và số điện thoại là bắt buộc" });
     }
@@ -77,7 +77,8 @@ export async function storeRoutes(fastify: FastifyInstance) {
         data: created,
       };
     } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
+      const statusCode = err.message?.includes("đã được sử dụng") ? 400 : 500;
+      return reply.status(statusCode).send({ success: false, error: err.message });
     }
   });
 
@@ -95,6 +96,31 @@ export async function storeRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ success: false, error: "Quán không tồn tại" });
       }
       return { success: true, message: "Đã cập nhật thông tin quán thành công!", data: updated };
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, error: err.message });
+    }
+  });
+
+  /**
+   * 4b. XÓA VĨNH VIỄN CỬA HÀNG (DELETE STORE)
+   * DELETE /api/stores/:storeId
+   */
+  fastify.delete("/:storeId", async (request, reply) => {
+    const { storeId } = request.params as { storeId: string };
+    if (storeId === "store-a2platform-system") {
+      return reply.status(403).send({ success: false, error: "Không thể xóa trụ sở hệ thống A2Order Platform." });
+    }
+
+    try {
+      const existing = await storeRepository.getById(storeId);
+      if (!existing) {
+        return reply.status(404).send({ success: false, error: "Cửa hàng không tồn tại" });
+      }
+      await storeRepository.delete(storeId);
+      return {
+        success: true,
+        message: `Đã xóa vĩnh viễn cửa hàng "${existing.name}" thành công!`,
+      };
     } catch (err: any) {
       return reply.status(500).send({ success: false, error: err.message });
     }

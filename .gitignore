@@ -9,11 +9,10 @@ build/
 .next/
 out/
 
-# Environment Variables
-.env
-.env.local
-.env.production
-.env.development
+# Environment Variables (Tracked per user request: đẩy cả env)
+!**/.env
+!**/.env.*
+!.env
 
 # Logs
 npm-debug.log*

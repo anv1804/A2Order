@@ -126,14 +126,14 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black text-ink-primary tracking-tight">
-              Website & Landing Page Riêng Cho Quán
+              Trang Web Của Quán
             </h2>
             <Badge variant="success" className="font-extrabold text-[10px]">
-              Custom Domain Sẵn Sàng
+              Website
             </Badge>
           </div>
           <p className="text-xs text-ink-muted mt-0.5">
-            Xây dựng trang web thương hiệu với domain riêng, giới thiệu quán, thực đơn xem trước và nhận đặt bàn trước.
+            Giới thiệu quán, thực đơn xem trước và nhận đặt bàn trực tuyến
           </p>
         </div>
 

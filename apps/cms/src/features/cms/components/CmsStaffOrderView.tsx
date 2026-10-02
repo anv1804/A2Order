@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Icon, Button, Badge, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -11,6 +11,22 @@ import {
   OrderDiscount,
 } from "@/types/cms.types";
 import { CmsKdsTicket, KdsOrderItem } from "@/types/kds.types";
+import { getSocketClient, joinStoreRoom } from "@/lib/socket";
+import { SocketEvents } from "@a2order/shared";
+import { tableApi } from "@/services/api/tableApi";
+import { menuApi } from "@/services/api/menuApi";
+import { orderApi, PendingOrder } from "@/services/api/orderApi";
+import { sound } from "@/lib/sound";
+
+export interface PendingSessionRequest {
+  tableId: string;
+  tableName: string;
+  tableCode: string;
+  zoneName: string;
+  storeId: string;
+  requestedAt: number;
+  guestCount: number;
+}
 
 interface DishItem {
   id: string;
@@ -23,167 +39,9 @@ interface DishItem {
   modifiers?: string[];
 }
 
-const SAMPLE_DISHES: DishItem[] = [
-  {
-    id: "d1",
-    name: "Phở Bò Tái Lăn Đặc Biệt",
-    category: "Món Chính",
-    price: 65000,
-    image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=300&auto=format&fit=crop&q=80",
-    description: "Thịt bò tái xào tỏi thơm lừng, nước dùng hầm xương 24h",
-    isPopular: true,
-    modifiers: ["Không hành", "Nhiều hành", "Ít bánh phở", "Thịt tái mềm", "Trứng chần"],
-  },
-  {
-    id: "d2",
-    name: "Phở Gà Đùi Lá Chanh",
-    category: "Món Chính",
-    price: 55000,
-    image: "https://images.unsplash.com/photo-1594041680534-e8c8cdebd659?w=300&auto=format&fit=crop&q=80",
-    description: "Gà ta thả vườn da giòn thịt ngọt, thơm hương lá chanh",
-    modifiers: ["Thịt nạc", "Có da", "Thêm trứng non", "Đầu cánh"],
-  },
-  {
-    id: "d3",
-    name: "Bún Chả Nem Cua Bể",
-    category: "Món Chính",
-    price: 60000,
-    image: "https://images.unsplash.com/photo-1559847844-5315695dadae?w=300&auto=format&fit=crop&q=80",
-    description: "Chả nướng than hoa vàng rộm ăn kèm nem cua bể giòn rụm",
-    isPopular: true,
-    modifiers: ["Nhiều chả miếng", "Nhiều chả băm", "Không cay", "Nhiều rau sống"],
-  },
-  {
-    id: "d4",
-    name: "Nem Rán Hà Nội (Dĩa 6 cuốn)",
-    category: "Khai Vị",
-    price: 45000,
-    image: "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=300&auto=format&fit=crop&q=80",
-    description: "Vỏ giòn rụm nhân thịt mộc nhĩ nấm hương truyền thống",
-    modifiers: ["Tương ớt riêng", "Nước mắm chua ngọt"],
-  },
-  {
-    id: "d5",
-    name: "Quẩy Giòn Phở (Dĩa 3 chiếc)",
-    category: "Khai Vị",
-    price: 15000,
-    image: "https://images.unsplash.com/photo-1541544741938-0af808871cc0?w=300&auto=format&fit=crop&q=80",
-    description: "Quẩy nóng giòn rụm nhúng súp phở",
-  },
-  {
-    id: "d6",
-    name: "Trà Đào Cam Sả Tươi",
-    category: "Đồ Uống",
-    price: 35000,
-    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80",
-    description: "Trà ủ lạnh kèm miếng đào giòn và sả tươi thanh mát",
-    isPopular: true,
-    modifiers: ["50% đường", "Ít đá", "Không đá", "Đá riêng", "Thêm đào"],
-  },
-  {
-    id: "d7",
-    name: "Trà Chanh Giã Tay Quảng Đông",
-    category: "Đồ Uống",
-    price: 29000,
-    image: "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=300&auto=format&fit=crop&q=80",
-    description: "Chanh nước hoa thơm nồng dập tươi đậm vị",
-    modifiers: ["Ít ngọt", "Chua nhiều", "Ít đá", "Mang về"],
-  },
-  {
-    id: "d8",
-    name: "Cà Phê Sữa Đá Sài Gòn",
-    category: "Đồ Uống",
-    price: 28000,
-    image: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?w=300&auto=format&fit=crop&q=80",
-    description: "Cà phê Robusta đậm đặc pha phin sữa đặc béo ngậy",
-    modifiers: ["Nhiều sữa", "Đậm cà phê", "Ít đá"],
-  },
-  {
-    id: "d9",
-    name: "Lẩu Riêu Cua Bắp Bò Sườn Sụn (Nồi Vừa)",
-    category: "Lẩu & Nướng",
-    price: 280000,
-    image: "https://images.unsplash.com/photo-1547928576-a4a33237cbc3?w=300&auto=format&fit=crop&q=80",
-    description: "Nước lẩu giấm bỗng chua thanh, riêu cua đồng xịn, bắp bò hoa",
-    isPopular: true,
-    modifiers: ["Không cay", "Cay nồng", "Thêm trứng vịt lộn", "Thêm rau muống chẻ"],
-  },
-];
+const SAMPLE_DISHES: DishItem[] = [];
 
-const INITIAL_TABLES: WaiterTableOrder[] = [
-  {
-    tableId: "t1",
-    tableName: "Bàn 01",
-    zoneName: "Tầng 1",
-    guestCount: 2,
-    status: "OCCUPIED",
-    openedAt: "18:20",
-    items: [
-      { dishId: "d1", name: "Phở Bò Tái Lăn Đặc Biệt", price: 65000, quantity: 2, notes: "Không hành, 1 chín 1 tái", status: "COOKING", round: 2, orderedAt: "18:40" },
-      { dishId: "d5", name: "Quẩy Giòn Phở", price: 15000, quantity: 1, status: "SERVED", round: 1, orderedAt: "18:20" },
-      { dishId: "d6", name: "Trà Đào Cam Sả Tươi", price: 35000, quantity: 2, notes: "Ít đá", status: "SERVED", round: 1, orderedAt: "18:20" },
-    ],
-    totalAmount: 180000,
-  },
-  {
-    tableId: "t2",
-    tableName: "Bàn 02",
-    zoneName: "Tầng 1",
-    guestCount: 4,
-    status: "WAITING_FOOD",
-    openedAt: "18:45",
-    items: [
-      { dishId: "d9", name: "Lẩu Riêu Cua Bắp Bò", price: 280000, quantity: 1, notes: "Ít cay", status: "WAITING", round: 1, orderedAt: "18:45" },
-      { dishId: "d4", name: "Nem Rán Hà Nội", price: 45000, quantity: 2, status: "COOKING", round: 1, orderedAt: "18:45" },
-    ],
-    totalAmount: 370000,
-  },
-  {
-    tableId: "t3",
-    tableName: "Bàn 03",
-    zoneName: "Tầng 1",
-    guestCount: 0,
-    status: "EMPTY",
-    items: [],
-    totalAmount: 0,
-  },
-  {
-    tableId: "t4",
-    tableName: "Bàn 04",
-    zoneName: "Tầng 1",
-    guestCount: 3,
-    status: "BILL_REQUESTED",
-    openedAt: "17:50",
-    items: [
-      { dishId: "d1", name: "Phở Bò Tái Lăn Đặc Biệt", price: 65000, quantity: 3, status: "SERVED", round: 1, orderedAt: "17:50" },
-      { dishId: "d7", name: "Trà Chanh Giã Tay", price: 29000, quantity: 3, status: "SERVED", round: 1, orderedAt: "17:50" },
-    ],
-    totalAmount: 282000,
-  },
-  {
-    tableId: "t5",
-    tableName: "Bàn 05",
-    zoneName: "Tầng 2",
-    guestCount: 0,
-    status: "EMPTY",
-    items: [],
-    totalAmount: 0,
-  },
-  {
-    tableId: "t6",
-    tableName: "Bàn VIP 1",
-    zoneName: "Phòng VIP",
-    guestCount: 8,
-    status: "OCCUPIED",
-    openedAt: "18:10",
-    items: [
-      { dishId: "d9", name: "Lẩu Riêu Cua Bắp Bò", price: 280000, quantity: 2, status: "SERVED", round: 1, orderedAt: "18:10" },
-      { dishId: "d4", name: "Nem Rán Hà Nội", price: 45000, quantity: 3, status: "SERVED", round: 1, orderedAt: "18:10" },
-      { dishId: "d8", name: "Cà Phê Sữa Đá Sài Gòn", price: 28000, quantity: 8, status: "SERVED", round: 2, orderedAt: "18:35" },
-    ],
-    totalAmount: 919000,
-  },
-];
+const INITIAL_TABLES: WaiterTableOrder[] = [];
 
 const calculateTableTotal = (
   items: WaiterOrderItem[],
@@ -199,12 +57,517 @@ const calculateTableTotal = (
   return Math.max(0, food + sur - disc);
 };
 
-export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRole = "STORE_OWNER" }) => {
+export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
+  currentRole = "STORE_OWNER",
+  onNavigateTab,
+}) => {
   const isCashier = currentRole === "CASHIER";
   const [tables, setTables] = usePersistentState<WaiterTableOrder[]>("staff_order_tables_data", INITIAL_TABLES);
+  const [zonesData, setZonesData] = usePersistentState<any[]>("tables_zones_data", []);
+  const [menuDishes, setMenuDishes] = usePersistentState<any[]>("menu_dishes_data", []);
+
+  const dishesList: DishItem[] = useMemo(() => {
+    if (menuDishes && menuDishes.length > 0) {
+      return menuDishes.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        category: d.category || "Món Chính",
+        price: d.price || 0,
+        image: d.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&auto=format&fit=crop&q=80",
+        description: d.description || "",
+        isPopular: d.isBestSeller,
+        modifiers: d.options?.flatMap((opt: any) => opt.choices || []) || [],
+      }));
+    }
+    return [];
+  }, [menuDishes]);
+
   const [selectedZone, setSelectedZone] = useState<string>("TẤT CẢ");
-  const [activeTableId, setActiveTableId] = usePersistentState<string>("staff_order_active_table", "t1");
+  const [activeTableId, setActiveTableId] = usePersistentState<string>("staff_order_active_table", "");
   const [activeTab, setActiveTab] = useState<"MENU" | "SERVED_ITEMS">("MENU");
+
+  // Tự động đồng bộ bàn thực tế từ sơ đồ bàn (Database) và loại bỏ bàn fake cũ
+  useEffect(() => {
+    if (zonesData && zonesData.length > 0) {
+      const allZoneTableIds = new Set(zonesData.flatMap((z: any) => (z.tables || []).map((t: any) => t.id)));
+      const hasInvalidTables =
+        tables.length === 0 ||
+        tables.some((t) => !allZoneTableIds.has(t.tableId)) ||
+        tables.some((t) => {
+          const found = zonesData.flatMap((z: any) => z.tables || []).find((zt: any) => zt.id === t.tableId);
+          return found && !t.pin && found.pin;
+        });
+
+      if (tables.length === 0 || hasInvalidTables) {
+        const synced: WaiterTableOrder[] = zonesData.flatMap((z: any) =>
+          (z.tables || []).map((t: any) => {
+            const existing = tables.find((et) => et.tableId === t.id);
+            return existing
+              ? { ...existing, pin: t.pin || existing.pin, tableCode: t.code || existing.tableCode }
+              : {
+                  tableId: t.id,
+                  tableName: t.name,
+                  tableCode: t.code,
+                  pin: t.pin,
+                  zoneName: z.name,
+                  guestCount: 0,
+                  status: "EMPTY" as const,
+                  items: [],
+                  totalAmount: 0,
+                };
+          })
+        );
+        if (synced.length > 0) {
+          setTables(synced);
+          if (!synced.some((t) => t.tableId === activeTableId)) {
+            setActiveTableId(synced[0].tableId);
+          }
+        }
+      }
+    }
+  }, [zonesData, tables, activeTableId, setTables, setActiveTableId]);
+
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("a2order_current_user") || localStorage.getItem("user") : null;
+  const storeId = userStr ? JSON.parse(userStr).storeId || "store-bubble-tea" : "store-bubble-tea";
+
+  const formatTableName = (name?: string) => {
+    if (!name) return "Bàn";
+    return name.trim().toLowerCase().startsWith("bàn") ? name.trim() : `Bàn ${name.trim()}`;
+  };
+
+  // Tự động tải sơ đồ bàn và thực đơn món từ Database vào POS nếu chưa có
+  useEffect(() => {
+    tableApi.getTableZones(storeId).then((res) => {
+      const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
+      if (list.length > 0) {
+        setZonesData(list);
+      }
+    }).catch(() => {});
+
+    menuApi.getDishes(storeId).then((res) => {
+      const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
+      if (list.length > 0) {
+        setMenuDishes(list);
+      }
+    }).catch(() => {});
+  }, [storeId, setZonesData, setMenuDishes]);
+
+  const [pendingRequests, setPendingRequests] = useState<PendingSessionRequest[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [serviceRequests, setServiceRequests] = useState<
+    Array<{ id: string; tableId?: string; tableName?: string; type: string; note?: string; time: string }>
+  >([]);
+  const [isApprovingId, setIsApprovingId] = useState<string | null>(null);
+  const [isProcessingOrderId, setIsProcessingOrderId] = useState<string | null>(null);
+
+  // Notification Center state
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [notifTab, setNotifTab] = useState<"ORDERS" | "SERVICE" | "OPEN_TABLE">("ORDERS");
+  const totalNotifCount = pendingOrders.length + serviceRequests.length + pendingRequests.length;
+
+  // Live session timer ticker (re-render mỗi 30s để cập nhật elapsed time)
+  const [, setTimerTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTimerTick((t) => t + 1), 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatElapsed = (openedAtMs?: number): string => {
+    if (!openedAtMs) return "";
+    const elapsed = Date.now() - openedAtMs;
+    const mins = Math.floor(elapsed / 60000);
+    if (mins < 60) return `${mins}p`;
+    const hrs = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem > 0 ? `${hrs}g ${rem}p` : `${hrs}g`;
+  };
+
+  // Mở bàn thủ công từ POS (không cần khách quét QR)
+  const [openTableModal, setOpenTableModal] = useState<{ tableId: string; tableName: string } | null>(null);
+  const [openTableGuestCount, setOpenTableGuestCount] = useState(2);
+  const [isOpeningTable, setIsOpeningTable] = useState(false);
+
+  const handleOpenTableManually = async () => {
+    if (!openTableModal) return;
+    setIsOpeningTable(true);
+    try {
+      await tableApi.approveTableSession(storeId, openTableModal.tableId, openTableGuestCount);
+      const openedAtMs = Date.now();
+      const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === openTableModal.tableId
+            ? { ...t, status: "OCCUPIED", guestCount: openTableGuestCount, openedAt: timeStr, openedAtMs }
+            : t
+        )
+      );
+      setActiveTableId(openTableModal.tableId);
+      sound.playKitchenChime();
+      toast.success(`Đã mở ${openTableModal.tableName} (${openTableGuestCount} khách)!`);
+      setOpenTableModal(null);
+    } catch (err: any) {
+      toast.error("Không thể mở bàn: " + (err.message || "Lỗi kết nối"));
+    } finally {
+      setIsOpeningTable(false);
+    }
+  };
+
+  // Lắng nghe yêu cầu mở bàn QR từ khách và các sự kiện thời gian thực
+  useEffect(() => {
+    joinStoreRoom(storeId);
+    const socket = getSocketClient();
+
+    // 1. Tải các yêu cầu mở bàn đang chờ duyệt từ server
+    tableApi
+      .getPendingRequests(storeId)
+      .then((res) => {
+        const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
+        setPendingRequests(list);
+      })
+      .catch(() => {});
+
+    // 1.1 Tải danh sách đơn hàng QR đang chờ duyệt vào bếp
+    orderApi
+      .getPendingOrders(storeId)
+      .then((res) => {
+        if (Array.isArray(res)) setPendingOrders(res);
+      })
+      .catch(() => {});
+
+    // 2. Khách quét QR bấm "Yêu Cầu Mở Bàn"
+    const handleSessionRequested = (data: PendingSessionRequest) => {
+      if (!data) return;
+      sound.playAlertTone();
+      setNotifTab("OPEN_TABLE");
+      setPendingRequests((prev) => {
+        const filtered = prev.filter((r) => r.tableId !== data.tableId);
+        return [data, ...filtered];
+      });
+      toast.info(`🔔 ${formatTableName(data.tableName)} vừa quét QR yêu cầu mở bàn (${data.guestCount || 2} khách)!`);
+    };
+
+    // 3. Đã duyệt mở bàn
+    const handleSessionApproved = (data: any) => {
+      if (!data) return;
+      setPendingRequests((prev) => prev.filter((r) => r.tableId !== data.tableId));
+      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === data.tableId
+            ? {
+                ...t,
+                status: "OCCUPIED",
+                guestCount: data.guestCount || t.guestCount || 2,
+                openedAt: t.openedAt || timeNow,
+                openedAtMs: t.openedAtMs || Date.now(),
+              }
+            : t
+        )
+      );
+    };
+
+    // 4. Từ chối mở bàn
+    const handleSessionRejected = (data: any) => {
+      if (!data) return;
+      setPendingRequests((prev) => prev.filter((r) => r.tableId !== data.tableId));
+    };
+
+    // 5. Đóng phiên bàn (thanh toán / dọn bàn)
+    const handleSessionClosed = (data: any) => {
+      if (!data) return;
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === data.tableId
+            ? { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 }
+            : t
+        )
+      );
+    };
+
+    // 6. Đơn hàng khách gửi chờ duyệt trước khi vào bếp
+    const handleOrderApprovalRequested = (order: PendingOrder) => {
+      if (!order || order.storeId !== storeId) return;
+      sound.playAlertTone();
+      setNotifTab("ORDERS");
+      setPendingOrders((prev) => {
+        const filtered = prev.filter((o) => o.orderId !== order.orderId);
+        return [order, ...filtered];
+      });
+      toast.info(`🔔 ${formatTableName(order.tableName)} vừa gửi đơn ${order.items.length} món (Chờ duyệt vào bếp)!`);
+    };
+
+    // 7. Đơn đã được duyệt vào bếp (đồng bộ trên mọi tab POS)
+    const handleOrderApproved = (data: any) => {
+      if (!data) return;
+      setPendingOrders((prev) => prev.filter((o) => o.orderId !== data.orderId));
+    };
+
+    // 8. Đơn bị từ chối
+    const handleOrderRejected = (data: any) => {
+      if (!data) return;
+      setPendingOrders((prev) => prev.filter((o) => o.orderId !== data.orderId));
+    };
+
+    // 9. Khách hủy món khi quán chưa duyệt (PENDING_APPROVAL)
+    const handleOrderItemCancelled = (data: any) => {
+      if (!data) return;
+      sound.playAlertTone();
+      setPendingOrders((prev) =>
+        prev
+          .map((o) => {
+            if (o.orderId === data.orderId) {
+              return {
+                ...o,
+                items: o.items.filter((it) => it.id !== data.itemId),
+              };
+            }
+            return o;
+          })
+          .filter((o) => o.items.length > 0)
+      );
+
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.tableId === data.tableId) {
+            return {
+              ...t,
+              items: t.items.filter((it) => it.id !== data.itemId),
+            };
+          }
+          return t;
+        })
+      );
+      toast.info(`Khách tại ${data.tableName || "bàn"} đã hủy món ${data.dishName || ""}`);
+    };
+
+    // 10. Khách gửi yêu cầu hỗ trợ nhanh (đá, giấy, dọn bàn...)
+    const handleServiceRequested = (data: any) => {
+      if (!data || data.storeId !== storeId) return;
+      sound.playAlertTone();
+      setNotifTab("SERVICE");
+      const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      setServiceRequests((prev) => [
+        {
+          id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          tableId: data.tableId,
+          tableName: data.tableName || "Bàn",
+          type: data.type,
+          note: data.note,
+          time: timeStr,
+        },
+        ...prev,
+      ]);
+      toast.warning(`⚡ ${formatTableName(data.tableName)} yêu cầu: ${data.type}!`);
+    };
+
+    // 11. Đơn hàng chính thức vào bếp (qua POS hoặc sau khi duyệt)
+    const handleOrderSubmitted = (data: any) => {
+      if (!data || !data.items || !Array.isArray(data.items)) return;
+      sound.playKitchenChime();
+      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+      const newItems: WaiterOrderItem[] = data.items.map((it: any, idx: number) => ({
+        id: `cust-${Date.now()}-${idx}`,
+        name: it.name,
+        price: it.price,
+        quantity: it.quantity,
+        status: "COOKING",
+        orderedAt: timeNow,
+        round: 1,
+      }));
+
+      setTables((prev) =>
+        prev.map((t) => {
+          if (t.tableId === data.tableId || t.tableName === data.tableName) {
+            const addedSum = newItems.reduce((s, i) => s + i.price * i.quantity, 0);
+            return {
+              ...t,
+              status: "WAITING_FOOD",
+              openedAt: t.openedAt || timeNow,
+              items: [...t.items, ...newItems],
+              totalAmount: t.totalAmount + addedSum,
+            };
+          }
+          return t;
+        })
+      );
+
+      // Thêm vé vào KDS Bếp
+      try {
+        const rawKds = localStorage.getItem("a2order_kds_tickets_data");
+        const existingTickets: CmsKdsTicket[] = rawKds ? JSON.parse(rawKds) : [];
+        const newTicket: CmsKdsTicket = {
+          id: "kt-qr-" + Date.now(),
+          ticketCode: `#QR-${String(data.tableName || "BAN").replace(/\s+/g, "")}-${String(Date.now()).slice(-4)}`,
+          tableName: `${data.tableName || "Bàn QR"}`,
+          orderTime: timeNow,
+          orderTimestamp: Date.now(),
+          status: "NEW",
+          station: "KITCHEN",
+          waiterName: "Khách Quét QR",
+          priority: "NORMAL",
+          items: newItems.map((i) => ({
+            dishName: i.name,
+            quantity: i.quantity,
+            notes: "[Khách gọi qua QR]",
+          })),
+        };
+        localStorage.setItem("a2order_kds_tickets_data", JSON.stringify([newTicket, ...existingTickets]));
+      } catch (e) {
+        console.warn("Lỗi lưu vé KDS từ khách:", e);
+      }
+
+      toast.success(`Khách tại ${data.tableName || "Bàn"} vừa gọi ${newItems.length} món qua QR! Bếp đã nhận vé.`);
+    };
+
+    socket.on(SocketEvents.SESSION_REQUESTED, handleSessionRequested);
+    socket.on(SocketEvents.SESSION_APPROVED, handleSessionApproved);
+    socket.on(SocketEvents.SESSION_REJECTED, handleSessionRejected);
+    socket.on(SocketEvents.SESSION_CLOSED, handleSessionClosed);
+    socket.on(SocketEvents.ORDER_APPROVAL_REQUESTED, handleOrderApprovalRequested);
+    socket.on(SocketEvents.ORDER_APPROVED, handleOrderApproved);
+    socket.on(SocketEvents.ORDER_REJECTED, handleOrderRejected);
+    socket.on(SocketEvents.ORDER_ITEM_CANCELLED, handleOrderItemCancelled);
+    socket.on(SocketEvents.SERVICE_REQUESTED, handleServiceRequested);
+    socket.on(SocketEvents.ORDER_SUBMITTED, handleOrderSubmitted);
+
+    return () => {
+      socket.off(SocketEvents.SESSION_REQUESTED, handleSessionRequested);
+      socket.off(SocketEvents.SESSION_APPROVED, handleSessionApproved);
+      socket.off(SocketEvents.SESSION_REJECTED, handleSessionRejected);
+      socket.off(SocketEvents.SESSION_CLOSED, handleSessionClosed);
+      socket.off(SocketEvents.ORDER_APPROVAL_REQUESTED, handleOrderApprovalRequested);
+      socket.off(SocketEvents.ORDER_APPROVED, handleOrderApproved);
+      socket.off(SocketEvents.ORDER_REJECTED, handleOrderRejected);
+      socket.off(SocketEvents.ORDER_ITEM_CANCELLED, handleOrderItemCancelled);
+      socket.off(SocketEvents.SERVICE_REQUESTED, handleServiceRequested);
+      socket.off(SocketEvents.ORDER_SUBMITTED, handleOrderSubmitted);
+    };
+  }, [storeId, setTables]);
+
+  // Duyệt mở bàn 1-chạm
+  const handleApproveSession = async (req: PendingSessionRequest) => {
+    setIsApprovingId(req.tableId);
+    try {
+      await tableApi.approveTableSession(storeId, req.tableId, req.guestCount);
+      setPendingRequests((prev) => prev.filter((r) => r.tableId !== req.tableId));
+      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+      const openedAtMs = Date.now();
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === req.tableId
+            ? {
+                ...t,
+                status: "OCCUPIED",
+                guestCount: req.guestCount || 2,
+                openedAt: t.openedAt || timeNow,
+                openedAtMs: t.openedAtMs || openedAtMs,
+              }
+            : t
+        )
+      );
+      setActiveTableId(req.tableId);
+      sound.playKitchenChime();
+      toast.success(
+        `Đã duyệt mở ${formatTableName(req.tableName)} (${req.guestCount} khách)! Khách có thể gọi món ngay trên điện thoại.`
+      );
+    } catch (err: any) {
+      toast.error("Không thể duyệt mở bàn: " + (err.message || "Lỗi kết nối"));
+    } finally {
+      setIsApprovingId(null);
+    }
+  };
+
+  // Từ chối mở bàn
+  const handleRejectSession = async (req: PendingSessionRequest) => {
+    try {
+      await tableApi.rejectTableSession(storeId, req.tableId, "Nhân viên xác nhận bàn hiện chưa có khách ngồi thực tế");
+      setPendingRequests((prev) => prev.filter((r) => r.tableId !== req.tableId));
+      toast.info(`Đã từ chối yêu cầu mở ${formatTableName(req.tableName)}`);
+    } catch (err: any) {
+      toast.error("Lỗi khi từ chối yêu cầu: " + (err.message || "Lỗi kết nối"));
+    }
+  };
+
+  // Duyệt đơn hàng vào bếp
+  const handleApproveOrder = async (order: PendingOrder) => {
+    setIsProcessingOrderId(order.orderId);
+    try {
+      await orderApi.approveOrder(storeId, order.orderId);
+      setPendingOrders((prev) => prev.filter((o) => o.orderId !== order.orderId));
+      sound.playKitchenChime();
+      toast.success(`Đã duyệt đơn của ${formatTableName(order.tableName)} vào bếp!`);
+    } catch (err: any) {
+      toast.error("Không thể duyệt đơn: " + (err.message || "Lỗi kết nối"));
+    } finally {
+      setIsProcessingOrderId(null);
+    }
+  };
+
+  // Từ chối đơn hàng
+  const handleRejectOrder = async (order: PendingOrder) => {
+    const ok = await confirmDialog({
+      title: `Từ chối đơn của ${formatTableName(order.tableName)}?`,
+      message: `Đơn gồm ${order.items.length} món (${order.finalAmount.toLocaleString("vi-VN")} đ) sẽ bị hủy và thông báo tới khách hàng.`,
+      confirmText: "Từ Chối Đơn",
+      cancelText: "Xem Lại",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    setIsProcessingOrderId(order.orderId);
+    try {
+      await orderApi.rejectOrder(storeId, order.orderId, "Nhà hàng hiện đang quá tải hoặc hết món");
+      setPendingOrders((prev) => prev.filter((o) => o.orderId !== order.orderId));
+      toast.info(`Đã từ chối đơn của ${formatTableName(order.tableName)}`);
+    } catch (err: any) {
+      toast.error("Không thể từ chối đơn: " + (err.message || "Lỗi kết nối"));
+    } finally {
+      setIsProcessingOrderId(null);
+    }
+  };
+
+  // Xoay mã PIN mới cho bàn (Dynamic PIN Rotation)
+  const handleRotateTablePin = async (tableId: string, tableName: string) => {
+    try {
+      const res = await tableApi.rotatePin(storeId, tableId);
+      const newPin = res?.pin || res?.data?.pin;
+      toast.success(`Đã tạo mã PIN mới cho ${formatTableName(tableName)}${newPin ? `: ${newPin}` : ""}!`);
+      if (newPin) {
+        setTables((prev) =>
+          prev.map((t) => (t.tableId === tableId ? { ...t, pin: newPin } : t))
+        );
+      }
+    } catch (err: any) {
+      toast.error("Lỗi đổi mã PIN: " + (err.message || "Lỗi kết nối"));
+    }
+  };
+
+  // Đóng phiên bàn & dọn bàn
+  const handleCloseTableSession = async (tableId: string, tableName: string) => {
+    const ok = await confirmDialog({
+      title: `Đóng phiên & dọn ${tableName}?`,
+      message: `Bàn sẽ chuyển về trạng thái TRỐNG. Mọi thiết bị khách đang quét mã QR bàn này sẽ tự động đóng phiên và không thể gọi thêm món cho đến khi nhân viên mở phiên mới.`,
+      confirmText: "Đóng Phiên & Dọn Bàn",
+      cancelText: "Giữ Lại",
+      variant: "danger",
+    });
+    if (!ok) return;
+
+    try {
+      await tableApi.closeTableSession(storeId, tableId);
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === tableId
+            ? { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, openedAtMs: undefined, guestCount: 0 }
+            : t
+        )
+      );
+      toast.success(`Đã đóng phiên và giải phóng ${tableName} thành công!`);
+    } catch (err: any) {
+      toast.error("Lỗi đóng phiên bàn: " + (err.message || "Lỗi kết nối"));
+    }
+  };
 
   // Điểm then chốt giải quyết khiếu nại UX Mobile: Luồng 3 bước rõ ràng
   const [mobileStep, setMobileStep] = useState<"TABLES" | "MENU" | "CART">("TABLES");
@@ -273,10 +636,23 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [cashGivenAmount, setCashGivenAmount] = useState<number>(0);
 
+  const FALLBACK_EMPTY_TABLE: WaiterTableOrder = useMemo(
+    () => ({
+      tableId: "",
+      tableName: "Chưa chọn bàn",
+      zoneName: "",
+      guestCount: 0,
+      status: "EMPTY",
+      items: [],
+      totalAmount: 0,
+    }),
+    []
+  );
+
   // Bàn đang được chọn
   const activeTable = useMemo(
-    () => tables.find((t) => t.tableId === activeTableId) || tables[0],
-    [tables, activeTableId]
+    () => tables.find((t) => t.tableId === activeTableId) || tables[0] || FALLBACK_EMPTY_TABLE,
+    [tables, activeTableId, FALLBACK_EMPTY_TABLE]
   );
 
   // Tính toán tài chính hóa đơn bàn ăn
@@ -314,19 +690,19 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
 
   // Danh mục món
   const categories = useMemo(() => {
-    const list = Array.from(new Set(SAMPLE_DISHES.map((d) => d.category)));
+    const list = Array.from(new Set(dishesList.map((d) => d.category)));
     return ["TẤT CẢ", ...list];
-  }, []);
+  }, [dishesList]);
 
   // Lọc món theo category & search
   const filteredDishes = useMemo(() => {
-    return SAMPLE_DISHES.filter((d) => {
+    return dishesList.filter((d) => {
       const matchCat = selectedCategory === "TẤT CẢ" || d.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
       const matchSearch = !q || d.name.toLowerCase().includes(q) || d.description.toLowerCase().includes(q);
       return matchCat && matchSearch;
     });
-  }, [selectedCategory, searchQuery]);
+  }, [dishesList, selectedCategory, searchQuery]);
 
   // Thêm món nhanh vào giỏ order
   const handleQuickAddDish = (dish: DishItem) => {
@@ -467,6 +843,20 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
       variant: "primary",
     });
     if (!ok) return;
+
+    if (isCashier) {
+      tableApi.closeTableSession(storeId, activeTable.tableId).catch(() => {});
+      setTables((prev) =>
+        prev.map((t) =>
+          t.tableId === activeTable.tableId
+            ? { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 }
+            : t
+        )
+      );
+      sound.playPaymentChime();
+      toast.success(`Đã thanh toán hóa đơn cho ${activeTable.tableName} và giải phóng bàn!`);
+      return;
+    }
 
     setTables((prev) =>
       prev.map((t) => (t.tableId === activeTable.tableId ? { ...t, status: "BILL_REQUESTED" } : t))
@@ -960,106 +1350,366 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
   const cartTotalAmount = newOrderCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartTotalQuantity = newOrderCart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Component UI: Sơ đồ chọn bàn
-  const renderTableGrid = () => (
-    <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-surface-border space-y-3 shadow-xs flex-1 flex flex-col min-h-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <Icon name="table" className="w-4 h-4 text-brand-900" />
-          <span className="text-xs font-black uppercase tracking-wider text-ink-primary">
-            Chọn Bàn Phục Vụ
-          </span>
-          <span className="text-xs text-ink-muted">({tables.length} bàn)</span>
+  // Component UI: Khung Thông Báo Cố Định (Fixed Notification Panel)
+  const renderNotificationFixedPanel = () => {
+    if (totalNotifCount === 0) {
+      return (
+        <div className="bg-white px-3.5 py-2 rounded-2xl border border-surface-border shadow-2xs flex items-center justify-between text-xs shrink-0">
+          <div className="flex items-center gap-2 text-ink-muted">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="font-bold text-[11px]">Trực Tuyến</span>
+          </div>
+          <span className="text-[10.5px] text-slate-400 font-medium">✓ 0 yêu cầu chờ xử lý</span>
+        </div>
+      );
+    }
+
+    const currentTab =
+      notifTab === "ORDERS" && pendingOrders.length > 0
+        ? "ORDERS"
+        : notifTab === "SERVICE" && serviceRequests.length > 0
+        ? "SERVICE"
+        : notifTab === "OPEN_TABLE" && pendingRequests.length > 0
+        ? "OPEN_TABLE"
+        : pendingOrders.length > 0
+        ? "ORDERS"
+        : serviceRequests.length > 0
+        ? "SERVICE"
+        : pendingRequests.length > 0
+        ? "OPEN_TABLE"
+        : notifTab;
+
+    return (
+      <div className="bg-white rounded-3xl border-2 border-rose-300 shadow-sm flex flex-col shrink-0 overflow-hidden animate-fadeIn">
+        {/* Header khung thông báo cố định */}
+        <div className="px-3.5 py-2 bg-gradient-to-r from-rose-600 to-rose-500 text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Icon name="bell" className="w-3.5 h-3.5 animate-bounce" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-yellow-300" />
+            </div>
+            <span className="text-xs font-black uppercase tracking-wider">
+              Yêu Cầu Chờ Xử Lý ({totalNotifCount})
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            {pendingOrders.length > 0 && (
+              <span className="text-[9.5px] font-black bg-white/20 px-2 py-0.5 rounded-full">
+                🍽️ {pendingOrders.length}
+              </span>
+            )}
+            {serviceRequests.length > 0 && (
+              <span className="text-[9.5px] font-black bg-white/20 px-2 py-0.5 rounded-full">
+                ⚡ {serviceRequests.length}
+              </span>
+            )}
+            {pendingRequests.length > 0 && (
+              <span className="text-[9.5px] font-black bg-white/20 px-2 py-0.5 rounded-full">
+                🔑 {pendingRequests.length}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Filter Khu Vực */}
-        <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold no-scrollbar">
-          {zones.map((z) => (
-            <button
-              key={z}
-              type="button"
-              onClick={() => setSelectedZone(z)}
-              className={`px-3 py-1 rounded-full transition-all shrink-0 ${
-                selectedZone === z
-                  ? "bg-brand-900 text-white shadow-xs font-black"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-              }`}
-            >
-              {z}
-            </button>
-          ))}
+        {/* Tabs chuyển đổi giữa 3 nhóm */}
+        <div className="flex border-b border-surface-border bg-slate-50 text-xs font-bold shrink-0">
+          <button
+            type="button"
+            onClick={() => setNotifTab("ORDERS")}
+            className={`flex-1 py-1.5 px-2 text-center transition flex items-center justify-center gap-1 border-b-2 text-[11px] ${
+              currentTab === "ORDERS"
+                ? "border-rose-600 text-rose-700 bg-white font-black"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span>Đơn Chờ</span>
+            <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-black ${
+              pendingOrders.length > 0 ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-600"
+            }`}>
+              {pendingOrders.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setNotifTab("SERVICE")}
+            className={`flex-1 py-1.5 px-2 text-center transition flex items-center justify-center gap-1 border-b-2 text-[11px] ${
+              currentTab === "SERVICE"
+                ? "border-rose-600 text-rose-700 bg-white font-black"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span>Hỗ Trợ</span>
+            <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-black ${
+              serviceRequests.length > 0 ? "bg-indigo-500 text-white" : "bg-slate-200 text-slate-600"
+            }`}>
+              {serviceRequests.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setNotifTab("OPEN_TABLE")}
+            className={`flex-1 py-1.5 px-2 text-center transition flex items-center justify-center gap-1 border-b-2 text-[11px] ${
+              currentTab === "OPEN_TABLE"
+                ? "border-rose-600 text-rose-700 bg-white font-black"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            <span>Mở Bàn</span>
+            <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-black ${
+              pendingRequests.length > 0 ? "bg-amber-500 text-white" : "bg-slate-200 text-slate-600"
+            }`}>
+              {pendingRequests.length}
+            </span>
+          </button>
+        </div>
+
+        {/* Danh sách thẻ thông báo */}
+        <div className="p-2 space-y-2 max-h-[190px] overflow-y-auto">
+          {currentTab === "ORDERS" && (
+            pendingOrders.length === 0 ? (
+              <p className="text-center text-[10.5px] text-slate-400 py-3 italic">Không có đơn chờ duyệt</p>
+            ) : (
+              pendingOrders.map((order) => (
+                <div key={order.orderId} className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-black text-slate-900">{formatTableName(order.tableName)} ({order.tableCode})</span>
+                    <span className="font-black text-emerald-800">{order.finalAmount.toLocaleString("vi-VN")} đ</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 truncate">{order.items.map((i) => `${i.quantity}x ${i.name}`).join(", ")}</p>
+                  <div className="flex gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      disabled={isProcessingOrderId === order.orderId}
+                      onClick={() => handleRejectOrder(order)}
+                      className="px-2.5 py-1 rounded-xl text-[10.5px] font-bold bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 transition"
+                    >
+                      Từ Chối
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isProcessingOrderId === order.orderId}
+                      onClick={async () => { await handleApproveOrder(order); }}
+                      className="flex-1 py-1 px-2.5 rounded-xl text-xs font-black bg-emerald-700 hover:bg-emerald-800 text-white transition flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      <Icon name="check" size={11} />
+                      <span>Duyệt Vào Bếp</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+
+          {currentTab === "SERVICE" && (
+            serviceRequests.length === 0 ? (
+              <p className="text-center text-[10.5px] text-slate-400 py-3 italic">Không có yêu cầu hỗ trợ</p>
+            ) : (
+              serviceRequests.map((req, idx) => (
+                <div key={req.id} className="bg-indigo-50/70 border border-indigo-200 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <span className="font-black text-xs text-slate-900">{formatTableName(req.tableName)}: </span>
+                    <span className="text-xs font-bold text-indigo-700">{req.type}</span>
+                    {req.note && <p className="text-[10px] text-slate-500 truncate italic">{req.note}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setServiceRequests((prev) => prev.filter((_, i) => i !== idx))}
+                    className="py-1 px-2 rounded-xl text-[11px] font-bold bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 shrink-0"
+                  >
+                    ✓ Xong
+                  </button>
+                </div>
+              ))
+            )
+          )}
+
+          {currentTab === "OPEN_TABLE" && (
+            pendingRequests.length === 0 ? (
+              <p className="text-center text-[10.5px] text-slate-400 py-3 italic">Không có yêu cầu mở bàn</p>
+            ) : (
+              pendingRequests.map((req) => (
+                <div key={req.tableId} className="bg-amber-50/70 border border-amber-200 rounded-2xl p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-black text-slate-900">{formatTableName(req.tableName)}</span>
+                    <span className="text-[10.5px] font-bold text-amber-800">{req.guestCount} khách</span>
+                  </div>
+                  <div className="flex gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleRejectSession(req)}
+                      className="px-2.5 py-1 rounded-xl text-[10.5px] font-bold bg-white border border-rose-200 text-rose-700 hover:bg-rose-50"
+                    >
+                      Từ Chối
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isApprovingId === req.tableId}
+                      onClick={async () => { await handleApproveSession(req); }}
+                      className="flex-1 py-1 px-2.5 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      <Icon name="check" size={11} />
+                      <span>Duyệt Mở Bàn</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )
+          )}
         </div>
       </div>
+    );
+  };
 
-      {/* Grid thẻ bàn */}
-      <div className="overflow-y-auto flex-1 min-h-0 pr-0.5">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
-        {filteredTables.map((t) => {
-          const isSelected = t.tableId === activeTable.tableId;
-          return (
-            <button
-              key={t.tableId}
-              type="button"
-              onClick={() => {
-                setActiveTableId(t.tableId);
-                // Bấm chọn bàn trên mobile sẽ lập tức chuyển sang bước 2 (Gọi món)
-                setMobileStep("MENU");
-              }}
-              className={`p-3 rounded-2xl border-2 text-left transition-all relative flex flex-col justify-between min-h-[96px] active:scale-95 ${
-                isSelected
-                  ? "border-brand-900 ring-2 ring-brand-900/20 shadow-md bg-brand-50/40"
-                  : t.status === "EMPTY"
-                  ? "border-surface-border bg-white hover:border-brand-200"
-                  : t.status === "OCCUPIED"
-                  ? "border-amber-300 bg-amber-50/50 hover:border-amber-400"
-                  : t.status === "WAITING_FOOD"
-                  ? "border-purple-300 bg-purple-50/50 hover:border-purple-400"
-                  : "border-rose-400 bg-rose-50/60 hover:border-rose-500 animate-pulse"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <span className="text-xs font-black text-ink-primary">{t.tableName}</span>
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    t.status === "EMPTY"
-                      ? "bg-slate-300"
-                      : t.status === "OCCUPIED"
-                      ? "bg-amber-500"
-                      : t.status === "WAITING_FOOD"
-                      ? "bg-purple-600"
-                      : "bg-rose-600"
-                  }`}
-                />
-              </div>
-
-              <div className="mt-1">
-                <div className="text-[10px] text-ink-muted">{t.zoneName}</div>
-                {t.items.length > 0 ? (
-                  <div className="text-xs font-black text-brand-950 mt-0.5">
-                    {t.totalAmount.toLocaleString("vi-VN")} đ
-                  </div>
-                ) : (
-                  <div className="text-[11px] font-bold text-slate-400 italic">Bàn trống</div>
-                )}
-              </div>
-
-              {t.items.length > 0 && (
-                <div className="flex items-center justify-between text-[10px] text-ink-muted border-t border-surface-border/40 pt-1 mt-1">
-                  <span>{t.items.length} món</span>
-                  <span>{t.openedAt}</span>
-                </div>
-              )}
-            </button>
-          );
-        })}
+  // Component UI: Sơ đồ chọn bàn
+  const renderTableGrid = () => (
+    <div className="bg-white p-3 sm:p-3.5 rounded-3xl border border-surface-border shadow-xs flex-1 flex flex-col min-h-0 overflow-hidden h-full">
+      <div className="flex items-center justify-between gap-1.5 border-b border-surface-border pb-2.5 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <Icon name="table" className="w-4 h-4 text-brand-900" />
+          <span className="text-xs font-black uppercase tracking-wider text-ink-primary">
+            Bàn Phục Vụ
+          </span>
+          <span className="text-xs text-ink-muted">({tables.length})</span>
         </div>
+
+        <button
+          type="button"
+          onClick={() => onNavigateTab?.("tables")}
+          className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 hover:underline shrink-0 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200"
+          title="Mở sơ đồ phòng bàn để Mở bàn / Đóng bàn"
+        >
+          <span>Quản Lý Bàn</span>
+          <Icon name="arrowRight" size={10} />
+        </button>
+      </div>
+
+      {/* Filter Khu Vực */}
+      <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold no-scrollbar shrink-0 py-1.5">
+        {zones.map((z) => (
+          <button
+            key={z}
+            type="button"
+            onClick={() => setSelectedZone(z)}
+            className={`px-2.5 py-1 rounded-full transition-all shrink-0 text-[10.5px] ${
+              selectedZone === z
+                ? "bg-brand-900 text-white shadow-xs font-black"
+                : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
+            }`}
+          >
+            {z}
+          </button>
+        ))}
+      </div>
+
+      {/* Danh sách thẻ bàn: 1 cột rộng rãi, dễ đọc, không bị bóp méo chữ */}
+      <div className="overflow-y-auto flex-1 min-h-0 pr-1 space-y-2">
+        {filteredTables.length === 0 ? (
+          <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-surface-border bg-surface-canvas/50">
+            <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 mx-auto mb-2">
+              <Icon name="table" className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-bold text-ink-primary">Chưa có bàn nào</p>
+            <p className="text-[11px] text-ink-muted mt-0.5">Vui lòng thiết lập danh sách bàn ở mục Sơ Đồ Bàn</p>
+          </div>
+        ) : (
+          filteredTables.map((t) => {
+            const isSelected = t.tableId === activeTable.tableId;
+            const pendingReq = pendingRequests.find((r) => r.tableId === t.tableId);
+            return (
+              <button
+                key={t.tableId}
+                type="button"
+                onClick={() => {
+                  setActiveTableId(t.tableId);
+                  setMobileStep("MENU");
+                }}
+                className={`w-full p-2.5 sm:p-3 rounded-2xl border-2 text-left transition-all relative flex flex-col justify-between active:scale-98 ${
+                  pendingReq
+                    ? "border-amber-500 ring-2 ring-amber-400 bg-amber-50/90 shadow-md animate-pulse"
+                    : isSelected
+                    ? "border-brand-900 ring-2 ring-brand-900/20 shadow-md bg-brand-50/40"
+                    : t.status === "EMPTY"
+                    ? "border-surface-border bg-white hover:border-brand-200"
+                    : t.status === "OCCUPIED"
+                    ? "border-amber-300 bg-amber-50/50 hover:border-amber-400"
+                    : t.status === "WAITING_FOOD"
+                    ? "border-purple-300 bg-purple-50/50 hover:border-purple-400"
+                    : "border-rose-400 bg-rose-50/60 hover:border-rose-500 animate-pulse"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-black text-ink-primary block truncate">{t.tableName}</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-ink-muted mt-0.5">
+                      <span>{t.zoneName}</span>
+                      {t.pin && (
+                        <span className="font-mono font-bold text-[9px] px-1 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                          PIN: {t.pin}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-0.5 rounded-md text-[9.5px] font-black shrink-0 ${
+                      t.status === "EMPTY"
+                        ? "bg-slate-100 text-slate-500"
+                        : t.status === "OCCUPIED"
+                        ? "bg-amber-100 text-amber-900 border border-amber-300"
+                        : t.status === "WAITING_FOOD"
+                        ? "bg-purple-100 text-purple-900 border border-purple-200"
+                        : "bg-rose-100 text-rose-900 border border-rose-200 animate-pulse"
+                    }`}
+                  >
+                    {t.status === "EMPTY" ? "Trống" : t.status === "OCCUPIED" ? "Có khách" : t.status === "WAITING_FOOD" ? "Chờ món" : "Tính tiền"}
+                  </span>
+                </div>
+
+                <div className="mt-2 pt-1.5 border-t border-surface-border/40 flex items-center justify-between text-[11px]">
+                  {pendingReq ? (
+                    <span className="text-[10.5px] font-black text-amber-900">🔔 Chờ duyệt mở bàn</span>
+                  ) : t.status !== "EMPTY" && t.items.length > 0 ? (
+                    <>
+                      <span className="font-black text-brand-950">{t.totalAmount.toLocaleString("vi-VN")} đ</span>
+                      <span className="text-[10px] text-ink-muted">{t.items.length} món</span>
+                    </>
+                  ) : t.status !== "EMPTY" ? (
+                    <>
+                      <span className="font-bold text-emerald-800 text-[10.5px]">👥 {t.guestCount || 2} khách</span>
+                      <span className="text-[10px] text-ink-muted">Vào {t.openedAt || "--:--"}</span>
+                    </>
+                  ) : (
+                    <span className="text-[10.5px] text-slate-400 italic">Bàn trống</span>
+                  )}
+                </div>
+
+                {pendingReq && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleApproveSession(pendingReq);
+                    }}
+                    disabled={isApprovingId === pendingReq.tableId}
+                    className="w-full mt-2 py-1 px-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[10px] font-black flex items-center justify-center gap-1 shadow-xs transition disabled:opacity-50"
+                  >
+                    <Icon name="check" size={11} />
+                    <span>Duyệt Mở Bàn</span>
+                  </button>
+                )}
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
 
   // Component UI: Menu gọi món
   const renderMenuSection = () => (
-    <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-surface-border shadow-xs space-y-3 flex-1 flex flex-col min-h-0">
+    <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-surface-border shadow-xs space-y-3 flex-1 flex flex-col min-h-0 overflow-hidden h-full">
       {/* Banner thông tin bàn hiện tại trên mobile */}
       <div className="lg:hidden flex items-center justify-between p-2.5 bg-brand-50 border border-brand-200/60 rounded-2xl shrink-0">
         <button
@@ -1122,87 +1772,97 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
       </div>
 
       {/* Grid danh sách món ăn */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto flex-1 min-h-0 lg:max-h-[520px] pr-1 ${
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto flex-1 min-h-0 pr-1 ${
         mobileStep === "MENU" && (newOrderCart.length > 0 || activeTable.items.length > 0) ? "pb-16" : ""
       }`}>
-        {filteredDishes.map((dish) => (
-          <div
-            key={dish.id}
-            className="p-3 rounded-2xl border border-surface-border bg-white hover:border-brand-300 hover:shadow-xs transition-all flex gap-3 group"
-          >
-            <img
-              src={dish.image}
-              alt={dish.name}
-              className="w-16 h-16 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
-            />
-            <div className="flex-1 flex flex-col justify-between">
-              <div>
-                <div className="flex items-start justify-between gap-1">
-                  <h4 className="text-xs font-bold text-ink-primary leading-snug">
-                    {dish.name}
-                  </h4>
-                  {dish.isPopular && (
-                    <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 text-[9px] font-black shrink-0">
-                      HOT
-                    </span>
-                  )}
+        {filteredDishes.length === 0 ? (
+          <div className="col-span-full py-12 px-4 text-center rounded-2xl border border-dashed border-surface-border bg-surface-canvas/50">
+            <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 mx-auto mb-2">
+              <Icon name="coffee" className="w-5 h-5" />
+            </div>
+            <p className="text-xs font-bold text-ink-primary">Chưa có món ăn nào trong thực đơn</p>
+            <p className="text-[11px] text-ink-muted mt-0.5">Vui lòng thiết lập thực đơn tại mục Thực Đơn</p>
+          </div>
+        ) : (
+          filteredDishes.map((dish) => (
+            <div
+              key={dish.id}
+              className="p-3 rounded-2xl border border-surface-border bg-white hover:border-brand-300 hover:shadow-xs transition-all flex gap-3 group"
+            >
+              <img
+                src={dish.image}
+                alt={dish.name}
+                className="w-16 h-16 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
+              />
+              <div className="flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-start justify-between gap-1">
+                    <h4 className="text-xs font-bold text-ink-primary leading-snug">
+                      {dish.name}
+                    </h4>
+                    {dish.isPopular && (
+                      <span className="px-1.5 py-0.2 rounded-md bg-amber-100 text-amber-900 text-[9px] font-black shrink-0">
+                        HOT
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-ink-muted line-clamp-1 mt-0.5">
+                    {dish.description}
+                  </p>
                 </div>
-                <p className="text-[10px] text-ink-muted line-clamp-1 mt-0.5">
-                  {dish.description}
-                </p>
-              </div>
 
-              <div className="flex items-center justify-between mt-2 pt-1 border-t border-surface-border/40">
-                <span className="text-xs font-black text-brand-950">
-                  {dish.price.toLocaleString("vi-VN")} đ
-                </span>
+                <div className="flex items-center justify-between mt-2 pt-1 border-t border-surface-border/40">
+                  <span className="text-xs font-black text-brand-950">
+                    {dish.price.toLocaleString("vi-VN")} đ
+                  </span>
 
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenCustomize(dish)}
-                    className="px-2 py-1 rounded-lg text-[10px] font-bold text-ink-muted bg-surface-canvas hover:bg-surface-muted border border-surface-border"
-                    title="Ghi chú khẩu vị"
-                  >
-                    Ghi chú
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenCustomize(dish)}
+                      className="px-2 py-1 rounded-lg text-[10px] font-bold text-ink-muted bg-surface-canvas hover:bg-surface-muted border border-surface-border"
+                      title="Ghi chú khẩu vị"
+                    >
+                      Ghi chú
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAddDish(dish)}
-                    className="w-7 h-7 rounded-xl bg-brand-900 text-white flex items-center justify-center hover:bg-brand-950 shadow-xs active:scale-90 transition-transform"
-                    title="Thêm nhanh"
-                  >
-                    <Icon name="plus" size={14} />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAddDish(dish)}
+                      className="w-7 h-7 rounded-xl bg-brand-900 text-white flex items-center justify-center hover:bg-brand-950 shadow-xs active:scale-90 transition-transform"
+                      title="Thêm nhanh"
+                    >
+                      <Icon name="plus" size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
 
   // Component UI: Phiếu gọi món & giỏ hàng
   const renderCartSection = () => (
-    <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-surface-border shadow-xs flex flex-col flex-1 min-h-0">
+    <div className="bg-white p-3.5 sm:p-4 rounded-3xl border border-surface-border shadow-xs flex flex-col flex-1 min-h-0 overflow-hidden h-full">
       {/* Header bàn đang chọn */}
-      <div className="flex items-center justify-between border-b border-surface-border pb-3 shrink-0">
-        <div>
+      <div className="border-b border-surface-border pb-3 shrink-0 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h3 className="text-base font-black text-ink-primary">
               {activeTable.tableName}
             </h3>
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                 activeTable.status === "EMPTY"
                   ? "bg-slate-100 text-slate-700"
                   : activeTable.status === "OCCUPIED"
-                  ? "bg-amber-100 text-amber-900"
+                  ? "bg-amber-100 text-amber-900 border border-amber-300"
                   : activeTable.status === "WAITING_FOOD"
-                  ? "bg-purple-100 text-purple-900"
-                  : "bg-rose-100 text-rose-900"
+                  ? "bg-purple-100 text-purple-900 border border-purple-300"
+                  : "bg-rose-100 text-rose-900 border border-rose-300"
               }`}
             >
               {activeTable.status === "EMPTY"
@@ -1214,49 +1874,111 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
                 : "Chờ thanh toán"}
             </span>
           </div>
-          <div className="text-[11px] text-ink-muted mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>Số khách: <strong className="text-ink-primary">{activeTable.guestCount || 0} người</strong></span>
-            <span>•</span>
-            <span>Giờ vào: <strong className="text-ink-primary">{activeTable.openedAt || "Chưa mở bàn"}</strong></span>
-            {activeTable.mergedTables && activeTable.mergedTables.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-md bg-purple-100 text-purple-900 text-[9px] font-black border border-purple-200">
-                Đã gộp từ: {activeTable.mergedTables.join(", ")}
-              </span>
-            )}
+
+          {/* Cụm nút hành động Bàn: Đóng Bàn / Đổi PIN / Mở Bàn */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {activeTable.status === "EMPTY" && activeTable.tableId ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab?.("tables")}
+                  className="py-1 px-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1"
+                  title="Chuyển sang màn hình Quản Lý Bàn"
+                >
+                  <Icon name="table" size={11} />
+                  <span>Quản Lý Bàn</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOpenTableGuestCount(2); setOpenTableModal({ tableId: activeTable.tableId, tableName: activeTable.tableName }); }}
+                  className="py-1 px-3 rounded-xl text-xs font-black text-white bg-emerald-700 hover:bg-emerald-800 transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Icon name="plus" size={12} />
+                  <span>Mở Bàn</span>
+                </button>
+              </div>
+            ) : activeTable.status !== "EMPTY" ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => handleRotateTablePin(activeTable.tableId, activeTable.tableName)}
+                  className="py-1 px-2 rounded-xl text-[11px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition flex items-center gap-1"
+                  title="Đổi mã PIN mở bàn"
+                >
+                  <Icon name="refresh" size={11} />
+                  <span>PIN: {activeTable.pin || "---"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCloseTableSession(activeTable.tableId, activeTable.tableName)}
+                  className="py-1 px-3 rounded-xl text-xs font-black text-white bg-rose-600 hover:bg-rose-700 transition flex items-center gap-1.5 shadow-xs active:scale-95"
+                  title="Đóng phiên phục vụ của bàn này và dọn bàn"
+                >
+                  <Icon name="x" size={12} />
+                  <span>Đóng Bàn</span>
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {/* Toggle 2 Tab */}
-        <div className="p-1 bg-surface-canvas rounded-xl border border-surface-border flex text-xs font-bold shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab("MENU")}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              activeTab === "MENU"
-                ? "bg-brand-900 text-white shadow-xs"
-                : "text-ink-muted hover:text-ink-primary"
-            }`}
-          >
-            Món Mới ({newOrderCart.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("SERVED_ITEMS")}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
-              activeTab === "SERVED_ITEMS"
-                ? "bg-brand-900 text-white shadow-xs"
-                : "text-ink-muted hover:text-ink-primary"
-            }`}
-          >
-            Đã Gọi ({activeTable.items.length})
-          </button>
+        {/* Dòng chi tiết & Tab Switcher */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[11px] text-ink-muted flex items-center gap-1.5 flex-wrap">
+            <span>Số khách: <strong className="text-ink-primary">{activeTable.guestCount || 0} người</strong></span>
+            <span>•</span>
+            {activeTable.status !== "EMPTY" && activeTable.openedAt ? (
+              <>
+                <span>Vào lúc: <strong className="text-ink-primary">{activeTable.openedAt}</strong></span>
+                {(activeTable as any).openedAtMs && (
+                  <>
+                    <span>•</span>
+                    <span className="text-emerald-700 font-bold">⏱ {formatElapsed((activeTable as any).openedAtMs)}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              <span className="italic text-slate-400">Chưa mở phiên</span>
+            )}
+            {activeTable.mergedTables && activeTable.mergedTables.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-md bg-purple-100 text-purple-900 text-[9px] font-black border border-purple-200">
+                Đã gộp: {activeTable.mergedTables.join(", ")}
+              </span>
+            )}
+          </div>
+
+          {/* Toggle 2 Tab */}
+          <div className="p-1 bg-surface-canvas rounded-xl border border-surface-border flex text-xs font-bold shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab("MENU")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                activeTab === "MENU"
+                  ? "bg-brand-900 text-white shadow-xs"
+                  : "text-ink-muted hover:text-ink-primary"
+              }`}
+            >
+              Món Mới ({newOrderCart.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("SERVED_ITEMS")}
+              className={`px-2.5 py-1 rounded-lg transition-all ${
+                activeTab === "SERVED_ITEMS"
+                  ? "bg-brand-900 text-white shadow-xs"
+                  : "text-ink-muted hover:text-ink-primary"
+              }`}
+            >
+              Đã Gọi ({activeTable.items.length})
+            </button>
+          </div>
         </div>
       </div>
 
       {/* TAB 1: GIỎ MÓN MỚI SẮP GỬI BẾP */}
       {activeTab === "MENU" && (
         <div className="flex-1 min-h-0 flex flex-col justify-between pt-3">
-          <div className="space-y-2 overflow-y-auto flex-1 min-h-0 lg:max-h-[360px] pr-1">
+          <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {newOrderCart.length === 0 ? (
               <div className="py-12 text-center text-xs text-ink-muted space-y-2">
                 <div className="w-12 h-12 rounded-full bg-surface-muted flex items-center justify-center mx-auto text-ink-subtle">
@@ -1348,6 +2070,18 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
               </Button>
             </div>
 
+            {/* Nút đóng bàn nhanh nếu bàn đang mở nhưng chưa gọi món */}
+            {activeTable.status !== "EMPTY" && newOrderCart.length === 0 && (
+              <button
+                type="button"
+                onClick={() => handleCloseTableSession(activeTable.tableId, activeTable.tableName)}
+                className="w-full py-2 rounded-xl text-xs font-black text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition flex items-center justify-center gap-1.5 shadow-2xs"
+              >
+                <Icon name="x" className="w-3.5 h-3.5" />
+                <span>Đóng Bàn & Trả Về Bàn Trống</span>
+              </button>
+            )}
+
             {/* Nút quay lại menu chọn thêm trên mobile */}
             <button
               type="button"
@@ -1363,7 +2097,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
       {/* TAB 2: CÁC MÓN BÀN NÀY ĐÃ GỌI TRƯỚC ĐÓ */}
       {activeTab === "SERVED_ITEMS" && (
         <div className="flex-1 min-h-0 flex flex-col justify-between pt-3">
-          <div className="space-y-2 overflow-y-auto flex-1 min-h-0 lg:max-h-[380px] pr-1">
+          <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-1">
             {activeTable.items.length === 0 ? (
               <div className="py-12 text-center text-xs text-ink-muted">
                 Bàn này chưa có món nào được gửi vào bếp.
@@ -1551,6 +2285,29 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
               <span>⚡ Mất Điện / Offline VietQR</span>
             </button>
 
+            {activeTable.status !== "EMPTY" && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRotateTablePin(activeTable.tableId, activeTable.tableName)}
+                  className="py-2 px-2.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                  title="Tạo mã PIN 4 số bảo mật mới cho bàn (Mã PIN động)"
+                >
+                  <Icon name="refresh" className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Đổi PIN</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleCloseTableSession(activeTable.tableId, activeTable.tableName)}
+                  className="py-2 px-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                  title="Đóng phiên phục vụ của bàn này và giải phóng bàn về trạng thái Bàn Trống"
+                >
+                  <Icon name="x" className="w-3.5 h-3.5" />
+                  <span>Đóng Bàn</span>
+                </button>
+              </div>
+            )}
+
             <button
               type="button"
               onClick={() => setMobileStep("MENU")}
@@ -1565,29 +2322,23 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
   );
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-4 animate-fadeIn">
-      {/* Top Header thanh điều hành Order Cầm Tay */}
+    <div className="h-full max-h-full flex-1 flex flex-col min-h-0 overflow-hidden space-y-2.5 animate-fadeIn">
+      {/* Top Header thanh điều hành Gọi Món */}
       <div className="hidden lg:flex items-center justify-between gap-3 pb-1 shrink-0">
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              {isCashier ? "Quầy Thu Ngân POS & Thanh Toán" : "POS Cầm Tay Phục Vụ (Waiter Handheld)"}
+              {isCashier ? "Thu Ngân & Thanh Toán" : "Gọi Món"}
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-800 border border-emerald-300 flex items-center gap-1.5 shadow-2xs">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              {isCashier ? "Két Ca Đang Mở" : "Trực Tuyến"}
+              {isCashier ? "Két Đang Mở" : "Trực Tuyến"}
             </span>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">
-            {isCashier ? (
-              <>
-                Điểm thanh toán trung tâm: <span className="font-bold text-ink-primary">Quầy Thu Ngân #01</span> • Xuất hóa đơn & In bill
-              </>
-            ) : (
-              <>
-                Nhân viên: <span className="font-bold text-ink-primary">Phục Vụ Bàn (Ca Trực)</span> • Đang order tại bàn & gửi bếp KDS
-              </>
-            )}
+            {isCashier
+              ? "Tạo đơn và thanh toán hóa đơn cho khách"
+              : "Chọn bàn, tạo đơn gọi món và gửi bếp chế biến"}
           </p>
         </div>
 
@@ -1700,28 +2451,44 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
         >
           <Icon name="cart" size={13} />
           <span>3. Phiếu Bàn</span>
-          {(newOrderCart.length > 0 || activeTable.items.length > 0) && (
+          {totalNotifCount > 0 ? (
+            <span className="min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center absolute -top-1 -right-1">
+              {totalNotifCount}
+            </span>
+          ) : (newOrderCart.length > 0 || activeTable.items.length > 0) ? (
             <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1.5 right-2" />
-          )}
+          ) : null}
         </button>
       </div>
 
-      {/* HIỂN THỊ TRÊN MOBILE: CHỈ HIỆN BƯỚC ĐANG CHỌN (KHÔNG CUỘN DỌC TRÀN LAN) */}
+      {/* HIỂN THỊ TRÊN MOBILE: CHỈ HIỆN BƯỚC ĐANG CHỌN */}
       <div className="lg:hidden flex-1 flex flex-col min-h-0">
         {mobileStep === "TABLES" && renderTableGrid()}
         {mobileStep === "MENU" && renderMenuSection()}
-        {mobileStep === "CART" && renderCartSection()}
+        {mobileStep === "CART" && (
+          <div className="space-y-3 flex-1 flex flex-col min-h-0">
+            {renderNotificationFixedPanel()}
+            {renderCartSection()}
+          </div>
+        )}
       </div>
 
-      {/* HIỂN THỊ TRÊN DESKTOP: BẢNG ĐIỀU KHIỂN TOÀN CẢNH ĐA CỘT */}
-      <div className="hidden lg:block space-y-4">
-        {/* Sơ đồ bàn desktop */}
-        {renderTableGrid()}
+      {/* HIỂN THỊ TRÊN DESKTOP: BẢNG ĐIỀU KHIỂN 3 CỘT CHUYÊN NGHIỆP */}
+      <div className="hidden lg:grid lg:grid-cols-12 gap-3 flex-1 min-h-0 items-stretch overflow-hidden">
+        {/* CỘT 1 (3 cols): Sơ đồ Bàn phục vụ */}
+        <div className="col-span-3 h-full flex flex-col min-h-0 overflow-hidden">
+          {renderTableGrid()}
+        </div>
 
-        {/* 2 Cột Menu & Phiếu bàn desktop */}
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-7">{renderMenuSection()}</div>
-          <div className="col-span-5">{renderCartSection()}</div>
+        {/* CỘT 2 (5 cols): Thực đơn chọn món */}
+        <div className="col-span-5 h-full flex flex-col min-h-0 overflow-hidden">
+          {renderMenuSection()}
+        </div>
+
+        {/* CỘT 3 (4 cols): Khung Thông Báo Cố Định + Phiếu Bàn & Giỏ Hàng */}
+        <div className="col-span-4 h-full flex flex-col min-h-0 space-y-2.5 overflow-hidden">
+          {renderNotificationFixedPanel()}
+          {renderCartSection()}
         </div>
       </div>
 
@@ -3134,6 +3901,60 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({ currentRol
           </div>
         </Portal>
       )}
+      {/* Modal Mở Bàn Thủ Công (từ POS) */}
+      {openTableModal && (
+        <Portal>
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setOpenTableModal(null)}>
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-3 text-2xl">
+                  🔓
+                </div>
+                <h3 className="text-base font-black text-slate-900">Mở Bàn Thủ Công</h3>
+                <p className="text-xs text-slate-500 mt-1">{openTableModal.tableName}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-2">Số lượng khách:</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1, 2, 4, 6].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setOpenTableGuestCount(n)}
+                      className={`py-2 rounded-xl text-xs font-bold border transition ${
+                        openTableGuestCount === n
+                          ? "bg-emerald-800 text-white border-emerald-800"
+                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      }`}
+                    >{n} người</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setOpenTableModal(null)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition"
+                >Hủy</button>
+                <button
+                  type="button"
+                  disabled={isOpeningTable}
+                  onClick={handleOpenTableManually}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-black bg-emerald-800 hover:bg-emerald-900 text-white transition flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                >
+                  {isOpeningTable
+                    ? <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    : <><Icon name="check" className="w-4 h-4" /><span>Mở Bàn</span></>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </Portal>
+      )}
     </div>
+
   );
 };

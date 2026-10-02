@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
+import { usePersistentState } from "@/hooks/usePersistentState";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import {
   InventoryIngredient,
@@ -19,190 +20,20 @@ export const CmsInventoryManagement: React.FC = () => {
   const [receiptPage, setReceiptPage] = useState(1);
   const RECEIPT_PAGE_SIZE = 3;
 
-  // Dữ liệu mẫu nguyên vật liệu thực tế F&B
-  const [ingredients, setIngredients] = useState<InventoryIngredient[]>([
-    {
-      id: "ing-1",
-      code: "NL-BO",
-      name: "Thịt Bò Phi Lê Tươi",
-      category: "MEAT",
-      unit: "kg",
-      currentStock: 4.5,
-      minStockLevel: 5.0, // Cảnh báo dưới định mức
-      avgCostPrice: 240000,
-      supplierName: "CTCP Thực Phẩm Sạch Hà Nội",
-      updatedAt: "28/09/2026 08:30",
-    },
-    {
-      id: "ing-2",
-      code: "NL-NAM",
-      name: "Thịt Bò Nạm Giòn",
-      category: "MEAT",
-      unit: "kg",
-      currentStock: 8.2,
-      minStockLevel: 4.0,
-      avgCostPrice: 190000,
-      supplierName: "CTCP Thực Phẩm Sạch Hà Nội",
-      updatedAt: "28/09/2026 08:30",
-    },
-    {
-      id: "ing-3",
-      code: "NL-PHO",
-      name: "Bánh Phở Tươi Hà Nội",
-      category: "MEAT", // Tinh bột
-      unit: "kg",
-      currentStock: 18.0,
-      minStockLevel: 10.0,
-      avgCostPrice: 22000,
-      supplierName: "Lò Bánh Phở Truyền Thống Nam Định",
-      updatedAt: "28/09/2026 06:15",
-    },
-    {
-      id: "ing-4",
-      code: "NL-HANH",
-      name: "Hành Hoa & Mùi Tươi",
-      category: "VEGETABLE",
-      unit: "kg",
-      currentStock: 1.2,
-      minStockLevel: 2.0, // Cảnh báo sắp hết
-      avgCostPrice: 35000,
-      supplierName: "Đại Lý Rau Sạch Vân Nội",
-      updatedAt: "28/09/2026 06:30",
-    },
-    {
-      id: "ing-5",
-      code: "NL-CAFE",
-      name: "Cà Phê Hạt Robusta Rang Mộc",
-      category: "DRINK_RAW",
-      unit: "kg",
-      currentStock: 6.5,
-      minStockLevel: 3.0,
-      avgCostPrice: 180000,
-      supplierName: "Nông Trại Cà Phê Buôn Ma Thuột",
-      updatedAt: "27/09/2026 16:00",
-    },
-    {
-      id: "ing-6",
-      code: "NL-SUA",
-      name: "Sữa Đặc Có Đường (Thùng 48 lon)",
-      category: "DRINK_RAW",
-      unit: "lon",
-      currentStock: 34,
-      minStockLevel: 24,
-      avgCostPrice: 24500,
-      supplierName: "Công Ty TNHH Phân Phối Sữa Việt",
-      updatedAt: "26/09/2026 14:00",
-    },
-    {
-      id: "ing-7",
-      code: "NL-TRUNG",
-      name: "Trứng Gà Ta Tươi (Quả)",
-      category: "SPICE",
-      unit: "quả",
-      currentStock: 85,
-      minStockLevel: 50,
-      avgCostPrice: 3800,
-      supplierName: "Trang Trại Trứng Gia Cầm Ba Vì",
-      updatedAt: "28/09/2026 07:00",
-    },
-    {
-      id: "ing-8",
-      code: "NL-XUONG",
-      name: "Xương Ống Bò Ninh Nước Dùng",
-      category: "MEAT",
-      unit: "kg",
-      currentStock: 25.0,
-      minStockLevel: 15.0,
-      avgCostPrice: 65000,
-      supplierName: "CTCP Thực Phẩm Sạch Hà Nội",
-      updatedAt: "27/09/2026 22:00",
-    },
-  ]);
+  // Dữ liệu nguyên vật liệu thực tế F&B
+  const [ingredients, setIngredients] = usePersistentState<InventoryIngredient[]>("inventory_ingredients", []);
 
   // Danh sách phiếu nhập hàng từ nhà cung cấp
-  const [receipts, setReceipts] = useState<InwardReceipt[]>([
-    {
-      id: "rc-3",
-      code: "PNK-2026-003",
-      supplierName: "CTCP Thực Phẩm Sạch Hà Nội",
-      supplierPhone: "0988 123 456",
-      receivedDate: "28/09/2026 08:30",
-      receivedBy: "Nguyễn Văn Hùng (Bếp trưởng)",
-      totalAmount: 2638000,
-      paymentStatus: "PAID",
-      notes: "Giao đợt sáng sớm, thịt bò tươi nguyên tảng đạt chuẩn kiểm dịch",
-      createdAt: "2026-09-28T08:30:00Z",
-      items: [
-        { ingredientId: "ing-1", ingredientName: "Thịt Bò Phi Lê Tươi", quantity: 5, unit: "kg", unitPrice: 240000, subtotal: 1200000 },
-        { ingredientId: "ing-2", ingredientName: "Thịt Bò Nạm Giòn", quantity: 6, unit: "kg", unitPrice: 190000, subtotal: 1140000 },
-        { ingredientId: "ing-4", ingredientName: "Hành Hoa & Mùi Tươi", quantity: 3, unit: "kg", unitPrice: 35000, subtotal: 105000 },
-        { ingredientId: "ing-7", ingredientName: "Trứng Gà Ta Tươi", quantity: 50, unit: "quả", unitPrice: 3800, subtotal: 190000 },
-      ],
-    },
-    {
-      id: "rc-2",
-      code: "PNK-2026-002",
-      supplierName: "Nông Trại Cà Phê Buôn Ma Thuột",
-      supplierPhone: "0912 888 999",
-      receivedDate: "27/09/2026 16:00",
-      receivedBy: "Lê Thu Trang (Thu ngân ca chiều)",
-      totalAmount: 1488000,
-      paymentStatus: "PAID",
-      notes: "Nguyên liệu pha chế quầy bar cho 1 tuần",
-      createdAt: "2026-09-27T16:00:00Z",
-      items: [
-        { ingredientId: "ing-5", ingredientName: "Cà Phê Hạt Robusta", quantity: 5, unit: "kg", unitPrice: 180000, subtotal: 900000 },
-        { ingredientId: "ing-6", ingredientName: "Sữa Đặc Có Đường", quantity: 24, unit: "lon", unitPrice: 24500, subtotal: 588000 },
-      ],
-    },
-    {
-      id: "rc-1",
-      code: "PNK-2026-001",
-      supplierName: "Lò Bánh Phở Truyền Thống Nam Định",
-      supplierPhone: "0904 555 777",
-      receivedDate: "26/09/2026 06:15",
-      receivedBy: "Nguyễn Thành An (Chủ quán)",
-      totalAmount: 660000,
-      paymentStatus: "PAID",
-      notes: "Bánh phở tươi tráng tay không hàn the",
-      createdAt: "2026-09-26T06:15:00Z",
-      items: [
-        { ingredientId: "ing-3", ingredientName: "Bánh Phở Tươi Hà Nội", quantity: 30, unit: "kg", unitPrice: 22000, subtotal: 660000 },
-      ],
-    },
-  ]);
+  const [receipts, setReceipts] = usePersistentState<InwardReceipt[]>("inventory_receipts", []);
 
   // Định lượng món ăn (Recipe BOM)
-  const [recipes] = useState<DishRecipeBOM[]>([
-    {
-      dishId: "m1",
-      dishName: "Phở Bò Tái Nạm Đặc Biệt",
-      category: "Phở Bò Truyền Thống",
-      ingredients: [
-        { ingredientId: "ing-1", ingredientName: "Thịt Bò Phi Lê Tươi", quantity: 0.08, unit: "kg" },
-        { ingredientId: "ing-2", ingredientName: "Thịt Bò Nạm Giòn", quantity: 0.06, unit: "kg" },
-        { ingredientId: "ing-3", ingredientName: "Bánh Phở Tươi", quantity: 0.16, unit: "kg" },
-        { ingredientId: "ing-4", ingredientName: "Hành Hoa & Mùi", quantity: 0.02, unit: "kg" },
-      ],
-    },
-    {
-      dishId: "m2",
-      dishName: "Cà Phê Muối Xứ Huế",
-      category: "Đồ Uống Pha Chế",
-      ingredients: [
-        { ingredientId: "ing-5", ingredientName: "Cà Phê Robusta Hạt", quantity: 0.025, unit: "kg" },
-        { ingredientId: "ing-6", ingredientName: "Sữa Đặc Có Đường", quantity: 0.05, unit: "lon" },
-      ],
-    },
-  ]);
+  const [recipes, setRecipes] = usePersistentState<DishRecipeBOM[]>("inventory_recipes", []);
 
   // Modal State: Tạo phiếu nhập kho
   const [isCreateReceiptOpen, setIsCreateReceiptOpen] = useState(false);
-  const [receiptSupplier, setReceiptSupplier] = useState("CTCP Thực Phẩm Sạch Hà Nội");
+  const [receiptSupplier, setReceiptSupplier] = useState("");
   const [receiptNotes, setReceiptNotes] = useState("");
-  const [receiptItems, setReceiptItems] = useState<{ ingredientId: string; quantity: number; unitPrice: number }[]>([
-    { ingredientId: "ing-1", quantity: 5, unitPrice: 240000 },
-  ]);
+  const [receiptItems, setReceiptItems] = useState<{ ingredientId: string; quantity: number; unitPrice: number }[]>([]);
 
   // Modal State: Thêm nguyên liệu mới
   const [isAddIngredientOpen, setIsAddIngredientOpen] = useState(false);
@@ -395,7 +226,7 @@ export const CmsInventoryManagement: React.FC = () => {
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Inventory & Recipe BOM
+                Kho Hàng
               </span>
               <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
                 {ingredients.length} Nguyên liệu • {lowStockCount > 0 ? `${lowStockCount} Sắp hết hàng` : "Đầy đủ định mức"}
@@ -403,10 +234,10 @@ export const CmsInventoryManagement: React.FC = () => {
             </div>
 
             <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Quản Trị Kho Hàng & Nhập Kho NCC
+              Quản Lý Kho Hàng
             </h2>
             <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Kiểm soát nguyên vật liệu tươi sống, định mức an toàn, trừ tồn tự động theo công thức chế biến (BOM).
+              Theo dõi tồn kho nguyên vật liệu, định mức và phiếu nhập hàng
             </p>
 
             {/* Quick Live Stats Chips */}
@@ -710,8 +541,30 @@ export const CmsInventoryManagement: React.FC = () => {
                 <tbody className="divide-y divide-surface-border font-medium text-ink-primary">
                   {paginatedIngredients.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-8 text-center text-xs text-ink-muted font-bold">
-                        Không tìm thấy nguyên vật liệu phù hợp với bộ lọc tìm kiếm
+                      <td colSpan={9} className="py-12 text-center">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900">
+                            <Icon name="clipboard" className="w-5 h-5" />
+                          </div>
+                          <p className="text-xs font-bold text-ink-primary">
+                            {ingredients.length === 0 ? "Chưa có nguyên vật liệu nào trong kho" : "Không tìm thấy nguyên vật liệu phù hợp"}
+                          </p>
+                          <p className="text-[11px] text-ink-muted max-w-sm">
+                            {ingredients.length === 0
+                              ? "Thêm nguyên vật liệu (thịt bò, gạo, gia vị, cà phê...) để theo dõi tồn kho và định lượng món ăn."
+                              : "Thử tìm kiếm với từ khóa khác hoặc bỏ bộ lọc."}
+                          </p>
+                          {ingredients.length === 0 && (
+                            <Button
+                              size="sm"
+                              className="mt-2 rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
+                              onClick={() => setIsAddIngredientOpen(true)}
+                            >
+                              <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+                              <span>Thêm Nguyên Liệu Đầu Tiên</span>
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -813,60 +666,80 @@ export const CmsInventoryManagement: React.FC = () => {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            {displayedReceipts.map((rc) => (
-              <Panel key={rc.id} variant="default" padding="lg" className="space-y-4 border border-surface-border">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-sm text-ink-primary font-mono">{rc.code}</h4>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
-                        Đã Thanh Toán
+          {receipts.length === 0 ? (
+            <div className="py-14 px-4 text-center rounded-2xl border border-dashed border-surface-border bg-white shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 mx-auto mb-3">
+                <Icon name="fileText" className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-black text-ink-primary">Chưa có phiếu nhập kho nào</h4>
+              <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
+                Tạo phiếu nhập kho để ghi nhận hàng hóa và chi phí nguyên liệu từ các nhà cung cấp.
+              </p>
+              <Button
+                size="sm"
+                className="mt-4 rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
+                onClick={() => setIsCreateReceiptOpen(true)}
+              >
+                <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+                <span>Tạo Phiếu Nhập Đầu Tiên</span>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayedReceipts.map((rc) => (
+                <Panel key={rc.id} variant="default" padding="lg" className="space-y-4 border border-surface-border">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-black text-sm text-ink-primary font-mono">{rc.code}</h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800">
+                          Đã Thanh Toán
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-muted mt-0.5">
+                        Nhà cung cấp: <strong className="text-ink-primary">{rc.supplierName}</strong> • Người nhận: {rc.receivedBy}
+                      </p>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[11px] text-ink-muted block">{rc.receivedDate}</span>
+                      <span className="text-base font-black text-brand-900">
+                        {rc.totalAmount.toLocaleString("vi-VN")} đ
                       </span>
                     </div>
-                    <p className="text-xs text-ink-muted mt-0.5">
-                      Nhà cung cấp: <strong className="text-ink-primary">{rc.supplierName}</strong> • Người nhận: {rc.receivedBy}
-                    </p>
                   </div>
 
-                  <div className="text-right">
-                    <span className="text-[11px] text-ink-muted block">{rc.receivedDate}</span>
-                    <span className="text-base font-black text-brand-900">
-                      {rc.totalAmount.toLocaleString("vi-VN")} đ
+                  {/* Danh sách mặt hàng trong phiếu */}
+                  <div className="bg-surface-canvas rounded-2xl p-3 border border-surface-border/60">
+                    <span className="text-[11px] font-bold text-ink-subtle uppercase tracking-wider block mb-2">
+                      Chi Tiết Các Mặt Hàng Nhập
                     </span>
-                  </div>
-                </div>
-
-                {/* Danh sách mặt hàng trong phiếu */}
-                <div className="bg-surface-canvas rounded-2xl p-3 border border-surface-border/60">
-                  <span className="text-[11px] font-bold text-ink-subtle uppercase tracking-wider block mb-2">
-                    Chi Tiết Các Mặt Hàng Nhập
-                  </span>
-                  <div className="divide-y divide-surface-border/50 text-xs">
-                    {rc.items.map((item, idx) => (
-                      <div key={idx} className="py-1.5 flex items-center justify-between">
-                        <div className="font-bold text-ink-primary">
-                          {item.ingredientName}
-                          <span className="text-ink-muted font-normal ml-2">
-                            ({item.quantity} {item.unit} × {item.unitPrice.toLocaleString("vi-VN")} đ)
-                          </span>
+                    <div className="divide-y divide-surface-border/50 text-xs">
+                      {rc.items.map((item, idx) => (
+                        <div key={idx} className="py-1.5 flex items-center justify-between">
+                          <div className="font-bold text-ink-primary">
+                            {item.ingredientName}
+                            <span className="text-ink-muted font-normal ml-2">
+                              ({item.quantity} {item.unit} × {item.unitPrice.toLocaleString("vi-VN")} đ)
+                            </span>
+                          </div>
+                          <div className="font-black text-ink-primary">
+                            {item.subtotal.toLocaleString("vi-VN")} đ
+                          </div>
                         </div>
-                        <div className="font-black text-ink-primary">
-                          {item.subtotal.toLocaleString("vi-VN")} đ
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
 
-                {rc.notes && (
-                  <p className="text-[11px] text-ink-muted italic">
-                    Ghi chú: {rc.notes}
-                  </p>
-                )}
-              </Panel>
-            ))}
-          </div>
+                  {rc.notes && (
+                    <p className="text-[11px] text-ink-muted italic">
+                      Ghi chú: {rc.notes}
+                    </p>
+                  )}
+                </Panel>
+              ))}
+            </div>
+          )}
 
           {/* Mobile Infinite Scroll Sentinel */}
           <div className="block md:hidden">
@@ -905,37 +778,49 @@ export const CmsInventoryManagement: React.FC = () => {
             </p>
           </Panel>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {recipes.map((rcp) => (
-              <Panel key={rcp.dishId} variant="default" padding="lg" className="space-y-3">
-                <div className="flex items-start justify-between border-b border-surface-border pb-2.5">
-                  <div>
-                    <h4 className="font-black text-sm text-ink-primary">{rcp.dishName}</h4>
-                    <span className="text-[11px] text-ink-muted font-bold">{rcp.category}</span>
+          {recipes.length === 0 ? (
+            <div className="py-14 px-4 text-center rounded-2xl border border-dashed border-surface-border bg-white shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 mx-auto mb-3">
+                <Icon name="clipboard" className="w-6 h-6" />
+              </div>
+              <h4 className="text-sm font-black text-ink-primary">Chưa cấu hình định lượng món ăn (Recipe BOM)</h4>
+              <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
+                Thiết lập định lượng nguyên liệu cho từng món trong thực đơn để hệ thống tự động trừ kho và cảnh báo hết hàng tức thì.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recipes.map((rcp) => (
+                <Panel key={rcp.dishId} variant="default" padding="lg" className="space-y-3">
+                  <div className="flex items-start justify-between border-b border-surface-border pb-2.5">
+                    <div>
+                      <h4 className="font-black text-sm text-ink-primary">{rcp.dishName}</h4>
+                      <span className="text-[11px] text-ink-muted font-bold">{rcp.category}</span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-brand-100 text-brand-800">
+                      BOM Ready
+                    </span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-brand-100 text-brand-800">
-                    BOM Ready
-                  </span>
-                </div>
 
-                <div className="space-y-2">
-                  <span className="text-[10px] font-extrabold uppercase text-ink-subtle">
-                    Nguyên liệu cấu thành (1 Suất ăn):
-                  </span>
-                  <div className="space-y-1.5">
-                    {rcp.ingredients.map((ingItem, i) => (
-                      <div key={i} className="flex items-center justify-between text-xs p-2 rounded-xl bg-surface-canvas border border-surface-border">
-                        <span className="font-bold text-ink-primary">{ingItem.ingredientName}</span>
-                        <span className="font-black text-brand-900 font-mono">
-                          {ingItem.quantity} {ingItem.unit}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-extrabold uppercase text-ink-subtle">
+                      Nguyên liệu cấu thành (1 Suất ăn):
+                    </span>
+                    <div className="space-y-1.5">
+                      {rcp.ingredients.map((ingItem, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs p-2 rounded-xl bg-surface-canvas border border-surface-border">
+                          <span className="font-bold text-ink-primary">{ingItem.ingredientName}</span>
+                          <span className="font-black text-brand-900 font-mono">
+                            {ingItem.quantity} {ingItem.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </Panel>
-            ))}
-          </div>
+                </Panel>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

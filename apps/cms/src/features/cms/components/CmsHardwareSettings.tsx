@@ -2,67 +2,25 @@ import React, { useState } from "react";
 import { Icon, Button, Badge, Panel, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { PrinterConfigRecord, ReceiptTemplateConfig, PrinterType, PrinterInterface } from "@/types/cms.types";
+import { usePersistentState } from "@/hooks/usePersistentState";
 
-const INITIAL_PRINTERS: PrinterConfigRecord[] = [
-  {
-    id: "pr-1",
-    name: "Máy In Bill Thu Ngân (Quầy Cashier)",
-    type: "CASHIER_BILL",
-    interfaceType: "LAN_IP",
-    ipAddress: "192.168.1.200",
-    port: 9100,
-    paperWidth: "80mm",
-    autoCut: true,
-    openCashDrawer: true,
-    soundAlarm: false,
-    status: "CONNECTED",
-    lastPingMs: 4,
-  },
-  {
-    id: "pr-2",
-    name: "Máy In Phiếu Bếp Nóng (Kitchen KDS)",
-    type: "KITCHEN_TICKET",
-    interfaceType: "LAN_IP",
-    ipAddress: "192.168.1.201",
-    port: 9100,
-    paperWidth: "80mm",
-    autoCut: true,
-    openCashDrawer: false,
-    soundAlarm: true,
-    status: "CONNECTED",
-    lastPingMs: 6,
-  },
-  {
-    id: "pr-3",
-    name: "Máy In Pha Chế / Bar Nước",
-    type: "BAR_TICKET",
-    interfaceType: "WIFI",
-    ipAddress: "192.168.1.202",
-    port: 9100,
-    paperWidth: "58mm",
-    autoCut: false,
-    openCashDrawer: false,
-    soundAlarm: true,
-    status: "CONNECTED",
-    lastPingMs: 12,
-  },
-];
+const INITIAL_PRINTERS: PrinterConfigRecord[] = [];
 
 const INITIAL_TEMPLATE: ReceiptTemplateConfig = {
-  storeName: "NHÀ HÀNG A2ORDER PHỐ CỔ",
-  slogan: "Tinh Hoa Ẩm Thực Việt Nam",
-  address: "128 Phố Huế, Q. Hai Bà Trưng, Hà Nội",
-  phone: "0912 345 678",
-  wifiName: "A2Order_VIP_5G",
-  wifiPass: "88889999",
+  storeName: "",
+  slogan: "",
+  address: "",
+  phone: "",
+  wifiName: "",
+  wifiPass: "",
   showVietQr: true,
   showLogo: true,
   footerNote: "Cảm ơn Quý Khách & Hẹn Gặp Lại!",
 };
 
 export const CmsHardwareSettings: React.FC = () => {
-  const [printers, setPrinters] = useState<PrinterConfigRecord[]>(INITIAL_PRINTERS);
-  const [template, setTemplate] = useState<ReceiptTemplateConfig>(INITIAL_TEMPLATE);
+  const [printers, setPrinters] = usePersistentState<PrinterConfigRecord[]>("hardware_printers", INITIAL_PRINTERS);
+  const [template, setTemplate] = usePersistentState<ReceiptTemplateConfig>("hardware_template", INITIAL_TEMPLATE);
 
   // Modal Thêm / Chỉnh Sửa Máy In
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -179,14 +137,14 @@ export const CmsHardwareSettings: React.FC = () => {
         <div className="space-y-1">
           <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Cài Đặt Máy In & Thiết Bị Phần Cứng
+              Máy In & Thiết Bị
             </h2>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              ESC/POS Driverless
+              Thiết Bị
             </span>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">
-            Quản lý máy in hóa đơn khổ 80mm/58mm, máy in bếp LAN/Wifi, két đựng tiền và tùy biến mẫu in bill thanh toán
+            Cài đặt máy in hóa đơn, máy in bếp và mẫu in bill
           </p>
         </div>
 
@@ -203,40 +161,76 @@ export const CmsHardwareSettings: React.FC = () => {
       </div>
 
       {/* 3 Thẻ Chỉ Số Trạng Thái Thiết Bị */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Máy In Bill Thu Ngân</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-          <div className="mt-2">
-            <h3 className="text-base font-black text-brand-950">Xprinter Q800 (Khổ 80mm)</h3>
-            <span className="text-[10px] text-emerald-700 font-bold">192.168.1.200:9100 • Ping 4ms</span>
-          </div>
-        </Panel>
+      {(() => {
+        const cashierPrinter = printers.find((p) => p.type === "CASHIER_BILL");
+        const kitchenPrinter = printers.find((p) => p.type === "KITCHEN_TICKET" || p.type === "BAR_TICKET");
+        const hasCashDrawer = printers.some((p) => p.openCashDrawer);
 
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Máy In Phiếu Bếp KDS</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          </div>
-          <div className="mt-2">
-            <h3 className="text-base font-black text-brand-950">Epson TM-T82III (LAN)</h3>
-            <span className="text-[10px] text-emerald-700 font-bold">192.168.1.201:9100 • Chuông báo BẬT</span>
-          </div>
-        </Panel>
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink-muted">Máy In Bill Thu Ngân</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    cashierPrinter ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                  }`}
+                />
+              </div>
+              <div className="mt-2">
+                <h3 className="text-base font-black text-brand-950">
+                  {cashierPrinter ? `${cashierPrinter.name} (${cashierPrinter.paperWidth})` : "Chưa cấu hình"}
+                </h3>
+                <span className={`text-[10px] font-bold ${cashierPrinter ? "text-emerald-700" : "text-ink-muted"}`}>
+                  {cashierPrinter
+                    ? `${cashierPrinter.ipAddress || cashierPrinter.interfaceType} • Ping ${cashierPrinter.lastPingMs || 5}ms`
+                    : "Thêm máy in hóa đơn để tự động in bill"}
+                </span>
+              </div>
+            </Panel>
 
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Ngăn Kéo Đựng Tiền</span>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink-muted">Máy In Phiếu Bếp KDS</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    kitchenPrinter ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
+                  }`}
+                />
+              </div>
+              <div className="mt-2">
+                <h3 className="text-base font-black text-brand-950">
+                  {kitchenPrinter ? `${kitchenPrinter.name} (${kitchenPrinter.interfaceType})` : "Chưa cấu hình"}
+                </h3>
+                <span className={`text-[10px] font-bold ${kitchenPrinter ? "text-emerald-700" : "text-ink-muted"}`}>
+                  {kitchenPrinter
+                    ? `${kitchenPrinter.ipAddress || kitchenPrinter.interfaceType} • ${kitchenPrinter.soundAlarm ? "Chuông báo BẬT" : "Chuông báo TẮT"}`
+                    : "Thêm máy in bếp để tự động báo món nấu"}
+                </span>
+              </div>
+            </Panel>
+
+            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink-muted">Ngăn Kéo Đựng Tiền</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    hasCashDrawer ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+              </div>
+              <div className="mt-2">
+                <h3 className="text-base font-black text-brand-950">
+                  {hasCashDrawer ? "Cổng RJ11 Tự Động Mở" : "Chưa kết nối"}
+                </h3>
+                <span className="text-[10px] text-ink-muted font-bold">
+                  {hasCashDrawer ? "Kích hoạt mở két khi thanh toán tiền mặt" : "Bật tùy chọn 'Mở két tiền' trong máy in bill"}
+                </span>
+              </div>
+            </Panel>
           </div>
-          <div className="mt-2">
-            <h3 className="text-base font-black text-brand-950">Cổng RJ11 Tự Động Mở</h3>
-            <span className="text-[10px] text-ink-muted font-bold">Kích hoạt mở két khi thanh toán tiền mặt</span>
-          </div>
-        </Panel>
-      </div>
+        );
+      })()}
 
       {/* 2 Cột: Danh Sách Máy In & Tùy Biến Mẫu In Hóa Đơn */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -255,87 +249,107 @@ export const CmsHardwareSettings: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {printers.map((p) => (
-                <div
-                  key={p.id}
-                  className="p-4 rounded-2xl border border-surface-border bg-white hover:border-brand-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 shrink-0">
-                        <Icon name="print" className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-black text-ink-primary">{p.name}</h4>
-                        <div className="flex items-center gap-2 text-[10px] text-ink-muted mt-0.5">
-                          <span className="font-bold text-brand-900">
-                            {p.type === "CASHIER_BILL"
-                              ? "Hóa Đơn Thu Ngân"
-                              : p.type === "KITCHEN_TICKET"
-                              ? "Phiếu Bếp Nấu"
-                              : "Phiếu Pha Chế Bar"}
-                          </span>
-                          <span>•</span>
-                          <span className="font-mono">{p.ipAddress || p.interfaceType}</span>
-                          <span>•</span>
-                          <span>Khổ {p.paperWidth}</span>
+              {printers.length === 0 ? (
+                <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-surface-border bg-surface-canvas/50">
+                  <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 mx-auto mb-3">
+                    <Icon name="print" className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-black text-ink-primary">Chưa có máy in nào được kết nối</h4>
+                  <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
+                    Kết nối máy in hóa đơn thu ngân (80mm) hoặc máy in bếp/bar (LAN/Wifi/USB) để tự động xuất bill khi thanh toán.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-4 rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
+                    onClick={handleOpenCreateModal}
+                  >
+                    <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+                    <span>Thêm Máy In Đầu Tiên</span>
+                  </Button>
+                </div>
+              ) : (
+                printers.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-4 rounded-2xl border border-surface-border bg-white hover:border-brand-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900 shrink-0">
+                          <Icon name="print" className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black text-ink-primary">{p.name}</h4>
+                          <div className="flex items-center gap-2 text-[10px] text-ink-muted mt-0.5">
+                            <span className="font-bold text-brand-900">
+                              {p.type === "CASHIER_BILL"
+                                ? "Hóa Đơn Thu Ngân"
+                                : p.type === "KITCHEN_TICKET"
+                                ? "Phiếu Bếp Nấu"
+                                : "Phiếu Pha Chế Bar"}
+                            </span>
+                            <span>•</span>
+                            <span className="font-mono">{p.ipAddress || p.interfaceType}</span>
+                            <span>•</span>
+                            <span>Khổ {p.paperWidth}</span>
+                          </div>
                         </div>
                       </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-1.5 pl-10">
+                        {p.autoCut && (
+                          <span className="px-1.5 py-0.2 rounded bg-surface-canvas border border-surface-border text-[9px] font-bold text-ink-secondary">
+                            Tự cắt giấy
+                          </span>
+                        )}
+                        {p.openCashDrawer && (
+                          <span className="px-1.5 py-0.2 rounded bg-surface-canvas border border-surface-border text-[9px] font-bold text-ink-secondary">
+                            Mở két tiền
+                          </span>
+                        )}
+                        {p.soundAlarm && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-800">
+                            Chuông báo món
+                          </span>
+                        )}
+                        <span className="px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200 text-[9px] font-bold text-emerald-800 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          {p.lastPingMs}ms
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 pt-1.5 pl-10">
-                      {p.autoCut && (
-                        <span className="px-1.5 py-0.2 rounded bg-surface-canvas border border-surface-border text-[9px] font-bold text-ink-secondary">
-                          Tự cắt giấy
-                        </span>
-                      )}
-                      {p.openCashDrawer && (
-                        <span className="px-1.5 py-0.2 rounded bg-surface-canvas border border-surface-border text-[9px] font-bold text-ink-secondary">
-                          Mở két tiền
-                        </span>
-                      )}
-                      {p.soundAlarm && (
-                        <span className="px-1.5 py-0.2 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-800">
-                          Chuông báo món
-                        </span>
-                      )}
-                      <span className="px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200 text-[9px] font-bold text-emerald-800 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        {p.lastPingMs}ms
-                      </span>
+                    <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-surface-border">
+                      <button
+                        type="button"
+                        onClick={() => handleTestPrint(p)}
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-brand-50 text-brand-900 hover:bg-brand-100 transition-colors shadow-xs flex items-center gap-1"
+                      >
+                        <Icon name="print" className="w-3.5 h-3.5" />
+                        <span>In Thử</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(p)}
+                        className="p-1.5 text-ink-subtle hover:text-brand-900 hover:bg-surface-canvas rounded-lg transition-colors"
+                        title="Sửa cấu hình"
+                      >
+                        <Icon name="edit" className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePrinter(p)}
+                        className="p-1.5 text-ink-subtle hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Xóa máy in"
+                      >
+                        <Icon name="trash" className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-surface-border">
-                    <button
-                      type="button"
-                      onClick={() => handleTestPrint(p)}
-                      className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-brand-50 text-brand-900 hover:bg-brand-100 transition-colors shadow-xs flex items-center gap-1"
-                    >
-                      <Icon name="print" className="w-3.5 h-3.5" />
-                      <span>In Thử</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEditModal(p)}
-                      className="p-1.5 text-ink-subtle hover:text-brand-900 hover:bg-surface-canvas rounded-lg transition-colors"
-                      title="Sửa cấu hình"
-                    >
-                      <Icon name="edit" className="w-3.5 h-3.5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePrinter(p)}
-                      className="p-1.5 text-ink-subtle hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Xóa máy in"
-                    >
-                      <Icon name="trash" className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Panel>
         </div>

@@ -14,6 +14,7 @@ import { analyticsRoutes } from "./modules/analytics/analytics.routes.js";
 import { scenarioRoutes } from "./modules/scenario/scenario.routes.js";
 import { menuRoutes } from "./modules/menu/menu.routes.js";
 import { staffRoutes } from "./modules/staff/staff.routes.js";
+import { configRoutes } from "./modules/config/config.routes.js";
 
 const fastify = Fastify({
   logger: false,
@@ -39,6 +40,7 @@ async function main() {
   await fastify.register(analyticsRoutes, { prefix: "/api/analytics" });
   await fastify.register(scenarioRoutes, { prefix: "/api/scenarios" });
   await fastify.register(menuRoutes, { prefix: "/api/menu" });
+  await fastify.register(configRoutes, { prefix: "/api/config" });
 
   fastify.get("/health", async () => {
     return { status: "ok", timestamp: new Date().toISOString() };

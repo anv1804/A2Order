@@ -76,12 +76,20 @@ import {
   CupSoda,
   Cake,
   Utensils,
+  Beer,
+  Soup,
+  Cookie,
   List,
   Home,
   User,
   Heart,
   Maximize2,
   Minimize2,
+  MessageCircle,
+  MessageSquare,
+  LifeBuoy,
+  Headphones,
+  ChevronUp,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -171,6 +179,14 @@ const iconMap: Record<IconName, LucideIcon> = {
   minimize: Minimize2,
   copy: Copy,
   eyeOff: EyeOff,
+  beer: Beer,
+  soup: Soup,
+  cookie: Cookie,
+  chat: MessageCircle,
+  messageSquare: MessageSquare,
+  support: LifeBuoy,
+  headphones: Headphones,
+  chevronUp: ChevronUp,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

@@ -7,6 +7,7 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
   userName,
   onToggleMobileMenu,
   activeMenuTitle,
+  roleBadgeText,
   storeName,
   onOpenProfile,
   onOpenSearch,
@@ -74,26 +75,6 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
-          {onChangeRole && currentRole && (
-            <div className="relative flex items-center">
-              <label htmlFor="cms-role-switcher" className="sr-only">Chuyển vai trò quản trị</label>
-              <select
-                id="cms-role-switcher"
-                value={currentRole}
-                onChange={(e) => onChangeRole(e.target.value as any)}
-                aria-label="Chuyển chế độ xem vai trò"
-                className="text-[11px] sm:text-xs font-black text-emerald-950 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-300/80 rounded-xl px-2 sm:px-2.5 py-1.5 cursor-pointer outline-none transition focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-              >
-                <option value="STORE_OWNER">👑 Chủ Quán</option>
-                <option value="ACCOUNTANT">📊 Kế Toán</option>
-                <option value="CASHIER">💵 Thu Ngân</option>
-                <option value="CHEF">🍳 Bếp / KDS</option>
-                <option value="WAITER">🍽️ Phục Vụ</option>
-                <option value="SUPER_ADMIN">🛡️ Super Admin</option>
-              </select>
-            </div>
-          )}
-
           <button
             type="button"
             onClick={onOpenSearch}
@@ -105,6 +86,22 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
             <span className="hidden min-w-0 flex-1 text-left text-xs font-bold text-slate-400 sm:block">Tìm nhanh</span>
             <kbd className="hidden rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500 sm:block">⌘K</kbd>
           </button>
+
+          {/* Chỉ hiển thị link quay lại quán trên Cổng Admin (Port 3002) - Tuyệt đối không hiện trên Cổng Quán */}
+          {typeof window !== "undefined" && window.location.port === "3002" && (
+            <a
+              href="http://localhost:3001"
+              target="_blank"
+              rel="noreferrer"
+              title="Mở Cổng Chủ Quán & Thu Ngân POS (Port 3001) ở tab mới"
+              className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition shadow-2xs"
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+              <span>Cổng Admin (3002)</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-emerald-700 font-extrabold hover:underline">Mở Cổng Quán (3001) ↗</span>
+            </a>
+          )}
 
           <div className="hidden sm:block h-6 w-px bg-slate-200"></div>
 
@@ -130,7 +127,12 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-900 text-xs font-black text-white">
               {(userName || "A").charAt(0).toUpperCase()}
             </span>
-            <span className="max-w-28 truncate text-xs font-bold text-slate-800">{userName || "Tài khoản"}</span>
+            <div className="flex flex-col text-left">
+              <span className="max-w-28 truncate text-xs font-bold text-slate-800 leading-tight">{userName || "Tài khoản"}</span>
+              {roleBadgeText && (
+                <span className="text-[10px] font-semibold text-emerald-700 leading-tight">{roleBadgeText}</span>
+              )}
+            </div>
           </button>
         </div>
       </div>

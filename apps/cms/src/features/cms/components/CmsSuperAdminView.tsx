@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { SaasDashboard } from "./superAdmin/SaasDashboard";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -18,10 +18,11 @@ import { storeApi } from "@/services/api/storeApi";
 import { LicenseKeyRecord } from "./superAdmin/superAdminMockData";
 import { LicenseModal } from "./superAdmin/modals/LicenseModal";
 import { InvoiceModal } from "./superAdmin/modals/InvoiceModal";
-import { StoreOnboardingModal } from "./superAdmin/modals/StoreOnboardingModal";
+import { StoreOnboardingModal, StoreOnboardSubmitData } from "./superAdmin/modals/StoreOnboardingModal";
 import { CreateLicenseKeyModal } from "./superAdmin/modals/CreateLicenseKeyModal";
 import { StoreDossierModal } from "./superAdmin/modals/StoreDossierModal";
 import { SuspendStoreModal } from "./superAdmin/modals/SuspendStoreModal";
+import { DeleteStoreModal } from "./superAdmin/modals/DeleteStoreModal";
 import { ScenarioTemplateSkeleton } from "@/components/ui";
 
 import { TenantManager } from "./superAdmin/TenantManager";
@@ -120,36 +121,65 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const [connectedSources, setConnectedSources] = useState<string[]>([]);
 
   // Tải toàn bộ dữ liệu từ Supabase qua Server API
-  useEffect(() => {
-    setIsLoadingData(true);
-    Promise.allSettled([
-      storeApi.getStores().then((serverStores) => {
-        if (serverStores && serverStores.length > 0) setStores(serverStores);
-      }),
-      storeApi.getLicenses().then((serverLicenses) => {
-        if (serverLicenses && serverLicenses.length > 0) {
-          setLicenses(
-            serverLicenses.map((l) => ({
-              id: l.id,
-              keyCode: l.keyCode,
-              storeName: l.storeName,
-              storeId: l.storeId,
-              plan: l.plan || "PRO",
-              maxDevices: l.maxDevices || 4,
-              durationMonths: l.durationMonths || 12,
-              issuedAt: l.issuedAt,
-              expiresAt: l.expiresAt,
-              status: l.status,
-              modules: [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
-            }))
-          );
-        }
-      }),
-      storeApi.getInvoices().then((serverInvoices) => {
-        if (serverInvoices && serverInvoices.length > 0) setInvoices(serverInvoices);
-      }),
-    ]).finally(() => setIsLoadingData(false));
+  const loadData = useCallback(async (isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+    else setIsLoadingData(true);
+
+    try {
+      const results = await Promise.allSettled([
+        storeApi.getStores(),
+        storeApi.getLicenses(),
+        storeApi.getInvoices(),
+      ]);
+      let refreshed = 0;
+      const [storeResult, licenseResult, invoiceResult] = results;
+      const sources: string[] = [];
+
+      if (storeResult.status === "fulfilled" && storeResult.value) {
+        setStores(storeResult.value);
+        sources.push("stores");
+        refreshed += 1;
+      }
+      if (licenseResult.status === "fulfilled" && licenseResult.value) {
+        setLicenses(
+          licenseResult.value.map((license: any) => ({
+            id: license.id,
+            keyCode: license.keyCode,
+            storeName: license.storeName,
+            storeId: license.storeId,
+            plan: license.plan || "PRO",
+            maxDevices: license.maxDevices || 4,
+            durationMonths: license.durationMonths || 12,
+            issuedAt: license.issuedAt,
+            expiresAt: license.expiresAt,
+            status: license.status,
+            modules: license.modules || [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
+          }))
+        );
+        sources.push("licenses");
+        refreshed += 1;
+      }
+      if (invoiceResult.status === "fulfilled" && invoiceResult.value) {
+        setInvoices(invoiceResult.value);
+        sources.push("invoices");
+        refreshed += 1;
+      }
+      setConnectedSources(sources);
+
+      if (isManual) {
+        if (refreshed === results.length) toast.success("Dữ liệu đối tác, license và hóa đơn đã được cập nhật.");
+        else if (refreshed > 0) toast.warning(`Đã cập nhật ${refreshed}/3 nguồn dữ liệu. Một số dịch vụ chưa phản hồi.`);
+        else toast.error("Không thể kết nối máy chủ để làm mới dữ liệu.");
+      }
+    } finally {
+      if (isManual) setIsRefreshing(false);
+      else setIsLoadingData(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadData(false);
+  }, [loadData]);
 
 
   const [licenseSearch, setLicenseSearch] = useState("");
@@ -175,6 +205,9 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     store: TenantStoreRecord;
     mode: "SUSPEND" | "ACTIVATE";
   } | null>(null);
+
+  // Modal Xác Nhận Xóa Vĩnh Viễn Quán (Bảo Mật Bằng Mã Hồ Sơ / Hợp Đồng)
+  const [deleteTargetStore, setDeleteTargetStore] = useState<TenantStoreRecord | null>(null);
 
   // Modal Đăng Ký Quán Mới (Onboarding)
   const [isNewStoreModalOpen, setIsNewStoreModalOpen] = useState(false);
@@ -349,47 +382,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
   // Refresh Telemetry
   const handleRefreshTelemetry = async () => {
-    setIsRefreshing(true);
-    const results = await Promise.allSettled([
-      storeApi.getStores(),
-      storeApi.getLicenses(),
-      storeApi.getInvoices(),
-    ]);
-    let refreshed = 0;
-    const [storeResult, licenseResult, invoiceResult] = results;
-    const sources: string[] = [];
-    if (storeResult.status === "fulfilled") {
-      setStores(storeResult.value || []);
-      sources.push("stores");
-      refreshed += 1;
-    }
-    if (licenseResult.status === "fulfilled") {
-      setLicenses((licenseResult.value || []).map((license) => ({
-        id: license.id,
-        keyCode: license.keyCode,
-        storeName: license.storeName,
-        storeId: license.storeId,
-        plan: license.plan || "PRO",
-        maxDevices: license.maxDevices || 4,
-        durationMonths: license.durationMonths || 12,
-        issuedAt: license.issuedAt,
-        expiresAt: license.expiresAt,
-        status: license.status,
-        modules: license.modules || [AppModule.CORE_POS],
-      })));
-      sources.push("licenses");
-      refreshed += 1;
-    }
-    if (invoiceResult.status === "fulfilled") {
-      setInvoices(invoiceResult.value || []);
-      sources.push("invoices");
-      refreshed += 1;
-    }
-    setConnectedSources(sources);
-    setIsRefreshing(false);
-    if (refreshed === results.length) toast.success("Dữ liệu đối tác, license và hóa đơn đã được cập nhật.");
-    else if (refreshed > 0) toast.warning(`Đã cập nhật ${refreshed}/3 nguồn dữ liệu. Một số dịch vụ chưa phản hồi.`);
-    else toast.error("Không thể kết nối máy chủ để làm mới dữ liệu.");
+    await loadData(true);
   };
 
   // Xác nhận thanh toán hóa đơn cước
@@ -519,168 +512,144 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     toast.success(`Đã ${isSuspending ? "khóa" : "mở khóa"} cửa hàng ${store.name} thành công.`);
   };
 
-  // Bật / Tắt module tính năng (Feature Flags) cho quán
+  // Xóa vĩnh viễn cửa hàng (Bảo mật bằng mã hồ sơ / license key)
+  const handleDeleteStore = async (store: TenantStoreRecord) => {
+    if (!connectedSources.includes("stores")) {
+      toast.error("Máy chủ chưa kết nối. Không thể xóa cửa hàng trên dữ liệu xem trước.");
+      return;
+    }
+    try {
+      await storeApi.deleteStore(store.id);
+      setStores((prev) => prev.filter((s) => s.id !== store.id));
+      setLicenses((prev) => prev.filter((l) => l.storeId !== store.id));
+      if (viewingStoreDetails?.id === store.id) {
+        setViewingStoreDetails(null);
+      }
+      setDeleteTargetStore(null);
+      toast.success(`Đã xóa vĩnh viễn cửa hàng "${store.name}" thành công!`);
+    } catch (error: any) {
+      toast.error(error instanceof Error ? error.message : "Không thể xóa cửa hàng. Vui lòng thử lại.");
+      throw error;
+    }
+  };
+
+  // Bật / Tắt module tính năng (Feature Flags) cho quán (Cập nhật lạc quan - Optimistic UI phản hồi 0ms)
   const handleToggleStoreModule = async (storeId: string, modId: AppModule) => {
     if (modId === AppModule.CORE_POS) {
       toast.warning("Module Vận Hành Bàn & Đơn (Core POS) là module lõi bắt buộc, không thể tắt!");
       return;
     }
-    const store = stores.find((s) => s.id === storeId);
-    if (!store) return;
-    const exists = store.modules.includes(modId);
+    const currentStore =
+      viewingStoreDetails?.id === storeId
+        ? viewingStoreDetails
+        : stores.find((s) => s.id === storeId);
+    if (!currentStore) return;
+
+    const exists = currentStore.modules.includes(modId);
     const updatedModules = exists
-      ? store.modules.filter((m) => m !== modId)
-      : [...store.modules, modId];
+      ? currentStore.modules.filter((m) => m !== modId)
+      : [...currentStore.modules, modId];
 
-    const updatedStore = { ...store, modules: updatedModules };
-    if (!connectedSources.includes("stores")) {
-      toast.error("Máy chủ chưa kết nối. Không thể lưu module trên dữ liệu xem trước.");
-      return;
-    }
-    try {
-      await storeApi.updateStore(storeId, { modules: updatedModules });
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Không thể cập nhật module cho cửa hàng.");
-      return;
-    }
+    const updatedStore = { ...currentStore, modules: updatedModules };
 
+    // 1. Phản hồi giao diện tức thì 0ms (Optimistic Update)
     setStores((prev) => prev.map((s) => (s.id === storeId ? updatedStore : s)));
     if (viewingStoreDetails?.id === storeId) {
       setViewingStoreDetails(updatedStore);
     }
 
-    const modName = APP_MODULE_CATALOG.find((m) => m.id === modId)?.name || modId;
-    toast.success(
-      exists
-        ? `Đã vô hiệu hóa module "${modName}" cho quán ${store.name}`
-        : `Đã kích hoạt module "${modName}" cho quán ${store.name}`
-    );
-
-    const newLog: SystemAuditLogRecord = {
-      id: `a-${Date.now()}`,
-      action: "MODULE_CONFIG_CHANGE",
-      storeName: store.name,
-      actor: "Quản trị viên",
-      actorRole: "SUPER_ADMIN",
-      ipAddress: "Chưa ghi nhận",
-      timestamp: "Vừa xong",
-      details: `${exists ? "Vô hiệu hóa" : "Kích hoạt"} module ${modName} (Feature Flag cấp quyền)`,
-      status: "SUCCESS",
-    };
-    setAuditLogs((prev) => [newLog, ...prev]);
-  };
-
-  // Tạo quán mới từ modal onboarding
-  const handleCreateNewStoreSubmit = async (storeData: {
-    name: string;
-    owner: string;
-    phone: string;
-    address: string;
-    businessType: BusinessType;
-    scale: StoreScale;
-    modules: AppModule[];
-    tableCount: number;
-    durationMonths: number;
-    plan: "STARTER" | "GROWTH" | "PRO";
-  }) => {
-    const { name, owner, phone, businessType, scale, plan, durationMonths, modules, address, tableCount } = storeData;
-    if (!name.trim() || !owner.trim() || !phone.trim()) {
-      toast.error("Vui lòng nhập đầy đủ tên quán, chủ quán và số điện thoại");
+    if (!connectedSources.includes("stores")) {
+      toast.info("Đã cập nhật trên giao diện xem trước (chưa kết nối máy chủ).");
       return;
     }
 
-    const pricePerMonth = plan === "STARTER" ? 199000 : plan === "GROWTH" ? 399000 : 599000;
-    const subTotal = pricePerMonth * durationMonths;
-    const discount = durationMonths >= 12 ? Math.round(subTotal * 0.2) : durationMonths >= 6 ? Math.round(subTotal * 0.1) : 0;
-    const finalAmount = subTotal - discount;
-    const newKey = `A2-${plan}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const newId = `s-${Date.now()}`;
+    const modName = APP_MODULE_CATALOG.find((m) => m.id === modId)?.name || modId;
 
-    const newStore: TenantStoreRecord = {
-      id: newId,
-      name: name.trim(),
-      owner: owner.trim(),
-      phone: phone.trim(),
-      address: address.trim() || "Chưa cập nhật",
-      tableCount,
-      licenseKey: newKey,
-      plan,
-      scale,
-      status: "ACTIVE",
-      activatedAt: new Date().toLocaleDateString("vi-VN"),
-      expiresAt: new Date(Date.now() + durationMonths * 30 * 86400000).toLocaleDateString("vi-VN"),
-      daysLeft: durationMonths * 30,
-      pingMs: 0,
-      activeDevices: 0,
-      configVer: "v1.0.0",
+    try {
+      await storeApi.updateStore(storeId, { modules: updatedModules });
+
+      const newLog: SystemAuditLogRecord = {
+        id: `a-${Date.now()}`,
+        action: "MODULE_CONFIG_CHANGE",
+        storeName: currentStore.name,
+        actor: "Quản trị viên",
+        actorRole: "SUPER_ADMIN",
+        ipAddress: "Chưa ghi nhận",
+        timestamp: "Vừa xong",
+        details: `${exists ? "Vô hiệu hóa" : "Kích hoạt"} module ${modName} (Feature Flag cấp quyền)`,
+        status: "SUCCESS",
+      };
+      setAuditLogs((prev) => [newLog, ...prev]);
+    } catch (error) {
+      // 2. Hoàn tác khi có lỗi từ server
+      setStores((prev) => prev.map((s) => (s.id === storeId ? currentStore : s)));
+      if (viewingStoreDetails?.id === storeId) {
+        setViewingStoreDetails(currentStore);
+      }
+      toast.error(error instanceof Error ? error.message : "Không thể cập nhật module cho cửa hàng. Đã hoàn tác.");
+    }
+  };
+
+  // Tạo quán mới từ modal onboarding
+  const handleCreateNewStoreSubmit = async (
+    storeData: StoreOnboardSubmitData
+  ): Promise<TenantStoreRecord | null> => {
+    const {
+      name,
+      owner,
+      ownerEmail,
+      ownerPassword,
+      ownerPin,
+      phone,
       businessType,
-      modules,
-    };
-
-    const newInvoice: SoftwareInvoiceRecord = {
-      id: `inv-${Date.now()}`,
-      invoiceCode: `INV-PREVIEW-${Math.floor(1000 + Math.random() * 9000)}`,
-      storeId: newId,
-      storeName: name.trim(),
-      plan: `Gói ${plan === "STARTER" ? "Quán Nhỏ (STARTER)" : plan === "GROWTH" ? "Quán Vừa (GROWTH)" : "Chuỗi Chuyên Nghiệp (PRO)"}`,
+      scale,
+      plan,
       durationMonths,
-      subTotal,
-      discountAmount: discount,
-      finalAmount,
-      status: "PENDING",
-      paymentMethod: "VIETQR",
-      createdAt: "Vừa xong",
-    };
+      modules,
+      address,
+      tableCount,
+    } = storeData;
 
-    let savedStore = newStore;
-    let savedInvoice = false;
-    if (connectedSources.includes("stores")) {
-      try {
-        const createdStore = await storeApi.createStore(newStore);
-        savedStore = { ...newStore, ...createdStore, scale, businessType, modules };
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Không thể tạo cửa hàng trên máy chủ.");
-        return;
+    try {
+      const createdStore = await storeApi.createStore({
+        name: name.trim(),
+        owner: owner.trim(),
+        ownerEmail: ownerEmail.trim().toLowerCase(),
+        ownerPassword,
+        ownerPin: ownerPin.trim(),
+        phone: phone.trim(),
+        address: address.trim() || "Chưa cập nhật",
+        tableCount,
+        plan,
+        scale,
+        durationMonths,
+        modules,
+        businessType,
+      });
+
+      // Cập nhật lại danh sách cửa hàng & hóa đơn từ máy chủ
+      const [latestStores, latestInvoices] = await Promise.all([
+        storeApi.getStores().catch(() => null),
+        storeApi.getInvoices().catch(() => null),
+      ]);
+
+      if (latestStores) {
+        setStores(latestStores);
+      } else {
+        setStores((prev) => [createdStore, ...prev]);
       }
 
-      try {
-        await storeApi.createSubscriptionInvoice({
-          storeId: savedStore.id,
-          durationMonths,
-          amount: finalAmount,
-          enabledModules: modules,
-        });
-        const latestInvoices = await storeApi.getInvoices();
-        setInvoices(latestInvoices || []);
-        setConnectedSources((sources) => [...new Set([...sources, "invoices"])]);
-        savedInvoice = true;
-      } catch (error) {
-        toast.warning(`Cửa hàng đã tạo, nhưng hóa đơn chưa được lập: ${error instanceof Error ? error.message : "dịch vụ hóa đơn chưa sẵn sàng"}`);
+      if (latestInvoices) {
+        setInvoices(latestInvoices);
       }
-    } else {
-      setInvoices((prev) => [newInvoice, ...prev]);
-    }
 
-    setStores((prev) => [savedStore, ...prev]);
-
-    // Seed kịch bản menu thực đơn & bàn mẫu cho quán mới
-    const scenario = BUSINESS_SCENARIOS[businessType];
-    if (scenario) {
-      try {
-        localStorage.setItem(`store_${savedStore.id}_dishes`, JSON.stringify(scenario.dishes));
-        localStorage.setItem(`store_${savedStore.id}_tables`, JSON.stringify(scenario.defaultTables));
-        localStorage.setItem("menu_dishes_data", JSON.stringify(scenario.dishes));
-      } catch (err) {
-        console.error("Failed to seed scenario data:", err);
-      }
+      toast.success(`Đã khởi tạo thành công quán "${name}" và kích hoạt bản quyền!`);
+      return createdStore;
+    } catch (error: any) {
+      const msg = error instanceof Error ? error.message : "Không thể tạo cửa hàng trên máy chủ.";
+      toast.error(msg);
+      throw new Error(msg);
     }
-
-    if (connectedSources.includes("stores")) {
-      toast.success(savedInvoice ? `Đã tạo ${name} và lập hóa đơn thuê bao.` : `Đã tạo ${name}. Hãy kiểm tra hóa đơn để hoàn tất thiết lập thuê bao.`);
-    } else {
-      toast.info(`Đã tạo ${name} trong dữ liệu xem trước. Kết nối máy chủ để lưu thay đổi.`);
-    }
-    setIsNewStoreModalOpen(false);
   };
 
   // Hàm kiểm tra khớp tỉnh thành
@@ -807,7 +776,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         </div>
       )}
 
-      {!isCurrentTabMaximized && connectedSources.length < 3 && activeTab !== "telemetry" && (
+      {!isCurrentTabMaximized && !isLoadingData && connectedSources.length < 3 && activeTab !== "telemetry" && (
         <div className="flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/80 px-3.5 py-3 text-xs text-amber-900 animate-fadeIn">
           <Icon name="info" size={15} className="mt-0.5 shrink-0 text-amber-700" />
           <p className="leading-relaxed"><strong>{connectedSources.length ? "Một phần dữ liệu chưa kết nối." : "Đang ở chế độ xem trước."}</strong> {connectedSources.length ? "Danh sách chỉ bao gồm các nguồn đã tải được; thao tác ghi cần máy chủ phản hồi." : "Các bản ghi minh họa không được lưu. Kết nối máy chủ để dùng dữ liệu và thao tác thật."}</p>
@@ -990,6 +959,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         }}
         onToggleModule={handleToggleStoreModule}
         onToggleStoreStatus={handleToggleStoreStatus}
+        onDeleteStore={(store) => setDeleteTargetStore(store)}
         onViewInvoice={(inv) => setViewingInvoice(inv)}
       />
 
@@ -999,6 +969,14 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         mode={suspendTarget?.mode || "SUSPEND"}
         onClose={() => setSuspendTarget(null)}
         onConfirm={handleConfirmToggleStoreStatus}
+      />
+
+      {/* 7. Modal Cảnh Báo & Xác Nhận Xóa Vĩnh Viễn Quán Bằng Mã Hồ Sơ */}
+      <DeleteStoreModal
+        store={deleteTargetStore}
+        isOpen={!!deleteTargetStore}
+        onClose={() => setDeleteTargetStore(null)}
+        onConfirm={handleDeleteStore}
       />
     </div>
   );

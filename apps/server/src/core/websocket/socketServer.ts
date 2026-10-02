@@ -1,4 +1,4 @@
-﻿import { Server as HttpServer } from "http";
+import { Server as HttpServer } from "http";
 import { Server as SocketIOServer, Socket } from "socket.io";
 import { SocketEvents } from "@a2order/shared";
 
@@ -32,6 +32,54 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
         const roomName = `store:${storeId}`;
         socket.join(roomName);
         console.log(`[Socket] Client ${socket.id} joined ${roomName}`);
+      }
+    });
+
+    // Chuyển tiếp đơn gọi món từ khách tới các thiết bị nhân viên/bếp của quán
+    socket.on(SocketEvents.ORDER_SUBMITTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_SUBMITTED, payload);
+      }
+    });
+
+    // Khách gửi đơn chờ quán duyệt trước khi vào bếp
+    socket.on(SocketEvents.ORDER_APPROVAL_REQUESTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_APPROVAL_REQUESTED, payload);
+      }
+    });
+
+    // Quán duyệt đơn vào bếp
+    socket.on(SocketEvents.ORDER_APPROVED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_APPROVED, payload);
+      }
+    });
+
+    // Quán từ chối đơn
+    socket.on(SocketEvents.ORDER_REJECTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_REJECTED, payload);
+      }
+    });
+
+    // Khách hủy món khi chưa làm
+    socket.on(SocketEvents.ORDER_ITEM_CANCELLED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_ITEM_CANCELLED, payload);
+      }
+    });
+
+    // Khách gửi yêu cầu hỗ trợ nhanh (đá, giấy, dọn bàn...)
+    socket.on(SocketEvents.SERVICE_REQUESTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.SERVICE_REQUESTED, payload);
       }
     });
 

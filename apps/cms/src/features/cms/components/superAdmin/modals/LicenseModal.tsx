@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
+import { configApi } from "@/services/api/configApi";
+import { PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
 
 export interface LicenseModalProps {
   store: {
@@ -23,6 +25,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [plans, setPlans] = useState<PlanConfig[]>(Object.values(PLAN_CONFIGS));
   const [selectedPlan, setSelectedPlan] = useState<"STARTER" | "GROWTH" | "PRO">("PRO");
   const [selectedDuration, setSelectedDuration] = useState<number>(12);
   const { requestClose } = useUnsavedEditor("license_modal", Boolean(store), JSON.stringify({ selectedPlan, selectedDuration }), onClose);
@@ -31,15 +34,22 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
     if (store) {
       setSelectedPlan(store.plan === "STARTER" || store.plan === "GROWTH" ? store.plan : "PRO");
       setSelectedDuration(12);
+
+      configApi.getPricingConfig().then((cfg) => {
+        if (cfg?.plans) {
+          const list = (Array.isArray(cfg.plans) ? cfg.plans : Object.values(cfg.plans)) as PlanConfig[];
+          if (list.length > 0) setPlans(list);
+        }
+      }).catch(() => {});
     }
   }, [store?.id]);
 
   if (!store) return null;
 
-  const planPrices = {
-    STARTER: 199000,
-    GROWTH: 399000,
-    PRO: 599000,
+  const planPrices: Record<"STARTER" | "GROWTH" | "PRO", number> = {
+    STARTER: plans.find((p) => p.id === "STARTER")?.monthlyPrice || 119000,
+    GROWTH: plans.find((p) => p.id === "GROWTH")?.monthlyPrice || 199000,
+    PRO: plans.find((p) => p.id === "PRO")?.monthlyPrice || 299000,
   };
 
   const basePrice = planPrices[selectedPlan] * selectedDuration;
@@ -89,9 +99,9 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "STARTER", name: "Quán Nhỏ", price: "199k/tháng", desc: "1-2 người, POS cơ bản" },
-                  { id: "GROWTH", name: "Quán Vừa", price: "399k/tháng", desc: "POS + Bếp KDS + QR" },
-                  { id: "PRO", name: "Chuỗi Pro", price: "599k/tháng", desc: "Đầy đủ Landing + Báo cáo" },
+                  { id: "STARTER", name: "Quán Nhỏ", price: `${Math.round(planPrices.STARTER / 1000)}k/tháng`, desc: "POS + QR Order (Tiết kiệm hơn KiotViet)" },
+                  { id: "GROWTH", name: "Quán Vừa", price: `${Math.round(planPrices.GROWTH / 1000)}k/tháng`, desc: "Kèm Bếp KDS + Kế toán (Không phụ thu máy)" },
+                  { id: "PRO", name: "Chuỗi Pro", price: `${Math.round(planPrices.PRO / 1000)}k/tháng`, desc: "Full 6 Modules + Web riêng + Báo cáo" },
                 ].map((p) => {
                   const isSelected = selectedPlan === p.id;
                   return (

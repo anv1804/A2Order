@@ -19,44 +19,46 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
       title: "VẬN HÀNH & BÁN HÀNG",
       items: [
         { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
-        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart" },
-        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table" },
-        { id: "kds", label: "Bếp Nấu (KDS)", icon: "kitchen", requiredModule: "MODULE_KDS" as any },
+        { id: "staff_order", label: "Gọi Món", icon: "cart" },
+        { id: "tables", label: "Phòng Bàn", icon: "table" },
+        { id: "delivery_integrations", label: "App Giao Hàng", icon: "cart" },
+        { id: "kds", label: "Bếp & Pha Chế", icon: "kitchen", requiredModule: "MODULE_KDS" as any },
         { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
       ],
     },
     {
       title: "THỰC ĐƠN & KHO HÀNG",
       items: [
-        { id: "menu", label: "Thực Đơn & Món Ăn", icon: "menu" },
-        { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart" },
+        { id: "menu", label: "Thực Đơn", icon: "menu" },
+        { id: "inventory", label: "Kho Hàng", icon: "cart" },
       ],
     },
     {
       title: "KHÁCH HÀNG & MARKETING",
       items: [
-        { id: "customers", label: "Khách Hàng & VIP", icon: "userCheck" },
-        { id: "promotions", label: "Khuyến Mãi & Voucher", icon: "tag" },
+        { id: "customers", label: "Khách Hàng", icon: "userCheck" },
+        { id: "promotions", label: "Khuyến Mãi", icon: "tag" },
       ],
     },
     {
       title: "TÀI CHÍNH & BÁO CÁO",
       items: [
         { id: "analytics", label: "Báo Cáo Doanh Thu", icon: "trending" },
+        { id: "einvoice", label: "Hóa Đơn Điện Tử", icon: "fileText" },
       ],
     },
     {
       title: "HỆ THỐNG & CÀI ĐẶT",
       items: [
-        { id: "team", label: "Nhân Sự & Quyền", icon: "users" },
+        { id: "team", label: "Nhân Viên", icon: "users" },
         { id: "hardware", label: "Máy In & Thiết Bị", icon: "print" },
         {
           id: "landing_page",
-          label: "Landing Page & Web",
+          label: "Trang Web Quán",
           icon: "globe",
           badge: enabledModules.includes("MODULE_LANDING_PAGE" as any) ? "SEO" : "PRO",
         },
-        { id: "settings", label: "Cài Đặt & Gói Cước", icon: "settings" },
+        { id: "settings", label: "Cài Đặt Quán", icon: "settings" },
       ],
     },
   ];
@@ -102,10 +104,10 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   // Nhóm menu cho Phục vụ bàn
   const waiterGroups: MenuGroup[] = [
     {
-      title: "PHỤC VỤ & ORDER BÀN",
+      title: "PHỤC VỤ & BÁN HÀNG",
       items: [
-        { id: "tables", label: "Sơ Đồ Bàn & QR", icon: "table" },
-        { id: "staff_order", label: "Order Cầm Tay (POS)", icon: "cart" },
+        { id: "tables", label: "Phòng Bàn", icon: "table" },
+        { id: "staff_order", label: "Gọi Món", icon: "cart" },
         { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
       ],
     },
@@ -114,10 +116,10 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   // Nhóm menu cho Đầu bếp / Pha chế
   const chefGroups: MenuGroup[] = [
     {
-      title: "BẾP NẤU & THỰC ĐƠN",
+      title: "BẾP & PHA CHẾ",
       items: [
-        { id: "kds", label: "Màn Hình Bếp (KDS)", icon: "kitchen" },
-        { id: "menu", label: "Thực Đơn & Báo Hết", icon: "menu" },
+        { id: "kds", label: "Bếp & Pha Chế", icon: "kitchen" },
+        { id: "menu", label: "Thực Đơn", icon: "menu" },
       ],
     },
   ];
@@ -127,11 +129,13 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
     {
       title: "THU NGÂN & BÁN HÀNG",
       items: [
-        { id: "dashboard", label: "Tổng Quan Ca Bán", icon: "activity" },
-        { id: "staff_order", label: "Thu Ngân & POS", icon: "cashier" },
-        { id: "tables", label: "Sơ Đồ Bàn & Bill", icon: "table" },
+        { id: "dashboard", label: "Tổng Quan Ca", icon: "activity" },
+        { id: "staff_order", label: "Thu Ngân", icon: "cashier" },
+        { id: "tables", label: "Phòng Bàn", icon: "table" },
+        { id: "delivery_integrations", label: "App Giao Hàng", icon: "cart" },
         { id: "reservations", label: "Lịch Đặt Bàn", icon: "calendarCheck" },
-        { id: "customers", label: "Khách Hàng & VIP", icon: "userCheck" },
+        { id: "customers", label: "Khách Hàng", icon: "userCheck" },
+        { id: "einvoice", label: "Hóa Đơn Điện Tử", icon: "fileText" },
       ],
     },
   ];
@@ -144,6 +148,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         { id: "dashboard", label: "Tổng Quan Quán", icon: "activity" },
         { id: "analytics", label: "Báo Cáo Doanh Thu", icon: "trending" },
         { id: "inventory", label: "Kho & Nhập Hàng", icon: "cart" },
+        { id: "einvoice", label: "Hóa Đơn Điện Tử (TT78)", icon: "fileText" },
       ],
     },
   ];
@@ -216,7 +221,7 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         {!collapsed && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(110,231,183,.1)]" />}
       </div>
 
-      <nav aria-label="Danh mục quản trị" className={`min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain scrollbar-thin ${collapsed ? "pr-0" : "pr-1"}`}>
+      <nav aria-label="Danh mục quản trị" className={`min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain sidebar-scroll ${collapsed ? "pr-0" : "pr-1"}`}>
         {currentGroups.map((group) => (
           <div key={group.title}>
             {collapsed ? <div className="w-8 mx-auto my-2 border-t border-white/10" /> : <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-100/40">{group.title}</p>}

@@ -81,7 +81,15 @@ export type IconName =
   | "maximize"
   | "minimize"
   | "copy"
-  | "eyeOff";
+  | "eyeOff"
+  | "beer"
+  | "soup"
+  | "cookie"
+  | "chat"
+  | "support"
+  | "headphones"
+  | "chevronUp"
+  | "messageSquare";
 
 export interface IconProps {
   name: IconName;

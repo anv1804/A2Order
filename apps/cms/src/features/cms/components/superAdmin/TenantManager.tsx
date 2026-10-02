@@ -128,9 +128,9 @@ export const TenantManager: React.FC<TenantManagerProps> = ({
   const planOptions: SearchableSelectOption[] = useMemo(
     () => [
       { value: "ALL", label: "Tất Cả Các Gói", badge: stores.length },
-      { value: "PRO", label: "Gói Pro (599k/th)", badge: stores.filter((s) => s.plan === "PRO").length },
-      { value: "GROWTH", label: "Gói Vừa (399k/th)", badge: stores.filter((s) => s.plan === "GROWTH").length },
-      { value: "STARTER", label: "Gói Nhỏ (199k/th)", badge: stores.filter((s) => s.plan === "STARTER").length },
+      { value: "PRO", label: "Gói Pro (299k/th)", badge: stores.filter((s) => s.plan === "PRO").length },
+      { value: "GROWTH", label: "Gói Vừa (199k/th)", badge: stores.filter((s) => s.plan === "GROWTH").length },
+      { value: "STARTER", label: "Gói Nhỏ (119k/th)", badge: stores.filter((s) => s.plan === "STARTER").length },
     ],
     [stores]
   );
