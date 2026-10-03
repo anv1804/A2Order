@@ -109,6 +109,12 @@ export const App: React.FC = () => {
   }, [isLoading]);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+      window.location.href = "http://localhost:3000";
+    }
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 500);

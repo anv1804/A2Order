@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button, Badge, Icon } from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast } from "@/stores/notificationStore";
 import { KdsStation, KdsStatus, KdsOrderItem, CmsKdsTicket } from "@/types/kds.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -344,152 +345,75 @@ export const CmsKdsView: React.FC = () => {
   return (
     <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
       {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Bếp & Pha Chế
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {newTickets.length} Vé chờ nấu • {inProgressTickets.length} Đang trên bếp
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Bếp & Pha Chế
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Nhận món từ bàn, điều phối chế biến và thông báo trả món
-            </p>
-
-            {/* Quick Live Stats Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="flame" size={12} className="text-amber-300" />
-                <span>Bếp nóng & Lẩu</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="activity" size={12} className="text-blue-300" />
-                <span>Quầy Bar & Pha chế</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="clock" size={12} className="text-teal-300" />
-                <span>Thời gian chuẩn: &lt; 10 phút/món</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
-            <button
-              type="button"
-              onClick={() => setSoundEnabled((v) => !v)}
-              className={`inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 sm:px-4 text-xs font-black shadow-sm transition active:scale-95 shrink-0 ${
-                soundEnabled
-                  ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
-                  : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
-              }`}
-              aria-label="Cài đặt âm báo bếp"
-            >
-              <Icon name="bell" size={14} className={soundEnabled ? "text-slate-950" : "text-emerald-300"} />
-              <span>Chuông Báo: {soundEnabled ? "Bật" : "Tắt"}</span>
-            </button>
-          </div>
-        </div>
-      </section>
+      <HeroBanner
+        badge={{
+          label: "Bếp & Pha Chế",
+          dot: true,
+          variant: "teal",
+        }}
+        tagline={`${newTickets.length} Vé chờ nấu • ${inProgressTickets.length} Đang trên bếp`}
+        title="Bếp & Pha Chế"
+        description="Nhận món từ bàn, điều phối chế biến và thông báo trả món"
+        chips={[
+          { icon: "flame", label: "Bếp nóng & Lẩu", variant: "amber" },
+          { icon: "activity", label: "Quầy Bar & Pha chế", variant: "blue" },
+          { icon: "clock", label: "Thời gian chuẩn: < 10 phút/món", variant: "teal" },
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={() => setSoundEnabled((v) => !v)}
+            className={`inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl px-3.5 sm:px-4 text-xs font-black shadow-sm transition active:scale-95 shrink-0 ${
+              soundEnabled
+                ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
+            }`}
+            aria-label="Cài đặt âm báo bếp"
+          >
+            <Icon name="bell" size={14} className={soundEnabled ? "text-slate-950" : "text-emerald-300"} />
+            <span>Chuông Báo: {soundEnabled ? "Bật" : "Tắt"}</span>
+          </button>
+        }
+      />
 
       {/* 2. 4 Thẻ Bento Chỉ Số KDS */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name="clock" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
-              Chờ làm
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Vé Chờ Chế Biến
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {newTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
-            </p>
-            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
-              Cần nhận làm ngay
-            </p>
-          </div>
-        </article>
-
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
-              <Icon name="flame" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
-              Đang nấu
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Đang Chế Biến
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {inProgressTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
-            </p>
-            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
-              Đang trên bếp & quầy pha
-            </p>
-          </div>
-        </article>
-
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="checkCircle" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              Hoàn tất
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Đã Ra Bàn Ca Này
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {doneTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
-            </p>
-            <p className="text-[10px] font-semibold text-emerald-600 mt-1 truncate">
-              Đã phục vụ khách dùng
-            </p>
-          </div>
-        </article>
-
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Icon name="activity" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
-              Tốc độ
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tốc Độ Ra Món TB
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              8.5 <span className="text-xs font-bold text-slate-400">phút/món</span>
-            </p>
-            <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
-              Đạt chuẩn vận hành (&lt; 12p)
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="clock"
+          variant="warning"
+          badge="Chờ làm"
+          title="Vé Chờ Chế Biến"
+          value={newTickets.length}
+          unit="vé"
+          subtext="Cần nhận làm ngay"
+        />
+        <StatCard
+          icon="flame"
+          variant="info"
+          badge="Đang nấu"
+          title="Đang Chế Biến"
+          value={inProgressTickets.length}
+          unit="vé"
+          subtext="Đang trên bếp & quầy pha"
+        />
+        <StatCard
+          icon="checkCircle"
+          variant="success"
+          badge="Hoàn tất"
+          title="Đã Ra Bàn Ca Này"
+          value={doneTickets.length}
+          unit="vé"
+          subtext="Đã phục vụ khách dùng"
+        />
+        <StatCard
+          icon="activity"
+          variant="default"
+          badge="Tốc độ"
+          title="Tốc Độ Ra Món TB"
+          value={8.5}
+          unit="phút/món"
+          subtext="Đạt chuẩn vận hành (< 12p)"
+        />
       </section>
 
       {/* 3. Sticky Station Toolbar */}

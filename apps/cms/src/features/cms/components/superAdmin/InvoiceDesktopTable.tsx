@@ -1,5 +1,16 @@
 import React, { useState } from "react";
-import { Icon, Checkbox } from "@/components/ui";
+import {
+  Icon,
+  Checkbox,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+} from "@/components/ui";
 import { SoftwareInvoiceRecord } from "@/types/cms.types";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "@/stores/notificationStore";
@@ -39,40 +50,37 @@ export const InvoiceDesktopTable: React.FC<InvoiceDesktopTableProps> = ({
 
   return (
     <div className="hidden lg:block w-full">
-      <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
-          <tr className="border-b border-surface-border text-slate-500 uppercase tracking-wider text-[10px] font-black">
-            <th className="py-3 pl-3.5 pr-1 w-10 bg-slate-50/95">
-              <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
-                onChange={onToggleSelectAll}
-                title="Chọn tất cả hóa đơn trên trang này"
+      <TableContainer className="rounded-none border-0 shadow-none">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
+            <TableRow>
+              <TableHead className="py-3 pl-3.5 pr-1 w-10">
+                <Checkbox
+                  checked={isAllSelected}
+                  indeterminate={isIndeterminate}
+                  onChange={onToggleSelectAll}
+                  title="Chọn tất cả hóa đơn trên trang này"
+                />
+              </TableHead>
+              <TableHead>Mã Hóa Đơn</TableHead>
+              <TableHead>Cửa Hàng & Gói Thuê</TableHead>
+              <TableHead>Kỳ Hạn</TableHead>
+              <TableHead>Số Tiền (VND)</TableHead>
+              <TableHead>Phương Thức</TableHead>
+              <TableHead>Trạng Thái</TableHead>
+              <TableHead align="right">Thao Tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedInvoices.length === 0 ? (
+              <TableEmpty
+                colSpan={8}
+                icon="fileText"
+                title="Không tìm thấy hóa đơn"
+                description="Không tìm thấy hóa đơn phần mềm nào phù hợp."
               />
-            </th>
-            <th className="py-3 px-3 bg-slate-50/95">Mã Hóa Đơn</th>
-            <th className="py-3 px-3 bg-slate-50/95">Cửa Hàng & Gói Thuê</th>
-            <th className="py-3 px-3 bg-slate-50/95">Kỳ Hạn</th>
-            <th className="py-3 px-3 bg-slate-50/95">Số Tiền (VND)</th>
-            <th className="py-3 px-3 bg-slate-50/95">Phương Thức</th>
-            <th className="py-3 px-3 bg-slate-50/95">Trạng Thái</th>
-            <th className="py-3 px-3.5 text-right bg-slate-50/95">Thao Tác</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 font-medium">
-          {paginatedInvoices.length === 0 ? (
-            <tr>
-              <td colSpan={8} className="py-12 text-center text-xs text-slate-400 font-bold">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Icon name="fileText" size={24} />
-                  </div>
-                  <span>Không tìm thấy hóa đơn nào phù hợp bộ lọc</span>
-                </div>
-              </td>
-            </tr>
-          ) : (
-            paginatedInvoices.map((inv) => {
+            ) : (
+              paginatedInvoices.map((inv) => {
               const isSelected = selectedInvoiceIds.includes(inv.id);
               const codeDisplay = inv.invoiceCode || inv.id;
               const isCopied = copiedCode === codeDisplay;
@@ -230,8 +238,9 @@ export const InvoiceDesktopTable: React.FC<InvoiceDesktopTableProps> = ({
               );
             })
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div>
   );
 };

@@ -9,13 +9,27 @@ export const Pagination: React.FC<PaginationProps> = ({
   pageSize,
   onPageChange,
   className = "",
+  showSummary = true,
+  bordered = true,
 }) => {
-  const totalPages = Math.max(1, propTotalPages ?? Math.ceil(totalItems / pageSize));
+  const calculatedTotalPages = Math.ceil(totalItems / pageSize);
+  const totalPages = Math.max(1, propTotalPages ?? calculatedTotalPages);
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
+  // Khi không có dữ liệu: Chỉ hiện thông báo số lượng (nếu showSummary), không vẽ nút trang
+  if (totalItems === 0) {
+    if (!showSummary) return null;
+    return (
+      <div className={`text-slate-400 font-medium text-xs py-1 select-none ${className}`}>
+        0 bản ghi
+      </div>
+    );
+  }
+
   // Sinh danh sách trang (tối đa 5 trang hiển thị)
   const getPageNumbers = () => {
+    if (totalPages <= 1) return [1];
     const pages: number[] = [];
     const maxVisible = 5;
     let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
@@ -32,34 +46,36 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   const pageNumbers = getPageNumbers();
+  const hasMultiplePages = totalPages > 1;
 
   return (
     <div
-      className={`flex flex-row items-center justify-between gap-2 pt-2.5 sm:pt-3.5 border-t border-slate-200/80 text-[11px] sm:text-xs select-none ${className}`}
+      className={`flex flex-row items-center justify-between gap-2 text-[11px] sm:text-xs select-none ${
+        bordered ? "pt-2.5 sm:pt-3.5 border-t border-slate-200/80" : ""
+      } ${className}`}
     >
       {/* Thông tin số lượng & trang */}
-      <div className="text-slate-500 font-medium truncate">
-        {totalItems === 0 ? (
-          <span>0 bản ghi</span>
-        ) : (
-          <>
-            <span className="sm:hidden font-bold text-slate-800">
-              {startItem}-{endItem} <span className="font-normal text-slate-400">/</span> {totalItems}
-            </span>
-            <span className="hidden sm:inline">
-              Hiển thị <span className="font-bold text-slate-800">{startItem}</span> -{" "}
-              <span className="font-bold text-slate-800">{endItem}</span> trong tổng số{" "}
-              <span className="font-black text-emerald-800">{totalItems}</span> bản ghi
+      {showSummary && (
+        <div className="text-slate-500 font-medium truncate">
+          <span className="sm:hidden font-bold text-slate-800">
+            {startItem}-{endItem} <span className="font-normal text-slate-400">/</span> {totalItems}
+          </span>
+          <span className="hidden sm:inline">
+            Hiển thị <span className="font-bold text-slate-800">{startItem}</span> -{" "}
+            <span className="font-bold text-slate-800">{endItem}</span> trong tổng số{" "}
+            <span className="font-black text-emerald-800">{totalItems}</span> bản ghi
+            {hasMultiplePages && (
               <span className="text-slate-400 ml-1.5 font-normal">
                 (Trang {currentPage} / {totalPages})
               </span>
-            </span>
-          </>
-        )}
-      </div>
+            )}
+          </span>
+        </div>
+      )}
 
-      {/* Dải nút điều hướng đồng bộ (Luôn hiển thị trên mọi trang) */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+      {/* Dải nút điều hướng đồng bộ (Chỉ hiển thị khi có từ 2 trang trở lên) */}
+      {hasMultiplePages && (
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
         {/* Nút Trước (Icon-only) */}
         <button
           type="button"
@@ -142,6 +158,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           <Icon name="chevronRight" size={15} />
         </button>
       </div>
+      )}
     </div>
   );
 };

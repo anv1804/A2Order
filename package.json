@@ -8,12 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,CMS,CLIENT\" -c \"cyan.bold,green.bold,magenta.bold\" \"npm run dev:server\" \"npm run dev:cms\" \"npm run dev:client\"",
+    "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,ADMIN,STORE,CLIENT\" -c \"cyan.bold,blue.bold,green.bold,magenta.bold\" \"npm run dev:server\" \"npm run dev:admin\" \"npm run dev:store\" \"npm run dev:client\"",
     "start": "npm run dev",
     "dev:server": "npm run dev --workspace=apps/server",
-    "dev:cms": "npm run dev --workspace=apps/cms",
-    "dev:client": "npm run dev --workspace=apps/client",
     "dev:admin": "npm run dev:admin --workspace=apps/cms",
+    "dev:store": "npm run dev:store --workspace=apps/cms",
+    "dev:cms": "npm run dev:store --workspace=apps/cms",
+    "dev:client": "npm run dev --workspace=apps/client",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces"
   },

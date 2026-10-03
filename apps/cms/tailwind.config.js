@@ -33,17 +33,74 @@ export default {
           800: "#194B3A", // Màu nút chính & điểm nhấn
           900: "#12372A", // Thẻ Card Hero nổi bật
           950: "#0B241B",
+          dark: "#061F17", // Nền gradient tối
+          deep: "#0D2A21", // Giữa gradient
+          hero: "#133B2E", // Đích gradient
         },
         surface: {
           canvas: "#F4F5F6", // Nền tổng thể dịu mắt
           card: "#FFFFFF",   // Nền thẻ trắng tinh khiết
           muted: "#ECEEED",  // Nền search pill & nút phụ
           border: "#E3E5E5", // Viền mảnh tinh tế
+          subtle: "#F9FAFA", // Nền bảng xen kẽ
         },
         ink: {
           primary: "#161918", // Chữ chính
           muted: "#69706D",   // Chữ mô tả
           subtle: "#9CA29F",  // Chữ phụ
+        },
+        // Hệ màu trạng thái nghiệp vụ chuẩn F&B (Status Semantic Tokens)
+        status: {
+          empty: {
+            bg: "#E8F5EE",
+            text: "#194B3A",
+            border: "#A3DBCE",
+            dot: "#194B3A",
+          },
+          selecting: {
+            bg: "#FEF3C7",
+            text: "#B45309",
+            border: "#FDE68A",
+            dot: "#B45309",
+          },
+          waiting: {
+            bg: "#FFEDD5",
+            text: "#C2410C",
+            border: "#FED7AA",
+            dot: "#C2410C",
+          },
+          served: {
+            bg: "#EFF6FF",
+            text: "#1D4ED8",
+            border: "#BFDBFE",
+            dot: "#1D4ED8",
+          },
+          billing: {
+            bg: "#FEE2E2",
+            text: "#B91C1C",
+            border: "#FECACA",
+            dot: "#B91C1C",
+          },
+          success: {
+            bg: "#E8F5EE",
+            text: "#194B3A",
+            border: "#A3DBCE",
+          },
+          warning: {
+            bg: "#FEF3C7",
+            text: "#B45309",
+            border: "#FDE68A",
+          },
+          danger: {
+            bg: "#FEE2E2",
+            text: "#B91C1C",
+            border: "#FECACA",
+          },
+          info: {
+            bg: "#EFF6FF",
+            text: "#1D4ED8",
+            border: "#BFDBFE",
+          },
         },
       },
       boxShadow: {

@@ -86,4 +86,6 @@ export interface PaginationProps {
   totalPages?: number;
   onPageChange: (page: number) => void;
   className?: string;
+  showSummary?: boolean;
+  bordered?: boolean;
 }

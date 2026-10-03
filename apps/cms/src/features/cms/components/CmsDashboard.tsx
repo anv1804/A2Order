@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Button, Icon } from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { CmsDashboardProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
@@ -224,102 +225,50 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
       )}
 
       {/* 2. Hero Header Banner - Chuẩn Sang Trọng Emerald PRO theo từng Role */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          {/* Left: Tiêu đề & Trạng thái ca vận hành */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {isAccountant ? "Sổ Quỹ Kế Toán" : isCashier ? "Ca Thu Ngân" : "Tổng Quan"}
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate font-mono">
-                {isAccountant ? "Tài Chính" : isCashier ? "Két Ca #02" : "Hôm Nay"}
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              {isAccountant
-                ? "Sổ Quỹ & Doanh Thu"
-                : isCashier
-                ? "Doanh Số Ca Thu Ngân"
-                : "Tổng Quan Quán"}
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              {isAccountant
-                ? "Theo dõi dòng tiền, tiền mặt, chuyển khoản VietQR và giá vốn"
-                : isCashier
-                ? "Kiểm tra hóa đơn trong ca và tổng tiền thu thực tế"
-                : "Tình hình kinh doanh, bàn ăn và doanh số trong ngày"}
-            </p>
-
-            {/* Quick Live Stats Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              {isAccountant ? (
-                <>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="banknote" size={12} className="text-emerald-300" />
-                    <span>Thực thu: {liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "0đ"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="cashier" size={12} className="text-amber-300" />
-                    <span>Tiền mặt két: {liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="vietqr" size={12} className="text-teal-300" />
-                    <span>VietQR: {liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "0đ"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="trending" size={12} className="text-blue-300" />
-                    <span>{liveStats.totalOrders} Đơn hoàn tất</span>
-                  </span>
-                </>
-              ) : isCashier ? (
-                <>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="checkCircle" size={12} className="text-emerald-300" />
-                    <span>{liveStats.totalOrders} Đơn đã thanh toán</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="banknote" size={12} className="text-amber-300" />
-                    <span>Tiền mặt két: {liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="table" size={12} className="text-rose-300" />
-                    <span>{liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="history" size={12} className="text-blue-300" />
-                    <span>Ca bán hoạt động</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="table" size={12} className="text-emerald-300" />
-                    <span>{liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="kitchen" size={12} className="text-amber-300" />
-                    <span>{liveStats.pendingTickets > 0 ? `${liveStats.pendingTickets} Món đang nấu` : "Bếp trống"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="banknote" size={12} className="text-teal-300" />
-                    <span>{liveStats.totalRevenue > 0 ? `${formatCurrency(liveStats.totalRevenue)} • ${liveStats.totalOrders} đơn` : "0đ • 0 đơn hôm nay"}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                    <Icon name="activity" size={12} className="text-blue-300" />
-                    <span>Hệ thống trực tuyến</span>
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Thao tác nhanh */}
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+      <HeroBanner
+        badge={{
+          label: isAccountant ? "Sổ Quỹ Kế Toán" : isCashier ? "Ca Thu Ngân" : "Tổng Quan",
+          dot: true,
+        }}
+        tagline={isAccountant ? "Tài Chính" : isCashier ? "Két Ca #02" : "Hôm Nay"}
+        title={
+          isAccountant
+            ? "Sổ Quỹ & Doanh Thu"
+            : isCashier
+            ? "Doanh Số Ca Thu Ngân"
+            : "Tổng Quan Quán"
+        }
+        description={
+          isAccountant
+            ? "Theo dõi dòng tiền, tiền mặt, chuyển khoản VietQR và giá vốn"
+            : isCashier
+            ? "Kiểm tra hóa đơn trong ca và tổng tiền thu thực tế"
+            : "Tình hình kinh doanh, bàn ăn và doanh số trong ngày"
+        }
+        chips={
+          isAccountant
+            ? [
+                { icon: "banknote", label: `Thực thu: ${liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "0đ"}`, variant: "default" },
+                { icon: "cashier", label: `Tiền mặt két: ${liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}`, variant: "amber" },
+                { icon: "vietqr", label: `VietQR: ${liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "0đ"}`, variant: "teal" },
+                { icon: "trending", label: `${liveStats.totalOrders} Đơn hoàn tất`, variant: "blue" },
+              ]
+            : isCashier
+            ? [
+                { icon: "checkCircle", label: `${liveStats.totalOrders} Đơn đã thanh toán`, variant: "default" },
+                { icon: "banknote", label: `Tiền mặt két: ${liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "0đ"}`, variant: "amber" },
+                { icon: "table", label: liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn", variant: "rose" },
+                { icon: "history", label: "Ca bán hoạt động", variant: "blue" },
+              ]
+            : [
+                { icon: "table", label: liveStats.totalTables > 0 ? `${liveStats.occupiedTables}/${liveStats.totalTables} Bàn có khách` : "Chưa có bàn", variant: "default" },
+                { icon: "kitchen", label: liveStats.pendingTickets > 0 ? `${liveStats.pendingTickets} Món đang nấu` : "Bếp trống", variant: "amber" },
+                { icon: "banknote", label: liveStats.totalRevenue > 0 ? `${formatCurrency(liveStats.totalRevenue)} • ${liveStats.totalOrders} đơn` : "0đ • 0 đơn hôm nay", variant: "teal" },
+                { icon: "activity", label: "Hệ thống trực tuyến", variant: "blue" },
+              ]
+        }
+        actions={
+          <>
             <button
               type="button"
               onClick={handleRefresh}
@@ -348,14 +297,14 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
                 if (isAccountant) onNavigateTab?.("analytics");
                 else onNavigateTab?.("staff_order");
               }}
-              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition hover:bg-emerald-300 active:scale-95 shrink-0"
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
             >
               <Icon name={isAccountant ? "trending" : "cart"} size={14} />
               <span>{isAccountant ? "Xem Báo Cáo P&L" : isCashier ? "Vào Thu Ngân POS" : "Gọi Món POS"}</span>
             </button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {/* 3. Main Dashboard: Cột Trái (Vận hành & Số liệu) + Cột Phải (Đồng hồ, Lịch & Ghi chú) */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-3.5 sm:gap-5 items-start">
@@ -363,126 +312,102 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
         <div className="space-y-3.5 sm:space-y-5 min-w-0">
           {/* Bento Grid: 4 Chỉ Số Cốt Lõi Ca Bán Theo Từng Role */}
           <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        {/* Metric 1: Doanh thu */}
-        <article
-          onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "analytics")}
-          className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-emerald-200 flex flex-col justify-between cursor-pointer"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="banknote" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              {liveStats.vietqrPct > 0 ? `${liveStats.vietqrPct}% VietQR` : "—"}
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Thực Thu" : isCashier ? "Thu Trong Ca" : "Doanh Thu"}
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.totalRevenue > 0 ? "" : "chưa có dữ liệu"}</span>
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {liveStats.totalOrders > 0 ? `${liveStats.totalOrders} đơn` : "Chưa có đơn"}
-            </p>
-          </div>
-        </article>
+            <StatCard
+              icon="banknote"
+              title={isAccountant ? "Thực Thu" : isCashier ? "Thu Trong Ca" : "Doanh Thu"}
+              value={
+                <>
+                  {liveStats.totalRevenue > 0 ? formatCurrency(liveStats.totalRevenue) : "—"}{" "}
+                  <span className="text-xs font-bold text-ink-muted">{liveStats.totalRevenue > 0 ? "" : "chưa có dữ liệu"}</span>
+                </>
+              }
+              subtext={liveStats.totalOrders > 0 ? `${liveStats.totalOrders} đơn` : "Chưa có đơn"}
+              badge={liveStats.vietqrPct > 0 ? `${liveStats.vietqrPct}% VietQR` : "—"}
+              variant="success"
+              onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "analytics")}
+            />
 
-        {/* Metric 2: Bàn / Két */}
-        <article
-          onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "tables")}
-          className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-blue-200 flex flex-col justify-between cursor-pointer"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Icon name={isAccountant || isCashier ? "cashier" : "table"} size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
-              {isAccountant ? "Đối soát" : isCashier ? "Khớp két" : liveStats.totalTables > 0 ? `${liveStats.totalTables > 0 ? Math.round((liveStats.occupiedTables / liveStats.totalTables) * 100) : 0}% lấp đầy` : "—"}
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant || isCashier ? "Tiền Mặt Tại Két" : "Bàn Ăn"}
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {isAccountant || isCashier ? (
-                <>{liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.cashTotal === 0 ? "chưa có dữ liệu" : ""}</span></>
-              ) : (
-                <>{liveStats.occupiedTables} <span className="text-xs font-bold text-slate-400">/ {liveStats.totalTables} bàn</span></>
-              )}
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant || isCashier ? "Tiền mặt trong ca" : liveStats.totalTables === 0 ? "Chưa có sơ đồ bàn" : `${liveStats.totalTables - liveStats.occupiedTables} bàn trống`}
-            </p>
-          </div>
-        </article>
+            <StatCard
+              icon={isAccountant || isCashier ? "cashier" : "table"}
+              title={isAccountant || isCashier ? "Tiền Mặt Tại Két" : "Bàn Ăn"}
+              value={
+                isAccountant || isCashier ? (
+                  <>
+                    {liveStats.cashTotal > 0 ? formatCurrency(liveStats.cashTotal) : "—"}{" "}
+                    <span className="text-xs font-bold text-ink-muted">{liveStats.cashTotal === 0 ? "chưa có dữ liệu" : ""}</span>
+                  </>
+                ) : (
+                  <>
+                    {liveStats.occupiedTables} <span className="text-xs font-bold text-ink-muted">/ {liveStats.totalTables} bàn</span>
+                  </>
+                )
+              }
+              subtext={isAccountant || isCashier ? "Tiền mặt trong ca" : liveStats.totalTables === 0 ? "Chưa có sơ đồ bàn" : `${liveStats.totalTables - liveStats.occupiedTables} bàn trống`}
+              badge={
+                isAccountant
+                  ? "Đối soát"
+                  : isCashier
+                  ? "Khớp két"
+                  : liveStats.totalTables > 0
+                  ? `${Math.round((liveStats.occupiedTables / liveStats.totalTables) * 100)}% lấp đầy`
+                  : "—"
+              }
+              variant="info"
+              onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "staff_order" : "tables")}
+            />
 
-        {/* Metric 3: KDS / VietQR */}
-        <article
-          onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "tables" : "kds")}
-          className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-amber-200 flex flex-col justify-between cursor-pointer"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name={isAccountant ? "vietqr" : isCashier ? "clock" : "kitchen"} size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
-              {isAccountant ? "VietQR" : isCashier ? "In bill" : "KDS"}
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Chuyển Khoản & VietQR" : isCashier ? "Chờ Thanh Toán" : "Bếp (KDS)"}
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {isAccountant ? (
-                <>{liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "—"} <span className="text-xs font-bold text-slate-400">{liveStats.vietqrTotal === 0 ? "" : ""}</span></>
-              ) : isCashier ? (
-                <>{liveStats.pendingTickets} <span className="text-xs font-bold text-slate-400">ticket</span></>
-              ) : (
-                <>{liveStats.pendingTickets} <span className="text-xs font-bold text-slate-400">món đang nấu</span></>
-              )}
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant ? "Thanh toán không tiền mặt" : isCashier ? "Từ KDS" : liveStats.pendingTickets === 0 ? "Bếp trống" : "Đang chế biến"}
-            </p>
-          </div>
-        </article>
+            <StatCard
+              icon={isAccountant ? "vietqr" : isCashier ? "clock" : "kitchen"}
+              title={isAccountant ? "Chuyển Khoản & VietQR" : isCashier ? "Chờ Thanh Toán" : "Bếp (KDS)"}
+              value={
+                isAccountant ? (
+                  <>{liveStats.vietqrTotal > 0 ? formatCurrency(liveStats.vietqrTotal) : "—"}</>
+                ) : isCashier ? (
+                  <>
+                    {liveStats.pendingTickets} <span className="text-xs font-bold text-ink-muted">ticket</span>
+                  </>
+                ) : (
+                  <>
+                    {liveStats.pendingTickets} <span className="text-xs font-bold text-ink-muted">món đang nấu</span>
+                  </>
+                )
+              }
+              subtext={isAccountant ? "Thanh toán không tiền mặt" : isCashier ? "Từ KDS" : liveStats.pendingTickets === 0 ? "Bếp trống" : "Đang chế biến"}
+              badge={isAccountant ? "VietQR" : isCashier ? "In bill" : "KDS"}
+              variant="warning"
+              onClick={() => onNavigateTab?.(isAccountant ? "analytics" : isCashier ? "tables" : "kds")}
+            />
 
-        {/* Metric 4: Kho / VietQR % */}
-        <article
-          onClick={() => onNavigateTab?.(isAccountant ? "inventory" : isCashier ? "staff_order" : "inventory")}
-          className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md hover:border-rose-200 flex flex-col justify-between cursor-pointer"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
-              <Icon name={isAccountant ? "fileText" : isCashier ? "vietqr" : "alert"} size={16} />
-            </span>
-            <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-md ${liveStats.lowStockCount > 0 ? "text-rose-700 bg-rose-50 border border-rose-100" : "text-slate-400 bg-slate-100"}`}>
-              {isAccountant ? "COGS" : isCashier ? "VietQR" : liveStats.lowStockCount > 0 ? "Cần xử lý" : "Ổn định"}
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              {isAccountant ? "Giá Vốn (COGS)" : isCashier ? "Tỷ Lệ VietQR" : "Tồn Kho"}
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {isAccountant ? (
-                <span className="text-sm text-slate-400 font-semibold">Chưa có dữ liệu</span>
-              ) : isCashier ? (
-                <>{liveStats.vietqrPct} <span className="text-xs font-bold text-slate-400">%</span></>
-              ) : (
-                <>{liveStats.lowStockCount} <span className="text-xs font-bold text-slate-400">cảnh báo</span></>
-              )}
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {isAccountant ? "Cần dữ liệu định lượng" : isCashier ? "Khách quét mã" : liveStats.lowStockCount === 0 ? "Kho ổn định" : "Có nguyên liệu dưới ngưỡng"}
-            </p>
-          </div>
-        </article>
-      </section>
+            <StatCard
+              icon={isAccountant ? "fileText" : isCashier ? "vietqr" : "alert"}
+              title={isAccountant ? "Giá Vốn (COGS)" : isCashier ? "Tỷ Lệ VietQR" : "Tồn Kho"}
+              value={
+                isAccountant ? (
+                  <span className="text-sm text-ink-muted font-semibold">Chưa có dữ liệu</span>
+                ) : isCashier ? (
+                  <>
+                    {liveStats.vietqrPct} <span className="text-xs font-bold text-ink-muted">%</span>
+                  </>
+                ) : (
+                  <>
+                    {liveStats.lowStockCount} <span className="text-xs font-bold text-ink-muted">cảnh báo</span>
+                  </>
+                )
+              }
+              subtext={isAccountant ? "Cần dữ liệu định lượng" : isCashier ? "Khách quét mã" : liveStats.lowStockCount === 0 ? "Kho ổn định" : "Có nguyên liệu dưới ngưỡng"}
+              badge={
+                liveStats.lowStockCount > 0
+                  ? { text: "Cần xử lý", variant: "danger" }
+                  : isAccountant
+                  ? "COGS"
+                  : isCashier
+                  ? "VietQR"
+                  : "Ổn định"
+              }
+              variant={liveStats.lowStockCount > 0 ? "danger" : "default"}
+              onClick={() => onNavigateTab?.(isAccountant ? "inventory" : isCashier ? "staff_order" : "inventory")}
+            />
+          </section>
 
       {/* 4. Thân Chính: Cảnh Báo Vận Hành Khẩn Cấp & Phân Luồng Trạm */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-5 items-stretch">

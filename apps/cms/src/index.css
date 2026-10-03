@@ -1,23 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --color-brand-50: #F2F9F5;
+  --color-brand-100: #E8F5EE;
+  --color-brand-200: #A3DBCE;
+  --color-brand-400: #5EB695;
+  --color-brand-500: #48B182;
+  --color-brand-600: #2E795E;
+  --color-brand-700: #22604B;
+  --color-brand-800: #194B3A;
+  --color-brand-900: #12372A;
+  --color-brand-950: #0B241B;
+  --color-brand-dark: #061F17;
+  --color-brand-deep: #0D2A21;
+  --color-brand-hero: #133B2E;
+
+  --color-surface-canvas: #F4F5F6;
+  --color-surface-card: #FFFFFF;
+  --color-surface-muted: #ECEEED;
+  --color-surface-border: #E3E5E5;
+  --color-surface-subtle: #F9FAFA;
+
+  --color-ink-primary: #161918;
+  --color-ink-muted: #69706D;
+  --color-ink-subtle: #9CA29F;
+}
+
+/* Lớp màu nền Gradient thương hiệu Forest Green chắc chắn không bị mất màu */
+.bg-brand-gradient {
+  background-color: #061F17 !important;
+  background-image: linear-gradient(135deg, #061F17 0%, #0D2A21 50%, #133B2E 100%) !important;
+  color: #FFFFFF !important;
+}
+
+/* Lớp màu trạng thái thẻ chỉ số Bento chắc chắn có màu rõ ràng */
+.stat-icon-success {
+  background-color: #E8F5EE !important;
+  color: #194B3A !important;
+  border-color: #A3DBCE !important;
+}
+.stat-icon-warning {
+  background-color: #FEF3C7 !important;
+  color: #B45309 !important;
+  border-color: #FDE68A !important;
+}
+.stat-icon-info {
+  background-color: #EFF6FF !important;
+  color: #1D4ED8 !important;
+  border-color: #BFDBFE !important;
+}
+.stat-icon-danger {
+  background-color: #FEE2E2 !important;
+  color: #B91C1C !important;
+  border-color: #FECACA !important;
+}
+.stat-icon-default {
+  background-color: #F2F9F5 !important;
+  color: #22604B !important;
+  border-color: #A3DBCE !important;
+}
 
 /* Tối ưu công thái học di động: chống chọn chữ và hiệu ứng nháy xanh khi chạm */
 * {
   -webkit-tap-highlight-color: transparent;
 }
 
+body, button, input, select, textarea {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   touch-action: manipulation;
   overscroll-behavior-y: none;
-  background: #f6f8f7;
-  color: #17211d;
+  background-color: var(--color-surface-canvas);
+  color: var(--color-ink-primary);
 }
 
 .cms-workspace {
-  --cms-ink: #17211d;
-  --cms-muted: #64716b;
-  --cms-line: #e5eae7;
+  --cms-ink: var(--color-ink-primary);
+  --cms-muted: var(--color-ink-muted);
+  --cms-line: var(--color-surface-border);
   color: var(--cms-ink);
   font-feature-settings: "ss01" on, "cv11" on;
 }

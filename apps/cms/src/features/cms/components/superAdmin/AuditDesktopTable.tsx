@@ -1,5 +1,15 @@
 import React from "react";
-import { Icon } from "@/components/ui";
+import {
+  Icon,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+} from "@/components/ui";
 import { SystemAuditLogRecord } from "@/types/cms.types";
 
 export interface AuditDesktopTableProps {
@@ -33,31 +43,28 @@ export const AuditDesktopTable: React.FC<AuditDesktopTableProps> = ({
 
   return (
     <div className="hidden lg:block w-full">
-      <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
-          <tr className="border-b border-surface-border text-slate-500 uppercase tracking-wider text-[10px] font-black">
-            <th className="py-3 px-3 bg-slate-50/95">Thời Gian & IP</th>
-            <th className="py-3 px-3 bg-slate-50/95">Người Thực Hiện</th>
-            <th className="py-3 px-3 bg-slate-50/95">Quán Liên Quan</th>
-            <th className="py-3 px-3 bg-slate-50/95">Hành Động</th>
-            <th className="py-3 px-3 bg-slate-50/95">Nội Dung Chi Tiết</th>
-            <th className="py-3 px-3 bg-slate-50/95">Trạng Thái</th>
-            <th className="py-3 px-3.5 text-right bg-slate-50/95">Thao Tác</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 font-medium">
-          {paginatedLogs.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="py-12 text-center text-xs text-slate-400 font-bold">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Icon name="shield" size={24} />
-                  </div>
-                  <span>Không tìm thấy nhật ký kiểm toán nào phù hợp</span>
-                </div>
-              </td>
-            </tr>
-          ) : (
+      <TableContainer className="rounded-none border-0 shadow-none">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
+            <TableRow>
+              <TableHead>Thời Gian & IP</TableHead>
+              <TableHead>Người Thực Hiện</TableHead>
+              <TableHead>Quán Liên Quan</TableHead>
+              <TableHead>Hành Động</TableHead>
+              <TableHead>Nội Dung Chi Tiết</TableHead>
+              <TableHead>Trạng Thái</TableHead>
+              <TableHead align="right">Thao Tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedLogs.length === 0 ? (
+              <TableEmpty
+                colSpan={7}
+                icon="shield"
+                title="Không tìm thấy nhật ký"
+                description="Không tìm thấy nhật ký kiểm toán nào phù hợp với bộ lọc."
+              />
+            ) : (
             paginatedLogs.map((log) => {
               return (
                 <tr
@@ -165,8 +172,9 @@ export const AuditDesktopTable: React.FC<AuditDesktopTableProps> = ({
               );
             })
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div>
   );
 };

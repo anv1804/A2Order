@@ -279,7 +279,7 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
           onClick={() => setIsChatOpen(!isChatOpen)}
           title="Kênh chat nội bộ nhân viên quán"
           aria-label="Kênh chat nội bộ nhân viên quán"
-          className="relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#0a271d] to-[#124232] text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 border border-emerald-500/30"
+          className="relative flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#061F17] bg-brand-gradient text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 border border-emerald-500/30"
         >
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -294,7 +294,7 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
         <Portal>
           <div className="fixed bottom-20 lg:bottom-20 right-3.5 sm:right-6 z-50 w-[94vw] sm:w-[410px] max-h-[580px] h-[540px] flex flex-col rounded-3xl bg-white shadow-2xl border border-slate-200/90 overflow-hidden animate-scaleUp">
             {/* Header: Kênh chat nhân viên */}
-            <div className="p-3.5 sm:p-4 bg-gradient-to-r from-[#0a271d] via-[#103a2c] to-[#0d3125] text-white flex items-center justify-between">
+            <div className="p-3.5 sm:p-4 bg-[#061F17] bg-brand-gradient text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center text-emerald-300">
                   <Icon name="chat" size={16} />

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
+import { Panel, Button, Badge, Icon, Pagination, FilterSelect, SearchInput } from "@/components/ui";
+import { HeroBanner, StatCard, EmptyState } from "@/components/shared";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
@@ -268,270 +269,200 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
   }, [dishes]);
 
   return (
-    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
       {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Thực Đơn
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {categories.length - 1} danh mục • {dishes.length} món ăn
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Quản Lý Thực Đơn
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Danh sách món ăn, giá bán và trạng thái còn món của quán
-            </p>
-
-            {/* Quick Live Stats Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="menu" size={12} className="text-emerald-300" />
-                <span>{dishes.length} Món trong menu</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="checkCircle" size={12} className="text-teal-300" />
-                <span>{availableCount} Đang mở bán</span>
-              </span>
-              {outOfStockCount > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-rose-500/20 border border-rose-400/30 text-[10px] sm:text-[10.5px] font-bold text-rose-200">
-                  <Icon name="ban" size={12} className="text-rose-300" />
-                  <span>{outOfStockCount} Món báo hết</span>
-                </span>
-              )}
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="trending" size={12} className="text-amber-300" />
-                <span>Biên lãi TB {avgMargin}%</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
-            {isChef ? (
+      <HeroBanner
+        badge={{ label: "Thực Đơn", dot: true }}
+        tagline={`${categories.length - 1} nhóm • ${dishes.length} món ăn`}
+        title="Quản Lý Thực Đơn"
+        description="Danh sách món ăn, giá bán và trạng thái còn món của quán"
+        chips={[
+          {
+            icon: "menu",
+            label: `${dishes.length} Món trong menu`,
+            variant: "default",
+          },
+          {
+            icon: "checkCircle",
+            label: `${availableCount} Đang mở bán`,
+            variant: "teal",
+          },
+          ...(outOfStockCount > 0
+            ? [
+                {
+                  icon: "ban" as const,
+                  label: `${outOfStockCount} Món báo hết`,
+                  variant: "rose" as const,
+                  highlight: true,
+                },
+              ]
+            : []),
+          {
+            icon: "trending",
+            label: `Biên lãi TB ${avgMargin}%`,
+            variant: "amber",
+          },
+        ]}
+        actions={
+          isChef ? (
+            <button
+              type="button"
+              onClick={() => {
+                menuApi
+                  .getDishes(storeId)
+                  .then((serverDishes) => {
+                    if (serverDishes && serverDishes.length > 0) {
+                      setDishes(serverDishes);
+                    }
+                    toast.success("Đã đồng bộ thực đơn mới nhất từ máy chủ.");
+                  })
+                  .catch(() => {
+                    toast.info("Đã làm mới dữ liệu thực đơn bếp.");
+                  });
+              }}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 sm:px-4 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
+            >
+              <Icon name="refresh" size={14} />
+              <span>Đồng Bộ Menu</span>
+            </button>
+          ) : (
+            <>
               <button
                 type="button"
-                onClick={() => {
-                  menuApi
-                    .getDishes(storeId)
-                    .then((serverDishes) => {
-                      if (serverDishes && serverDishes.length > 0) {
-                        setDishes(serverDishes);
-                      }
-                      toast.success("Đã đồng bộ thực đơn mới nhất từ máy chủ.");
-                    })
-                    .catch(() => {
-                      toast.info("Đã làm mới dữ liệu thực đơn bếp.");
-                    });
-                }}
-                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 sm:px-4 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
+                onClick={() => setIsScenarioModalOpen(true)}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 sm:px-3.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
               >
-                <Icon name="refresh" size={14} />
-                <span>Đồng Bộ Menu</span>
+                <Icon name="sparkles" size={14} className="text-amber-300" />
+                <span>Nạp Kịch Bản Mẫu</span>
               </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsScenarioModalOpen(true)}
-                  className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 sm:px-3.5 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"
-                >
-                  <Icon name="sparkles" size={14} className="text-amber-300" />
-                  <span>Nạp Kịch Bản Mẫu</span>
-                </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(true)}
-                  className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition hover:bg-emerald-300 active:scale-95 shrink-0"
-                >
-                  <Icon name="plus" size={14} />
-                  <span>Thêm Món Mới</span>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(true)}
+                className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition hover:bg-brand-300 active:scale-95 shrink-0"
+              >
+                <Icon name="plus" size={14} />
+                <span>Thêm Món Mới</span>
+              </button>
+            </>
+          )
+        }
+      />
 
       {/* 2. 4 Thẻ Bento Chỉ Số Thực Đơn */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="menu" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              {categories.length - 1} nhóm
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tổng Món Thực Đơn
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {dishes.length} <span className="text-xs font-bold text-slate-400">món</span>
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              Đồng bộ POS & QR
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="menu"
+          title="Tổng Món Thực Đơn"
+          value={
+            <>
+              {dishes.length} <span className="text-xs font-bold text-ink-muted">món</span>
+            </>
+          }
+          subtext="Đồng bộ POS & QR"
+          badge={`${categories.length - 1} nhóm`}
+          variant="success"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
-              <Icon name="checkCircle" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
-              Sẵn sàng
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Món Đang Mở Bán
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {availableCount} <span className="text-xs font-bold text-slate-400">món</span>
-            </p>
-            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
-              Khách có thể đặt món ngay
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="checkCircle"
+          title="Món Đang Mở Bán"
+          value={
+            <>
+              {availableCount} <span className="text-xs font-bold text-ink-muted">món</span>
+            </>
+          }
+          subtext="Khách có thể đặt món ngay"
+          badge="Sẵn sàng"
+          variant="info"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600 border border-rose-100">
-              <Icon name="ban" size={16} />
-            </span>
-            {outOfStockCount > 0 ? (
-              <span className="text-[9.5px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded-md">
-                Tạm hết
-              </span>
-            ) : (
-              <span className="text-[9.5px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                0 món
-              </span>
-            )}
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Món Báo Hết Hàng
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {outOfStockCount} <span className="text-xs font-bold text-slate-400">món</span>
-            </p>
-            <p className="text-[10px] font-semibold text-rose-600 mt-1 truncate">
-              {outOfStockCount > 0 ? "Đã ẩn trên máy POS & QR" : "Kho nguyên liệu đủ"}
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="ban"
+          title="Món Báo Hết Hàng"
+          value={
+            <>
+              {outOfStockCount} <span className="text-xs font-bold text-ink-muted">món</span>
+            </>
+          }
+          subtext={outOfStockCount > 0 ? "Đã ẩn trên máy POS & QR" : "Kho nguyên liệu đủ"}
+          badge={
+            outOfStockCount > 0
+              ? { text: "Tạm hết", variant: "danger" }
+              : "0 món"
+          }
+          variant={outOfStockCount > 0 ? "danger" : "default"}
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name="trending" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
-              COGS
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Biên Lãi Gộp TB
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {avgMargin}% <span className="text-xs font-bold text-slate-400">lãi</span>
-            </p>
-            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
-              {bestSellerCount} món Best Seller chủ lực
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="trending"
+          title="Biên Lãi Gộp TB"
+          value={
+            <>
+              {avgMargin}% <span className="text-xs font-bold text-ink-muted">lãi</span>
+            </>
+          }
+          subtext={`${bestSellerCount} món Best Seller chủ lực`}
+          badge={{ text: "COGS", variant: "warning" }}
+          variant="warning"
+        />
       </section>
 
-      {/* 3. Sticky Toolbar: Tabs Danh Mục & Bộ Lọc Trạng Thái */}
-      <div className="sticky top-0 sm:top-2 z-10 p-2.5 sm:p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 space-y-2.5 shadow-2xs">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-          {categories.map((cat) => {
-            const isActive = activeCategory === cat;
-            const count = cat === "ALL" ? dishes.length : dishes.filter((d) => d.category === cat).length;
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  setActiveCategory(cat);
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
-                  isActive
-                    ? "bg-slate-950 text-white shadow-2xs font-black"
-                    : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
-                }`}
-              >
-                <span>{cat === "ALL" ? "Tất Cả Món" : cat}</span>
-                <span
-                  className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-black ${
-                    isActive ? "bg-white/20 text-white" : "bg-white text-slate-500 shadow-2xs"
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search & Status Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
-          <div className="relative w-full sm:w-72">
-            <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
+      {/* 3. Sticky Toolbar: Ô Tìm Kiếm & Các Bộ Lọc Gọn Gàng Chuẩn SaaS */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2.5 sm:p-3 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          {/* Ô Tìm Kiếm theo tên món */}
+          <div className="w-full sm:w-72 shrink-0">
+            <SearchInput
+              size="sm"
               placeholder="Tìm kiếm theo tên món ăn..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full h-8 sm:h-9 pl-8 pr-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 bg-slate-50/50 focus:bg-white focus:outline-none focus:border-emerald-500 shadow-2xs"
+              onClear={() => {
+                setSearchQuery("");
+                setCurrentPage(1);
+              }}
             />
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            {[
-              { id: "ALL", label: "Tất Cả" },
-              { id: "AVAILABLE", label: "Đang Bán" },
-              { id: "OUT_OF_STOCK", label: "Hết Hàng" },
-              { id: "BEST_SELLER", label: "Bán Chạy" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  setStatusFilter(tab.id as any);
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all whitespace-nowrap shrink-0 ${
-                  statusFilter === tab.id
-                    ? "bg-emerald-800 text-white shadow-2xs font-extrabold"
-                    : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Bộ lọc Danh Mục & Trạng Thái Gọn Gàng (Có Search khi danh mục dài) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5 flex-1 justify-end">
+            <FilterSelect
+              labelPrefix="Nhóm:"
+              placeholder="Tất Cả Nhóm Món"
+              searchPlaceholder="Tìm nhóm món..."
+              value={activeCategory}
+              onChange={(cat) => {
+                setActiveCategory(cat);
+                setCurrentPage(1);
+              }}
+              options={categories.map((cat) => ({
+                value: cat,
+                label: cat === "ALL" ? "Tất Cả Món" : cat,
+                count: cat === "ALL" ? dishes.length : dishes.filter((d) => d.category === cat).length,
+              }))}
+              className="w-full sm:w-56"
+            />
+
+            <FilterSelect
+              labelPrefix="Trạng thái:"
+              placeholder="Tất Cả Trạng Thái"
+              value={statusFilter}
+              onChange={(st) => {
+                setStatusFilter(st as any);
+                setCurrentPage(1);
+              }}
+              options={[
+                { value: "ALL", label: "Tất Cả Món", count: dishes.length },
+                { value: "AVAILABLE", label: "Đang Mở Bán", count: availableCount },
+                { value: "OUT_OF_STOCK", label: "Báo Hết Hàng", count: outOfStockCount },
+                { value: "BEST_SELLER", label: "Bán Chạy (HOT)", count: bestSellerCount },
+              ]}
+              className="w-full sm:w-48"
+            />
           </div>
         </div>
       </div>

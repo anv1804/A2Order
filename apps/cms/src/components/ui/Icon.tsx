@@ -189,6 +189,8 @@ const iconMap: Record<IconName, LucideIcon> = {
   chevronUp: ChevronUp,
 };
 
+export type { IconName, IconProps } from "@/types/icon.types";
+
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {
   const Component = iconMap[name] || AlertTriangle;
   return <Component className={className} size={size} strokeWidth={2} />;

@@ -1,5 +1,16 @@
 import React from "react";
-import { Icon, Checkbox } from "@/components/ui";
+import {
+  Icon,
+  Checkbox,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+} from "@/components/ui";
 import { FnbDishItem, FnbMajorCategory } from "@a2order/shared";
 
 export interface ScenarioDesktopTableProps {
@@ -49,37 +60,34 @@ export const ScenarioDesktopTable: React.FC<ScenarioDesktopTableProps> = ({
 }) => {
   return (
     <div className="hidden lg:block w-full">
-      <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
-          <tr className="border-b border-surface-border text-slate-500 uppercase tracking-wider text-[10px] font-black">
-            <th className="py-2.5 pl-3.5 pr-1 w-10 bg-slate-50/95">
-              <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
-                onChange={onToggleSelectAll}
-                title="Chọn tất cả món trên trang này"
+      <TableContainer className="rounded-none border-0 shadow-none">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
+            <TableRow>
+              <TableHead className="py-2.5 pl-3.5 pr-1 w-10">
+                <Checkbox
+                  checked={isAllSelected}
+                  indeterminate={isIndeterminate}
+                  onChange={onToggleSelectAll}
+                  title="Chọn tất cả món trên trang này"
+                />
+              </TableHead>
+              <TableHead>Món Ăn Mẫu</TableHead>
+              <TableHead>Trụ Cột & Danh Mục</TableHead>
+              <TableHead>Đơn Giá & Giá Vốn</TableHead>
+              <TableHead>Trạm & Tùy Chọn</TableHead>
+              <TableHead align="right">Thao Tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedDishes.length === 0 ? (
+              <TableEmpty
+                colSpan={6}
+                icon="utensils"
+                title="Không tìm thấy món mẫu"
+                description="Không tìm thấy món ăn mẫu nào phù hợp với bộ lọc."
               />
-            </th>
-            <th className="py-2.5 px-3 bg-slate-50/95">Món Ăn Mẫu</th>
-            <th className="py-2.5 px-3 bg-slate-50/95">Trụ Cột & Danh Mục</th>
-            <th className="py-2.5 px-3 bg-slate-50/95">Đơn Giá & Giá Vốn</th>
-            <th className="py-2.5 px-3 bg-slate-50/95">Trạm & Tùy Chọn</th>
-            <th className="py-2.5 px-3.5 text-right bg-slate-50/95">Thao Tác</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 font-medium">
-          {paginatedDishes.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="py-12 text-center text-xs text-slate-400 font-bold">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Icon name="utensils" size={20} />
-                  </div>
-                  <span>Không tìm thấy món mẫu nào phù hợp bộ lọc</span>
-                </div>
-              </td>
-            </tr>
-          ) : (
+            ) : (
             paginatedDishes.map((dish) => {
               const isSelected = selectedDishIds.includes(dish.id);
               const major =
@@ -228,8 +236,9 @@ export const ScenarioDesktopTable: React.FC<ScenarioDesktopTableProps> = ({
               );
             })
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div>
   );
 };

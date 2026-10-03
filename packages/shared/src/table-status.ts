@@ -10,26 +10,26 @@ export const TableStatusConfig: Record<TableStatus, { label: string; color: stri
   [TableStatus.EMPTY]: {
     label: "Bàn trống",
     color: "#194B3A",
-    bgClass: "bg-[#E8F5EE] border-[#A3DBCE] text-[#194B3A]",
+    bgClass: "bg-status-empty-bg border-status-empty-border text-status-empty-text",
   },
   [TableStatus.OCCUPIED]: {
     label: "Đang chọn món",
     color: "#B45309",
-    bgClass: "bg-amber-50 border-amber-200 text-amber-800",
+    bgClass: "bg-status-selecting-bg border-status-selecting-border text-status-selecting-text",
   },
   [TableStatus.WAITING_FOOD]: {
     label: "Đang chờ bếp",
     color: "#C2410C",
-    bgClass: "bg-orange-50 border-orange-200 text-orange-800",
+    bgClass: "bg-status-waiting-bg border-status-waiting-border text-status-waiting-text",
   },
   [TableStatus.SERVED]: {
     label: "Đã lên đủ món",
     color: "#1D4ED8",
-    bgClass: "bg-blue-50 border-blue-200 text-blue-800",
+    bgClass: "bg-status-served-bg border-status-served-border text-status-served-text",
   },
   [TableStatus.PAYMENT_PENDING]: {
     label: "Chờ thanh toán",
     color: "#B91C1C",
-    bgClass: "bg-rose-50 border-rose-200 text-rose-800",
+    bgClass: "bg-status-billing-bg border-status-billing-border text-status-billing-text",
   },
 };

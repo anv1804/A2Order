@@ -1,10 +1,155 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
+import {
+  Panel,
+  Button,
+  Badge,
+  Icon,
+  Pagination,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+  SearchInput,
+  FilterSelect,
+  DataTableCard,
+} from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast } from "@/stores/notificationStore";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { DeepAnalyticsReport, MenuCategoryType } from "@a2order/shared";
 import { SalesBillRecord, CanceledItemRecord } from "@/types/cms.types";
+
+const INITIAL_SALES_BILLS: SalesBillRecord[] = [
+  {
+    id: "bill-1",
+    billCode: "HD-2026-0081",
+    tableName: "Bàn 04 (Tầng 1)",
+    cashierName: "Nguyễn Minh Tuấn",
+    shiftName: "CA_SANG",
+    openedAt: "11:15",
+    closedAt: "12:30",
+    items: [
+      { id: "it-1", name: "Lẩu Nấm Hải Sản", quantity: 1, unitPrice: 450000, totalPrice: 450000 },
+      { id: "it-2", name: "Bò Wagyu Nướng Đá", quantity: 2, unitPrice: 380000, totalPrice: 760000 },
+      { id: "it-3", name: "Trà Đào Cam Sả", quantity: 4, unitPrice: 45000, totalPrice: 180000 },
+    ],
+    subTotal: 1390000,
+    discountAmount: 100000,
+    vatAmount: 103200,
+    finalAmount: 1393200,
+    paymentMethod: "VIETQR",
+    status: "COMPLETED",
+    vietQrRef: "QR99827361",
+  },
+  {
+    id: "bill-2",
+    billCode: "HD-2026-0082",
+    tableName: "Bàn 12 (VIP Lầu 2)",
+    cashierName: "Trần Thu Hà",
+    shiftName: "CA_SANG",
+    openedAt: "11:45",
+    closedAt: "13:10",
+    items: [
+      { id: "it-4", name: "Sashimi Cá Hồi Thượng Hạng", quantity: 2, unitPrice: 280000, totalPrice: 560000 },
+      { id: "it-5", name: "Rượu Vang Đỏ Cabernet", quantity: 1, unitPrice: 850000, totalPrice: 850000 },
+      { id: "it-6", name: "Salad Cá Ngừ Sốt Chanh Dây", quantity: 1, unitPrice: 120000, totalPrice: 120000 },
+    ],
+    subTotal: 1530000,
+    discountAmount: 0,
+    vatAmount: 122400,
+    finalAmount: 1652400,
+    paymentMethod: "VIETQR",
+    status: "COMPLETED",
+    vietQrRef: "QR11827490",
+  },
+  {
+    id: "bill-3",
+    billCode: "HD-2026-0083",
+    tableName: "Bàn 02 (Sân Vườn)",
+    cashierName: "Lê Hồng Nhung",
+    shiftName: "CA_SANG",
+    openedAt: "12:10",
+    closedAt: "13:25",
+    items: [
+      { id: "it-7", name: "Cơm Chiên Hải Sản Hoàng Kim", quantity: 2, unitPrice: 120000, totalPrice: 240000 },
+      { id: "it-8", name: "Canh Chua Cá Bớp", quantity: 1, unitPrice: 180000, totalPrice: 180000 },
+      { id: "it-9", name: "Nước Ép Dưa Hấu", quantity: 2, unitPrice: 40000, totalPrice: 80000 },
+    ],
+    subTotal: 500000,
+    discountAmount: 50000,
+    vatAmount: 36000,
+    finalAmount: 486000,
+    paymentMethod: "CASH",
+    status: "COMPLETED",
+  },
+  {
+    id: "bill-4",
+    billCode: "HD-2026-0084",
+    tableName: "Bàn 08 (Tầng 1)",
+    cashierName: "Nguyễn Minh Tuấn",
+    shiftName: "CA_TOI",
+    openedAt: "18:20",
+    closedAt: "19:40",
+    items: [
+      { id: "it-10", name: "Bò Lúc Lắc Khoai Tây", quantity: 1, unitPrice: 220000, totalPrice: 220000 },
+      { id: "it-11", name: "Mì Ý Sốt Bò Bằm", quantity: 2, unitPrice: 110000, totalPrice: 220000 },
+      { id: "it-12", name: "Bia Thủ Công IPA", quantity: 4, unitPrice: 65000, totalPrice: 260000 },
+    ],
+    subTotal: 700000,
+    discountAmount: 0,
+    vatAmount: 56000,
+    finalAmount: 756000,
+    paymentMethod: "VIETQR",
+    status: "COMPLETED",
+    vietQrRef: "QR77625143",
+  },
+  {
+    id: "bill-5",
+    billCode: "HD-2026-0085",
+    tableName: "Bàn 06 (Lầu 1)",
+    cashierName: "Trần Thu Hà",
+    shiftName: "CA_TOI",
+    openedAt: "19:00",
+    closedAt: "20:15",
+    items: [
+      { id: "it-13", name: "Gà Nướng Mật Ong Tiêu Rừng", quantity: 1, unitPrice: 280000, totalPrice: 280000 },
+      { id: "it-14", name: "Khoai Tây Chiên Lắc Phô Mai", quantity: 1, unitPrice: 60000, totalPrice: 60000 },
+      { id: "it-15", name: "Trà Sữa Trân Châu Hoàng Gia", quantity: 3, unitPrice: 50000, totalPrice: 150000 },
+    ],
+    subTotal: 490000,
+    discountAmount: 49000,
+    vatAmount: 35280,
+    finalAmount: 476280,
+    paymentMethod: "CASH",
+    status: "COMPLETED",
+  },
+  {
+    id: "bill-6",
+    billCode: "HD-2026-0086",
+    tableName: "Bàn 15 (VIP Lầu 2)",
+    cashierName: "Lê Hồng Nhung",
+    shiftName: "CA_TOI",
+    openedAt: "19:30",
+    closedAt: "21:20",
+    items: [
+      { id: "it-16", name: "Cua Huỳnh Đế Hấp Rượu Vang", quantity: 1, unitPrice: 1850000, totalPrice: 1850000 },
+      { id: "it-17", name: "Tôm Hùm Nướng Bơ Tỏi", quantity: 2, unitPrice: 750000, totalPrice: 1500000 },
+      { id: "it-18", name: "Rượu Champagne Moet", quantity: 1, unitPrice: 2200000, totalPrice: 2200000 },
+    ],
+    subTotal: 5550000,
+    discountAmount: 500000,
+    vatAmount: 404000,
+    finalAmount: 5454000,
+    paymentMethod: "VIETQR",
+    status: "COMPLETED",
+    vietQrRef: "QR33918274",
+  },
+];
 
 export const CmsDeepAnalyticsView: React.FC = () => {
   // Bộ lọc thời gian
@@ -41,7 +186,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   const [isZReportOpen, setIsZReportOpen] = useState(false);
 
   // Sổ chi tiết hóa đơn bán hàng (Sales Audit Ledger)
-  const [bills, setBills] = usePersistentState<SalesBillRecord[]>("sales_bills_data", []);
+  const [bills, setBills] = usePersistentState<SalesBillRecord[]>("sales_bills_data", INITIAL_SALES_BILLS);
 
   // Nhật ký món bị hủy sau khi in bếp (Void / Waste Audit)
   const [canceledItems] = usePersistentState<CanceledItemRecord[]>("void_audit_canceled_items", []);
@@ -120,52 +265,36 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   const displayedBills = isMobile ? mobileBills : paginatedBills;
 
   return (
-    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
       {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Báo Cáo
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {report.summary.totalOrders} Đơn thanh toán • {report.summary.totalRevenue.toLocaleString("vi-VN")} đ
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Báo Cáo Doanh Thu
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Thống kê chi tiết doanh thu, số lượng đơn hàng và lịch sử thanh toán
-            </p>
-
-            {/* Quick Live Stats Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="banknote" size={12} className="text-emerald-300" />
-                <span>Doanh thu: {report.summary.totalRevenue.toLocaleString("vi-VN")} đ</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="trending" size={12} className="text-teal-300" />
-                <span>AOV: {report.summary.averageOrderValue.toLocaleString("vi-VN")} đ</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="activity" size={12} className="text-blue-300" />
-                <span>VietQR: 72.8%</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+      <HeroBanner
+        badge={{ label: "Báo Cáo", dot: true }}
+        tagline={`${report.summary.totalOrders} Đơn thanh toán • ${report.summary.totalRevenue.toLocaleString("vi-VN")} đ`}
+        title="Báo Cáo Doanh Thu"
+        description="Thống kê chi tiết doanh thu, số lượng đơn hàng và lịch sử thanh toán"
+        chips={[
+          {
+            icon: "banknote",
+            label: `Doanh thu: ${report.summary.totalRevenue.toLocaleString("vi-VN")} đ`,
+            variant: "default",
+          },
+          {
+            icon: "trending",
+            label: `AOV: ${report.summary.averageOrderValue.toLocaleString("vi-VN")} đ`,
+            variant: "teal",
+          },
+          {
+            icon: "activity",
+            label: "VietQR: 72.8%",
+            variant: "blue",
+          },
+        ]}
+        actions={
+          <>
             <button
               type="button"
               onClick={() => setIsZReportOpen(true)}
-              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition active:scale-95 shrink-0"
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
             >
               <Icon name="fileText" size={14} />
               <span>Chốt Ca (Z-Report)</span>
@@ -180,99 +309,66 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             >
               <Icon name="download" size={15} />
             </button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {/* 2. 4 Thẻ Bento Chỉ Số Tài Chính Cốt Lõi */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="banknote" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              +18% kỳ trước
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tổng Thực Thu
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {report.summary.totalRevenue.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
-            </p>
-            <p className="text-[10px] font-semibold text-emerald-600 mt-1 truncate">
-              {report.summary.totalOrders} giao dịch hoàn tất
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="banknote"
+          title="Tổng Thực Thu"
+          value={
+            <>
+              {report.summary.totalRevenue.toLocaleString("vi-VN")}{" "}
+              <span className="text-xs font-bold text-ink-muted">đ</span>
+            </>
+          }
+          subtext={`${report.summary.totalOrders} giao dịch hoàn tất`}
+          badge={{ text: "+18% kỳ trước", variant: "success" }}
+          variant="success"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
-              <Icon name="trending" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
-              AOV
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Giá Trị TB / Đơn (AOV)
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {report.summary.averageOrderValue.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
-            </p>
-            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
-              Chi tiêu trung bình mỗi bàn
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="trending"
+          title="Giá Trị TB / Đơn (AOV)"
+          value={
+            <>
+              {report.summary.averageOrderValue.toLocaleString("vi-VN")}{" "}
+              <span className="text-xs font-bold text-ink-muted">đ</span>
+            </>
+          }
+          subtext="Chi tiêu trung bình mỗi bàn"
+          badge={{ text: "AOV", variant: "info" }}
+          variant="info"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Icon name="activity" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
-              Không tiền mặt
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tỷ Lệ VietQR Napas
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              72.8% <span className="text-xs font-bold text-slate-400">doanh thu</span>
-            </p>
-            <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
-              11.55tr chuyển khoản tức thời
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="activity"
+          title="Tỷ Lệ VietQR Napas"
+          value={
+            <>
+              72.8% <span className="text-xs font-bold text-ink-muted">doanh thu</span>
+            </>
+          }
+          subtext="11.55tr chuyển khoản tức thời"
+          badge="Không tiền mặt"
+          variant="default"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name="alert" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
-              Thất thoát
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Hao Hụt & Món Hủy
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {report.summary.discountLossTotal.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
-            </p>
-            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
-              {report.summary.canceledItemCount} món hủy sau bếp
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="alert"
+          title="Hao Hụt & Món Hủy"
+          value={
+            <>
+              {report.summary.discountLossTotal.toLocaleString("vi-VN")}{" "}
+              <span className="text-xs font-bold text-ink-muted">đ</span>
+            </>
+          }
+          subtext={`${report.summary.canceledItemCount} món hủy sau bếp`}
+          badge={{ text: "Thất thoát", variant: "warning" }}
+          variant="warning"
+        />
       </section>
 
       {/* 3. Sticky Segmented Control Tabs & Period Filter */}
@@ -502,130 +598,150 @@ export const CmsDeepAnalyticsView: React.FC = () => {
 
       {/* TAB 2: SỔ CHI TIẾT HÓA ĐƠN BÁN HÀNG (SALES AUDIT LEDGER) */}
       {activeTab === "bills" && (
-        <div className="space-y-4">
-          {/* Thanh công cụ lọc Bill */}
-          <div className="space-y-3 p-3 bg-white rounded-2xl border border-surface-border">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Icon name="search" className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-subtle" />
-                  <input
-                    type="text"
-                    value={billSearch}
-                    onChange={(e) => {
-                      setBillSearch(e.target.value);
-                      setBillPage(1);
-                    }}
-                    placeholder="Tìm mã hóa đơn, bàn, thu ngân..."
-                    className="h-8 pl-8 pr-3 rounded-xl border border-surface-border text-xs font-bold text-ink-primary focus:outline-none focus:border-brand-800 w-64"
-                  />
-                </div>
+        <DataTableCard
+          searchPlaceholder="Tìm mã hóa đơn, bàn, thu ngân..."
+          searchValue={billSearch}
+          onSearchChange={(val) => {
+            setBillSearch(val);
+            setBillPage(1);
+          }}
+          onSearchClear={() => {
+            setBillSearch("");
+            setBillPage(1);
+          }}
+          filters={
+            <>
+              <FilterSelect
+                labelPrefix="Ca: "
+                value={billShiftFilter}
+                onChange={(val) => {
+                  setBillShiftFilter(val);
+                  setBillPage(1);
+                }}
+                options={[
+                  { value: "ALL", label: "Tất cả ca" },
+                  { value: "CA_SANG", label: "Ca Sáng (06:00 - 14:00)" },
+                  { value: "CA_TOI", label: "Ca Tối (14:00 - 22:30)" },
+                ]}
+                className="w-48"
+              />
 
-                <select
-                  value={billShiftFilter}
-                  onChange={(e) => {
-                    setBillShiftFilter(e.target.value);
-                    setBillPage(1);
-                  }}
-                  className="h-8 px-2.5 rounded-xl border border-surface-border text-xs font-bold text-ink-primary bg-surface-canvas focus:outline-none"
-                >
-                  <option value="ALL">Tất cả ca làm việc</option>
-                  <option value="CA_SANG">Ca Sáng (06:00 - 14:00)</option>
-                  <option value="CA_TOI">Ca Tối (14:00 - 22:30)</option>
-                </select>
-              </div>
-
-              <div className="text-xs text-ink-muted font-bold">
-                Hiển thị <span className="text-brand-900 font-black">{filteredBills.length}</span> / {bills.length} hóa đơn
-              </div>
+              <FilterSelect
+                labelPrefix="Thanh toán: "
+                value={billPaymentFilter}
+                onChange={(val) => {
+                  setBillPaymentFilter(val);
+                  setBillPage(1);
+                }}
+                options={[
+                  { value: "ALL", label: "Tất cả", count: bills.length },
+                  { value: "VIETQR", label: "VietQR", count: bills.filter((b) => b.paymentMethod === "VIETQR").length },
+                  { value: "CASH", label: "Tiền mặt", count: bills.filter((b) => b.paymentMethod === "CASH").length },
+                ]}
+                className="w-full sm:w-40 shrink-0"
+              />
+            </>
+          }
+          hasActiveFilters={billShiftFilter !== "ALL" || billPaymentFilter !== "ALL" || billSearch.trim() !== ""}
+          onResetFilters={() => {
+            setBillShiftFilter("ALL");
+            setBillPaymentFilter("ALL");
+            setBillSearch("");
+            setBillPage(1);
+          }}
+          summaryText={`Hiển thị ${filteredBills.length} / ${bills.length} hóa đơn`}
+          pagination={{
+            currentPage: billPage,
+            totalItems: filteredBills.length,
+            pageSize: BILL_PAGE_SIZE,
+            onPageChange: setBillPage,
+          }}
+          footer={
+            <div className="block md:hidden">
+              <MobileInfiniteSentinel
+                hasMore={hasMoreBills}
+                totalCount={filteredBills.length}
+                visibleCount={visibleBillCount}
+                sentinelRef={billSentinelRef}
+              />
             </div>
-
-            {/* Nút lọc nhanh phương thức thanh toán */}
-            <div className="flex flex-wrap items-center gap-1.5 border-t border-surface-border/50 pt-2.5">
-              <span className="text-xs font-extrabold text-ink-muted px-2">Phương thức:</span>
-              {[
-                { id: "ALL", label: "Tất Cả", count: bills.length, icon: null },
-                { id: "VIETQR", label: "Chuyển khoản VietQR", count: bills.filter((b) => b.paymentMethod === "VIETQR").length, icon: "vietqr" as const },
-                { id: "CASH", label: "Tiền mặt tại két", count: bills.filter((b) => b.paymentMethod === "CASH").length, icon: "banknote" as const },
-              ].map((pm) => (
-                <button
-                  key={pm.id}
-                  onClick={() => {
-                    setBillPaymentFilter(pm.id);
-                    setBillPage(1);
-                  }}
-                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    billPaymentFilter === pm.id
-                      ? "bg-brand-900 text-white shadow-sm"
-                      : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-                  }`}
-                >
-                  {pm.icon && <Icon name={pm.icon} className="w-3 h-3" />}
-                  <span>{pm.label}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${billPaymentFilter === pm.id ? "bg-white/20 text-white" : "bg-surface-muted text-ink-muted"}`}>
-                    {pm.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+          }
+        >
 
           {/* Bảng kê chi tiết từng hóa đơn */}
-          <div className="overflow-x-auto rounded-2xl border border-surface-border bg-white">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-canvas border-b border-surface-border text-[11px] font-black text-ink-muted uppercase">
-                <tr>
-                  <th className="py-3 px-4">Mã Hóa Đơn</th>
-                  <th className="py-3 px-3">Bàn Phục Vụ</th>
-                  <th className="py-3 px-3">Giờ Thanh Toán</th>
-                  <th className="py-3 px-3">Thu Ngân / Ca</th>
-                  <th className="py-3 px-3">Món Ăn Gọi</th>
-                  <th className="py-3 px-3 text-right">Giảm Giá</th>
-                  <th className="py-3 px-4 text-right">Thực Thu</th>
-                  <th className="py-3 px-3 text-center">Thanh Toán</th>
-                  <th className="py-3 px-4 text-center">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border font-medium">
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mã Hóa Đơn</TableHead>
+                  <TableHead>Bàn Phục Vụ</TableHead>
+                  <TableHead>Giờ Thanh Toán</TableHead>
+                  <TableHead>Thu Ngân / Ca</TableHead>
+                  <TableHead>Món Ăn Gọi</TableHead>
+                  <TableHead align="right">Giảm Giá</TableHead>
+                  <TableHead align="right">Thực Thu</TableHead>
+                  <TableHead align="center">Thanh Toán</TableHead>
+                  <TableHead align="center">Thao Tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {paginatedBills.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-8 text-center text-xs text-ink-muted font-bold">
-                      Không tìm thấy hóa đơn phù hợp với tiêu chí lọc
-                    </td>
-                  </tr>
+                  <TableEmpty
+                    colSpan={9}
+                    title="Không tìm thấy hóa đơn"
+                    description="Không có hóa đơn nào phù hợp với tiêu chí tìm kiếm hoặc bộ lọc ca/thanh toán."
+                    action={
+                      filteredBills.length === 0 && bills.length > 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 font-bold"
+                          onClick={() => {
+                            setBillShiftFilter("ALL");
+                            setBillPaymentFilter("ALL");
+                            setBillSearch("");
+                            setBillPage(1);
+                          }}
+                        >
+                          <Icon name="x" className="w-3.5 h-3.5" />
+                          <span>Xóa Bộ Lọc</span>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 ) : (
                   displayedBills.map((b) => (
-                    <tr key={b.id} className="hover:bg-brand-50/30 transition-colors">
-                      <td className="py-3 px-4">
+                    <TableRow key={b.id}>
+                      <TableCell>
                         <span className="font-mono font-black text-brand-950">{b.billCode}</span>
-                      </td>
-                      <td className="py-3 px-3">
+                      </TableCell>
+                      <TableCell>
                         <span className="font-bold text-ink-primary">{b.tableName}</span>
-                      </td>
-                      <td className="py-3 px-3 text-ink-muted">
+                      </TableCell>
+                      <TableCell className="text-ink-muted">
                         <span>{b.closedAt}</span>
                         <span className="text-[10px] text-ink-subtle block">Vào: {b.openedAt}</span>
-                      </td>
-                      <td className="py-3 px-3">
+                      </TableCell>
+                      <TableCell>
                         <span className="font-bold text-ink-primary">{b.cashierName}</span>
                         <span className="text-[10px] text-ink-muted block">
                           {b.shiftName === "CA_SANG" ? "Ca sáng" : "Ca tối"}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 max-w-[200px]">
+                      </TableCell>
+                      <TableCell className="max-w-[200px]">
                         <span className="text-ink-secondary line-clamp-1">
                           {b.items.map((it) => `${it.name} (x${it.quantity})`).join(", ")}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-right text-rose-600 font-bold">
+                      </TableCell>
+                      <TableCell align="right" className="text-rose-600 font-bold">
                         {b.discountAmount > 0 ? `-${b.discountAmount.toLocaleString("vi-VN")}đ` : "--"}
-                      </td>
-                      <td className="py-3 px-4 text-right">
+                      </TableCell>
+                      <TableCell align="right">
                         <span className="font-black text-brand-900 text-sm">
                           {b.finalAmount.toLocaleString("vi-VN")} đ
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                      </TableCell>
+                      <TableCell align="center">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
                             b.paymentMethod === "VIETQR"
@@ -636,44 +752,25 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                           <Icon name={b.paymentMethod === "VIETQR" ? "vietqr" : "banknote"} className="w-3 h-3" />
                           <span>{b.paymentMethod === "VIETQR" ? "VietQR" : "Tiền mặt"}</span>
                         </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
+                      </TableCell>
+                      <TableCell align="center">
                         <button
                           type="button"
                           onClick={() => setSelectedBill(b)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-brand-900 bg-brand-50 hover:bg-brand-100 transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-brand-900 bg-brand-50 hover:bg-brand-100 transition-colors inline-flex items-center gap-1 shadow-2xs"
                         >
                           <Icon name="fileText" className="w-3 h-3" />
                           <span>Xem Bill</span>
                         </button>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
 
-          {/* Mobile Infinite Scroll Sentinel */}
-          <div className="block md:hidden">
-            <MobileInfiniteSentinel
-              hasMore={hasMoreBills}
-              totalCount={filteredBills.length}
-              visibleCount={visibleBillCount}
-              sentinelRef={billSentinelRef}
-            />
-          </div>
-
-          {/* Phân trang hóa đơn trên Desktop (>= md) */}
-          <div className="hidden md:block">
-            <Pagination
-              currentPage={billPage}
-              totalItems={filteredBills.length}
-              pageSize={BILL_PAGE_SIZE}
-              onPageChange={setBillPage}
-            />
-          </div>
-        </div>
+        </DataTableCard>
       )}
 
       {/* TAB 3: KỸ THUẬT THỰC ĐƠN & GIÁ VỐN COGS */}
@@ -803,38 +900,46 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             </p>
           </Panel>
 
-          <div className="overflow-x-auto rounded-2xl border border-surface-border bg-white">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-surface-canvas border-b border-surface-border text-[11px] font-black text-ink-muted uppercase">
-                <tr>
-                  <th className="py-3 px-4">Thời Gian</th>
-                  <th className="py-3 px-3">Tên Món Ăn Bị Hủy</th>
-                  <th className="py-3 px-3 text-center">Số Lượng</th>
-                  <th className="py-3 px-3 text-right">Đơn Giá Món</th>
-                  <th className="py-3 px-3">Vị Trí Bàn</th>
-                  <th className="py-3 px-3">Nhân Viên Duyệt Hủy</th>
-                  <th className="py-3 px-4">Lý Do Hủy Món</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-surface-border font-medium">
-                {canceledItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-rose-50/30 transition-colors">
-                    <td className="py-3 px-4 font-mono text-ink-muted">{item.canceledAt}</td>
-                    <td className="py-3 px-3 font-bold text-ink-primary">{item.dishName}</td>
-                    <td className="py-3 px-3 text-center font-black text-rose-600">x{item.quantity}</td>
-                    <td className="py-3 px-3 text-right font-bold text-ink-primary">
-                      {item.price.toLocaleString("vi-VN")} đ
-                    </td>
-                    <td className="py-3 px-3 font-semibold text-brand-900">{item.tableName}</td>
-                    <td className="py-3 px-3 text-ink-muted">{item.canceledBy}</td>
-                    <td className="py-3 px-4 text-rose-800 italic bg-rose-50/50">
-                      "{item.reason}"
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Thời Gian</TableHead>
+                  <TableHead>Tên Món Ăn Bị Hủy</TableHead>
+                  <TableHead align="center">Số Lượng</TableHead>
+                  <TableHead align="right">Đơn Giá Món</TableHead>
+                  <TableHead>Vị Trí Bàn</TableHead>
+                  <TableHead>Nhân Viên Duyệt Hủy</TableHead>
+                  <TableHead>Lý Do Hủy Món</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {canceledItems.length === 0 ? (
+                  <TableEmpty
+                    colSpan={7}
+                    title="Không có món hủy nào"
+                    description="Tuyệt vời! Chưa có món ăn nào bị hủy sau khi in bếp trong khoảng thời gian này."
+                  />
+                ) : (
+                  canceledItems.map((item) => (
+                    <TableRow key={item.id} className="hover:bg-rose-50/30">
+                      <TableCell className="font-mono text-ink-muted">{item.canceledAt}</TableCell>
+                      <TableCell className="font-bold text-ink-primary">{item.dishName}</TableCell>
+                      <TableCell align="center" className="font-black text-rose-600">x{item.quantity}</TableCell>
+                      <TableCell align="right" className="font-bold text-ink-primary">
+                        {item.price.toLocaleString("vi-VN")} đ
+                      </TableCell>
+                      <TableCell className="font-semibold text-brand-900">{item.tableName}</TableCell>
+                      <TableCell className="text-ink-muted">{item.canceledBy}</TableCell>
+                      <TableCell className="text-rose-800 italic bg-rose-50/30">
+                        "{item.reason}"
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
       )}
 
@@ -1084,49 +1189,49 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                 <Icon name="trending" className="w-4 h-4 text-brand-800" />
                 Bảng Lãi/Lỗ Theo Tuần (Tháng 9/2026)
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead>
-                    <tr className="border-b border-surface-border text-ink-muted uppercase tracking-wider text-[10px] font-extrabold">
-                      <th className="pb-3 pr-4">Tuần</th>
-                      <th className="pb-3 px-3 text-right">Doanh Thu</th>
-                      <th className="pb-3 px-3 text-right text-rose-600">COGS</th>
-                      <th className="pb-3 px-3 text-right text-amber-600">Nhân Sự</th>
-                      <th className="pb-3 px-3 text-right text-slate-500">Chi Phí Khác</th>
-                      <th className="pb-3 px-3 text-right text-emerald-700">Lợi Nhuận</th>
-                      <th className="pb-3 pl-3 text-right">Biên Lãi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-border">
+              <TableContainer>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tuần</TableHead>
+                      <TableHead align="right">Doanh Thu</TableHead>
+                      <TableHead align="right" className="text-rose-600">COGS</TableHead>
+                      <TableHead align="right" className="text-amber-600">Nhân Sự</TableHead>
+                      <TableHead align="right" className="text-slate-500">Chi Phí Khác</TableHead>
+                      <TableHead align="right" className="text-emerald-700">Lợi Nhuận</TableHead>
+                      <TableHead align="right">Biên Lãi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {pnlWeeks.map((w) => {
                       const profit = w.revenue - w.cogs - w.staff - w.other;
                       const margin = ((profit / w.revenue) * 100).toFixed(1);
                       return (
-                        <tr key={w.week} className="hover:bg-surface-canvas/50">
-                          <td className="py-3 pr-4 font-bold text-ink-primary">{w.week}</td>
-                          <td className="py-3 px-3 text-right font-bold text-brand-900">{w.revenue.toLocaleString("vi-VN")}</td>
-                          <td className="py-3 px-3 text-right text-rose-600 font-bold">-{w.cogs.toLocaleString("vi-VN")}</td>
-                          <td className="py-3 px-3 text-right text-amber-600 font-bold">-{w.staff.toLocaleString("vi-VN")}</td>
-                          <td className="py-3 px-3 text-right text-slate-500 font-bold">-{w.other.toLocaleString("vi-VN")}</td>
-                          <td className="py-3 px-3 text-right font-black text-emerald-700">{profit.toLocaleString("vi-VN")}</td>
-                          <td className="py-3 pl-3 text-right">
+                        <TableRow key={w.week}>
+                          <TableCell className="font-bold text-ink-primary">{w.week}</TableCell>
+                          <TableCell align="right" className="font-bold text-brand-900">{w.revenue.toLocaleString("vi-VN")}</TableCell>
+                          <TableCell align="right" className="text-rose-600 font-bold">-{w.cogs.toLocaleString("vi-VN")}</TableCell>
+                          <TableCell align="right" className="text-amber-600 font-bold">-{w.staff.toLocaleString("vi-VN")}</TableCell>
+                          <TableCell align="right" className="text-slate-500 font-bold">-{w.other.toLocaleString("vi-VN")}</TableCell>
+                          <TableCell align="right" className="font-black text-emerald-700">{profit.toLocaleString("vi-VN")}</TableCell>
+                          <TableCell align="right">
                             <span className={`px-2 py-0.5 rounded-full font-black text-[10px] ${Number(margin) >= 30 ? "bg-emerald-100 text-emerald-800" : Number(margin) >= 20 ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}>{margin}%</span>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                    <tr className="border-t-2 border-brand-200 bg-brand-50/30 font-black">
-                      <td className="py-3 pr-4 text-brand-900">Tổng Tháng</td>
-                      <td className="py-3 px-3 text-right text-brand-900">{totals.revenue.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-rose-700">-{totals.cogs.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-amber-700">-{totals.staff.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-slate-600">-{totals.other.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-emerald-800">{totalProfit.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 pl-3 text-right"><span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200 text-emerald-900 font-black">{profitMargin}%</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                    <TableRow className="border-t-2 border-brand-200 bg-brand-50/30 font-black hover:bg-brand-50/40">
+                      <TableCell className="text-brand-900 font-black">Tổng Tháng</TableCell>
+                      <TableCell align="right" className="text-brand-900 font-black">{totals.revenue.toLocaleString("vi-VN")}</TableCell>
+                      <TableCell align="right" className="text-rose-700 font-black">-{totals.cogs.toLocaleString("vi-VN")}</TableCell>
+                      <TableCell align="right" className="text-amber-700 font-black">-{totals.staff.toLocaleString("vi-VN")}</TableCell>
+                      <TableCell align="right" className="text-slate-600 font-black">-{totals.other.toLocaleString("vi-VN")}</TableCell>
+                      <TableCell align="right" className="text-emerald-800 font-black">{totalProfit.toLocaleString("vi-VN")}</TableCell>
+                      <TableCell align="right"><span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200 text-emerald-900 font-black">{profitMargin}%</span></TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
               <div className="mt-4 p-3 rounded-xl bg-surface-canvas border border-surface-border text-[10px] text-ink-muted space-y-1">
                 <p className="font-bold text-ink-primary text-xs">Ghi chú kế toán:</p>
                 <p>• COGS = tổng phiếu nhập hàng trong kỳ. Nhân sự = lương cố định + thưởng ca. Chi phí khác = điện nước, mặt bằng phân bổ.</p>

@@ -142,10 +142,10 @@ export const OwnerLoginPage: React.FC<OwnerLoginPageProps> = ({
               </div>
 
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                <span>Đăng Nhập Chủ Quán</span>
+                <span>Cổng Quán & Bán Hàng</span>
               </h1>
-              <p className="text-[11px] text-slate-400 mt-0.5 max-w-[320px] leading-relaxed">
-                Hệ thống quản lý thực đơn, sơ đồ bàn ăn và doanh thu nhà hàng
+              <p className="text-[11px] text-slate-400 mt-0.5 max-w-[340px] leading-relaxed">
+                Đăng nhập dành cho Chủ Quán và Nhân Viên (Thu ngân, Phục vụ, Đầu bếp, Kế toán)
               </p>
             </div>
 

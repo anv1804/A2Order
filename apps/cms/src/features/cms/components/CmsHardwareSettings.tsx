@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Icon, Button, Badge, Panel, Portal } from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { PrinterConfigRecord, ReceiptTemplateConfig, PrinterType, PrinterInterface } from "@/types/cms.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
@@ -130,107 +131,77 @@ export const CmsHardwareSettings: React.FC = () => {
     toast.success("Đã lưu mẫu hóa đơn in nhiệt và đồng bộ tới toàn bộ máy POS!");
   };
 
+  const cashierPrinter = printers.find((p) => p.type === "CASHIER_BILL");
+  const kitchenPrinter = printers.find((p) => p.type === "KITCHEN_TICKET" || p.type === "BAR_TICKET");
+  const hasCashDrawer = printers.some((p) => p.openCashDrawer);
+
   return (
-    <div className="space-y-5 animate-fadeIn pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Máy In & Thiết Bị
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Thiết Bị
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Cài đặt máy in hóa đơn, máy in bếp và mẫu in bill
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold px-3.5 py-2 shadow-sm transition-all whitespace-nowrap"
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "Thiết Bị", dot: true }}
+        tagline={`${printers.length} thiết bị phần cứng kết nối`}
+        title="Máy In & Thiết Bị Phần Cứng"
+        description="Cài đặt máy in nhiệt hóa đơn thu ngân, máy in phiếu bếp KDS và mẫu in bill tùy biến"
+        chips={[
+          { icon: "print", label: `${printers.length} Thiết bị cấu hình`, variant: "default" },
+          { icon: "cashier", label: cashierPrinter ? `Bill: ${cashierPrinter.name}` : "Chưa có máy in bill", variant: cashierPrinter ? "teal" : "default" },
+          { icon: "kitchen", label: kitchenPrinter ? `Bếp: ${kitchenPrinter.name}` : "Chưa có máy in bếp", variant: kitchenPrinter ? "amber" : "default" },
+          { icon: "checkCircle", label: hasCashDrawer ? "Két tiền RJ11: Kết nối" : "Két tiền: Tắt", variant: "blue" },
+        ]}
+        actions={
+          <button
+            type="button"
             onClick={handleOpenCreateModal}
+            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
           >
-            <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
+            <Icon name="plus" size={14} />
             <span>Thêm Máy In Mới</span>
-          </Button>
-        </div>
-      </div>
+          </button>
+        }
+      />
 
-      {/* 3 Thẻ Chỉ Số Trạng Thái Thiết Bị */}
-      {(() => {
-        const cashierPrinter = printers.find((p) => p.type === "CASHIER_BILL");
-        const kitchenPrinter = printers.find((p) => p.type === "KITCHEN_TICKET" || p.type === "BAR_TICKET");
-        const hasCashDrawer = printers.some((p) => p.openCashDrawer);
+      {/* 2. 3 Thẻ Chỉ Số Trạng Thái Thiết Bị */}
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
+        <StatCard
+          icon="print"
+          variant={cashierPrinter ? "success" : "default"}
+          title="Máy In Bill Thu Ngân"
+          value={cashierPrinter ? cashierPrinter.name : "Chưa có"}
+          subtext={
+            cashierPrinter
+              ? `${cashierPrinter.paperWidth} • ${cashierPrinter.ipAddress || cashierPrinter.interfaceType}`
+              : "Thêm máy in hóa đơn để in bill tự động"
+          }
+          badge={cashierPrinter ? "Trực tuyến" : "Chưa kết nối"}
+        />
 
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-ink-muted">Máy In Bill Thu Ngân</span>
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    cashierPrinter ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-                  }`}
-                />
-              </div>
-              <div className="mt-2">
-                <h3 className="text-base font-black text-brand-950">
-                  {cashierPrinter ? `${cashierPrinter.name} (${cashierPrinter.paperWidth})` : "Chưa cấu hình"}
-                </h3>
-                <span className={`text-[10px] font-bold ${cashierPrinter ? "text-emerald-700" : "text-ink-muted"}`}>
-                  {cashierPrinter
-                    ? `${cashierPrinter.ipAddress || cashierPrinter.interfaceType} • Ping ${cashierPrinter.lastPingMs || 5}ms`
-                    : "Thêm máy in hóa đơn để tự động in bill"}
-                </span>
-              </div>
-            </Panel>
+        <StatCard
+          icon="kitchen"
+          variant={kitchenPrinter ? "warning" : "default"}
+          title="Máy In Phiếu Bếp KDS"
+          value={kitchenPrinter ? kitchenPrinter.name : "Chưa có"}
+          subtext={
+            kitchenPrinter
+              ? `${kitchenPrinter.interfaceType} • ${kitchenPrinter.soundAlarm ? "Chuông báo BẬT" : "Chuông báo TẮT"}`
+              : "Thêm máy in bếp để tự động báo món nấu"
+          }
+          badge={kitchenPrinter ? "Sẵn sàng" : "Chưa kết nối"}
+        />
 
-            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-ink-muted">Máy In Phiếu Bếp KDS</span>
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    kitchenPrinter ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-                  }`}
-                />
-              </div>
-              <div className="mt-2">
-                <h3 className="text-base font-black text-brand-950">
-                  {kitchenPrinter ? `${kitchenPrinter.name} (${kitchenPrinter.interfaceType})` : "Chưa cấu hình"}
-                </h3>
-                <span className={`text-[10px] font-bold ${kitchenPrinter ? "text-emerald-700" : "text-ink-muted"}`}>
-                  {kitchenPrinter
-                    ? `${kitchenPrinter.ipAddress || kitchenPrinter.interfaceType} • ${kitchenPrinter.soundAlarm ? "Chuông báo BẬT" : "Chuông báo TẮT"}`
-                    : "Thêm máy in bếp để tự động báo món nấu"}
-                </span>
-              </div>
-            </Panel>
-
-            <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-ink-muted">Ngăn Kéo Đựng Tiền</span>
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${
-                    hasCashDrawer ? "bg-emerald-500" : "bg-slate-300"
-                  }`}
-                />
-              </div>
-              <div className="mt-2">
-                <h3 className="text-base font-black text-brand-950">
-                  {hasCashDrawer ? "Cổng RJ11 Tự Động Mở" : "Chưa kết nối"}
-                </h3>
-                <span className="text-[10px] text-ink-muted font-bold">
-                  {hasCashDrawer ? "Kích hoạt mở két khi thanh toán tiền mặt" : "Bật tùy chọn 'Mở két tiền' trong máy in bill"}
-                </span>
-              </div>
-            </Panel>
-          </div>
-        );
-      })()}
+        <StatCard
+          icon="cashier"
+          variant={hasCashDrawer ? "info" : "default"}
+          title="Ngăn Kéo Đựng Tiền"
+          value={hasCashDrawer ? "Cổng RJ11 Sẵn Sàng" : "Chưa kết nối"}
+          subtext={
+            hasCashDrawer
+              ? "Tự động bung két khi thanh toán tiền mặt"
+              : "Bật tùy chọn 'Mở két tiền' trong máy in bill"
+          }
+          badge={hasCashDrawer ? "Hoạt động" : "Tắt"}
+        />
+      </section>
 
       {/* 2 Cột: Danh Sách Máy In & Tùy Biến Mẫu In Hóa Đơn */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">

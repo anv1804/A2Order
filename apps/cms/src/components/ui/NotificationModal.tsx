@@ -144,7 +144,7 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({
           onClick={(e) => e.stopPropagation()}
         >
           {/* 1. Header Luxury Deep Forest Green */}
-          <div className="relative p-4 sm:p-5 bg-gradient-to-br from-[#061e16] via-[#0c2921] to-[#143b2f] text-white overflow-hidden shrink-0 border-b border-white/10">
+          <div className="relative p-4 sm:p-5 bg-[#061F17] bg-brand-gradient text-white overflow-hidden shrink-0 border-b border-white/10">
             {/* Vòng phát quang gradient */}
             <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-teal-400/10 rounded-full blur-2xl pointer-events-none" />

@@ -1,5 +1,23 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
+import {
+  Panel,
+  Button,
+  Badge,
+  Icon,
+  Portal,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+  SearchInput,
+  FilterSelect,
+  DataTableCard,
+} from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import {
   EInvoiceProvider,
@@ -23,7 +41,82 @@ const DEFAULT_EINVOICE_CONFIG: EInvoiceConfig = {
   apiEndpoint: "https://api.meinvoice.vn/v2/einvoice",
 };
 
-const INITIAL_INVOICES: EInvoiceRecord[] = [];
+const INITIAL_INVOICES: EInvoiceRecord[] = [
+  {
+    id: "einv-1",
+    orderCode: "BILL-POS-8821",
+    invoiceNumber: "0000041",
+    invoiceSeries: "1C26TBB",
+    cqtCode: "00C26TBB88392019C",
+    buyerName: "Công ty Cổ phần Công nghệ FPT",
+    buyerTaxCode: "0101248141",
+    buyerEmail: "billing@fpt.com.vn",
+    buyerAddress: "Số 10 Phạm Văn Bạch, Cầu Giấy, Hà Nội",
+    totalBeforeTax: 2500000,
+    vatRate: 8,
+    vatAmount: 200000,
+    totalPayment: 2700000,
+    issuedAt: "14/05/2026 12:45",
+    signedBy: "A2Order Store (CLOUD_CA)",
+    status: "ISSUED_WITH_CODE",
+    pdfDownloadUrl: "#",
+    xmlDownloadUrl: "#",
+  },
+  {
+    id: "einv-2",
+    orderCode: "BILL-POS-8822",
+    invoiceNumber: "0000042",
+    invoiceSeries: "1C26TBB",
+    cqtCode: "00C26TBB19284755C",
+    buyerName: "Công ty TNHH Vận Tải & Dịch Vụ Á Châu",
+    buyerTaxCode: "0304918273",
+    buyerEmail: "ketoan@achau.vn",
+    buyerAddress: "Tầng 5 Landmark 81, TP.HCM",
+    totalBeforeTax: 1800000,
+    vatRate: 8,
+    vatAmount: 144000,
+    totalPayment: 1944000,
+    issuedAt: "14/05/2026 13:10",
+    signedBy: "A2Order Store (CLOUD_CA)",
+    status: "ISSUED_WITH_CODE",
+    pdfDownloadUrl: "#",
+    xmlDownloadUrl: "#",
+  },
+  {
+    id: "einv-3",
+    orderCode: "BILL-POS-8825",
+    invoiceNumber: "0000043",
+    invoiceSeries: "1C26TBB",
+    buyerName: "Nguyễn Hoàng Nam",
+    buyerEmail: "nam.nh@gmail.com",
+    totalBeforeTax: 650000,
+    vatRate: 8,
+    vatAmount: 52000,
+    totalPayment: 702000,
+    issuedAt: "14/05/2026 14:05",
+    signedBy: "A2Order Store (CLOUD_CA)",
+    status: "WAITING_CQT_CODE",
+    pdfDownloadUrl: "#",
+    xmlDownloadUrl: "#",
+  },
+  {
+    id: "einv-4",
+    orderCode: "BILL-POS-8818",
+    invoiceNumber: "0000040",
+    invoiceSeries: "1C26TBB",
+    buyerName: "Vũ Hải Đăng (Sai thông tin MST)",
+    buyerTaxCode: "0102938475",
+    totalBeforeTax: 1200000,
+    vatRate: 8,
+    vatAmount: 96000,
+    totalPayment: 1296000,
+    issuedAt: "13/05/2026 19:20",
+    signedBy: "A2Order Store (CLOUD_CA)",
+    status: "CANCELLED",
+    pdfDownloadUrl: "#",
+    xmlDownloadUrl: "#",
+  },
+];
 
 export const CmsEInvoiceManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"invoices" | "settings">("invoices");
@@ -31,6 +124,8 @@ export const CmsEInvoiceManagement: React.FC = () => {
   const [invoices, setInvoices] = usePersistentState<EInvoiceRecord[]>("einvoice_records", INITIAL_INVOICES);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [invoicePage, setInvoicePage] = useState(1);
+  const INVOICE_PAGE_SIZE = 8;
 
   // Modal tạo HĐĐT mới thủ công
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -134,148 +229,194 @@ export const CmsEInvoiceManagement: React.FC = () => {
     toast.success(`Đã hủy hóa đơn số ${inv.invoiceNumber} và gửi thông điệp 04/SS-HĐĐT lên CQT.`);
   };
 
+  // Slicing phân trang
+  const paginatedInvoices = filteredInvoices.slice(
+    (invoicePage - 1) * INVOICE_PAGE_SIZE,
+    invoicePage * INVOICE_PAGE_SIZE
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-ink-base">
-              Hóa Đơn Điện Tử
-            </h1>
-            <Badge variant="success">Thuế TT78</Badge>
-          </div>
-          <p className="text-sm text-ink-muted mt-1">
-            Phát hành hóa đơn điện tử khởi tạo từ máy tính tiền chuẩn cơ quan thuế
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200">
-            <button
-              onClick={() => setActiveTab("invoices")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                activeTab === "invoices"
-                  ? "bg-white text-emerald-800 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Sổ Hóa Đơn ({invoices.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("settings")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                activeTab === "settings"
-                  ? "bg-white text-emerald-800 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Cấu Hình TT78 & Ký Số
-            </button>
-          </div>
-
-          <Button
-            variant="primary"
-            size="sm"
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "Thuế TT78", dot: true }}
+        tagline={`${invoices.length} hóa đơn • Ký số ${config.signatureType}`}
+        title="Hóa Đơn Điện Tử"
+        description="Phát hành hóa đơn điện tử khởi tạo từ máy tính tiền POS chuẩn cơ quan thuế Thông tư 78"
+        chips={[
+          { icon: "checkCircle", label: `${stats.totalIssued} HĐ hợp lệ`, variant: "teal" },
+          { icon: "banknote", label: `VAT đã kê: ${stats.totalVat.toLocaleString("vi-VN")} đ`, variant: "default" },
+          { icon: "clock", label: `${stats.waitingCode} Chờ cấp mã CQT`, variant: stats.waitingCode > 0 ? "amber" : "blue", highlight: stats.waitingCode > 0 },
+          { icon: "fileText", label: `Mẫu số: ${config.invoiceTemplate}`, variant: "amber" },
+        ]}
+        actions={
+          <button
+            type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
           >
-            <Icon name="plus" size={16} className="mr-1" />
-            Lập & Ký HĐĐT Mới
-          </Button>
-        </div>
-      </div>
+            <Icon name="plus" size={14} />
+            <span>Lập & Ký HĐĐT Mới</span>
+          </button>
+        }
+      />
 
-      {/* Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Đã Phát Hành Hợp Lệ</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">{stats.totalIssued} HĐ</div>
-          <div className="text-xs text-slate-500 mt-1">Đã có mã xác thực CQT</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Tổng Thuế VAT Đã Kê</div>
-          <div className="text-2xl font-bold text-slate-800 mt-1">
-            {stats.totalVat.toLocaleString("vi-VN")} đ
-          </div>
-          <div className="text-xs text-slate-500 mt-1">Thuế GTGT đầu ra</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Chờ CQT Cấp Mã</div>
-          <div className="text-2xl font-bold text-amber-600 mt-1">{stats.waitingCode} HĐ</div>
-          <div className="text-xs text-slate-500 mt-1">Đang truyền qua TCTN</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Hóa Đơn Đã Hủy</div>
-          <div className="text-2xl font-bold text-slate-400 mt-1">{stats.cancelled} HĐ</div>
-          <div className="text-xs text-slate-500 mt-1">Đã nộp thông báo 04/SS</div>
-        </Panel>
+      {/* 2. 4 Thẻ Bento Chỉ Số HĐĐT */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <StatCard
+          icon="checkCircle"
+          variant="success"
+          title="Đã Phát Hành Hợp Lệ"
+          value={stats.totalIssued}
+          unit="HĐ"
+          subtext="Đã có mã xác thực CQT"
+          badge="Hợp lệ"
+        />
+        <StatCard
+          icon="banknote"
+          variant="default"
+          title="Tổng Thuế VAT Đã Kê"
+          value={stats.totalVat.toLocaleString("vi-VN")}
+          unit="đ"
+          subtext="Thuế GTGT đầu ra"
+          badge="Kê khai"
+        />
+        <StatCard
+          icon="clock"
+          variant="warning"
+          title="Chờ CQT Cấp Mã"
+          value={stats.waitingCode}
+          unit="HĐ"
+          subtext="Đang truyền qua TCTN"
+          badge={stats.waitingCode > 0 ? "Chờ duyệt" : "0 chờ"}
+        />
+        <StatCard
+          icon="fileText"
+          variant="info"
+          title="Hóa Đơn Đã Hủy"
+          value={stats.cancelled}
+          unit="HĐ"
+          subtext="Đã nộp thông báo 04/SS"
+          badge="Đã hủy"
+        />
+      </section>
+
+      {/* 3. Sticky Toolbar: Tabs Danh Mục */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <button
+            onClick={() => setActiveTab("invoices")}
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all shrink-0 ${
+              activeTab === "invoices"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Sổ Hóa Đơn ({invoices.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("settings")}
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all shrink-0 ${
+              activeTab === "settings"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Cấu Hình TT78 & Ký Số
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: SỔ HÓA ĐƠN */}
       {activeTab === "invoices" && (
-        <Panel className="p-6 bg-white border border-slate-200 rounded-xl shadow-xs space-y-4">
-          {/* Filter Bar */}
-          <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="relative w-full md:w-72">
-              <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Tìm số HĐ, MST, tên khách..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto text-xs w-full md:w-auto">
-              {[
-                { id: "ALL", label: "Tất cả" },
-                { id: "ISSUED_WITH_CODE", label: "Đã cấp mã CQT" },
-                { id: "WAITING_CQT_CODE", label: "Chờ cấp mã" },
-                { id: "CANCELLED", label: "Đã hủy" },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => setStatusFilter(f.id)}
-                  className={`px-3 py-1.5 rounded-full font-medium transition-all ${
-                    statusFilter === f.id
-                      ? "bg-emerald-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
+        <DataTableCard
+          searchPlaceholder="Tìm số HĐ, MST, tên khách..."
+          searchValue={searchQuery}
+          onSearchChange={(val) => {
+            setSearchQuery(val);
+            setInvoicePage(1);
+          }}
+          onSearchClear={() => {
+            setSearchQuery("");
+            setInvoicePage(1);
+          }}
+          filters={
+            <FilterSelect
+              labelPrefix="Trạng thái: "
+              value={statusFilter}
+              onChange={(val) => {
+                setStatusFilter(val);
+                setInvoicePage(1);
+              }}
+              options={[
+                { value: "ALL", label: "Tất cả", count: invoices.length },
+                { value: "ISSUED_WITH_CODE", label: "Đã cấp mã CQT", count: invoices.filter((i) => i.status === "ISSUED_WITH_CODE").length },
+                { value: "WAITING_CQT_CODE", label: "Chờ cấp mã", count: invoices.filter((i) => i.status === "WAITING_CQT_CODE").length },
+                { value: "CANCELLED", label: "Đã hủy", count: invoices.filter((i) => i.status === "CANCELLED").length },
+              ]}
+              className="w-full sm:w-48 shrink-0"
+            />
+          }
+          hasActiveFilters={statusFilter !== "ALL" || searchQuery.trim() !== ""}
+          onResetFilters={() => {
+            setStatusFilter("ALL");
+            setSearchQuery("");
+            setInvoicePage(1);
+          }}
+          pagination={{
+            currentPage: invoicePage,
+            totalItems: filteredInvoices.length,
+            pageSize: INVOICE_PAGE_SIZE,
+            onPageChange: setInvoicePage,
+          }}
+        >
           {/* Invoices Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-3">Ký Hiệu & Số HĐ</th>
-                  <th className="py-3 px-3">Người Mua Hàng</th>
-                  <th className="py-3 px-3">Mã Số Thuế</th>
-                  <th className="py-3 px-3 text-right">Tiền Trước Thuế</th>
-                  <th className="py-3 px-3 text-right">VAT (%)</th>
-                  <th className="py-3 px-3 text-right">Tổng Thanh Toán</th>
-                  <th className="py-3 px-3 text-center">Trạng Thái</th>
-                  <th className="py-3 px-3 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredInvoices.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-8 text-center text-slate-400">
-                      Không tìm thấy hóa đơn điện tử nào.
-                    </td>
-                  </tr>
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ký Hiệu & Số HĐ</TableHead>
+                  <TableHead>Người Mua Hàng</TableHead>
+                  <TableHead>Mã Số Thuế</TableHead>
+                  <TableHead align="right">Tiền Trước Thuế</TableHead>
+                  <TableHead align="right">VAT (%)</TableHead>
+                  <TableHead align="right">Tổng Thanh Toán</TableHead>
+                  <TableHead align="center">Trạng Thái</TableHead>
+                  <TableHead align="right">Thao Tác</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedInvoices.length === 0 ? (
+                  <TableEmpty
+                    colSpan={8}
+                    title="Không tìm thấy hóa đơn điện tử nào"
+                    description={
+                      invoices.length === 0
+                        ? "Chưa có hóa đơn nào được phát hành."
+                        : "Thử tìm kiếm với từ khóa khác hoặc điều chỉnh bộ lọc trạng thái."
+                    }
+                    action={
+                      filteredInvoices.length === 0 && invoices.length > 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1.5 font-bold"
+                          onClick={() => {
+                            setStatusFilter("ALL");
+                            setSearchQuery("");
+                            setInvoicePage(1);
+                          }}
+                        >
+                          <Icon name="x" className="w-3.5 h-3.5" />
+                          <span>Xóa Bộ Lọc</span>
+                        </Button>
+                      ) : undefined
+                    }
+                  />
                 ) : (
-                  filteredInvoices.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/50">
-                      <td className="py-3 px-3">
+                  paginatedInvoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell>
                         <span className="font-bold text-slate-900 block font-mono">
                           {inv.invoiceSeries} - {inv.invoiceNumber}
                         </span>
@@ -287,26 +428,26 @@ export const CmsEInvoiceManagement: React.FC = () => {
                             CQT: {inv.cqtCode}
                           </span>
                         )}
-                      </td>
-                      <td className="py-3 px-3 font-medium text-slate-800">
+                      </TableCell>
+                      <TableCell className="font-medium text-slate-800">
                         {inv.buyerName}
                         {inv.buyerEmail && (
                           <span className="text-[11px] text-slate-400 block">{inv.buyerEmail}</span>
                         )}
-                      </td>
-                      <td className="py-3 px-3 font-mono text-slate-600">
+                      </TableCell>
+                      <TableCell className="font-mono text-slate-600">
                         {inv.buyerTaxCode || <span className="text-slate-400 italic">Khách lẻ</span>}
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-600">
+                      </TableCell>
+                      <TableCell align="right" className="font-mono text-slate-600">
                         {inv.totalBeforeTax.toLocaleString("vi-VN")} đ
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono text-slate-600">
+                      </TableCell>
+                      <TableCell align="right" className="font-mono text-slate-600">
                         {inv.vatRate}% ({inv.vatAmount.toLocaleString("vi-VN")} đ)
-                      </td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-800">
+                      </TableCell>
+                      <TableCell align="right" className="font-mono font-bold text-emerald-800">
                         {inv.totalPayment.toLocaleString("vi-VN")} đ
-                      </td>
-                      <td className="py-3 px-3 text-center">
+                      </TableCell>
+                      <TableCell align="center">
                         {inv.status === "ISSUED_WITH_CODE" && (
                           <Badge variant="success">Đã Cấp Mã CQT</Badge>
                         )}
@@ -316,8 +457,8 @@ export const CmsEInvoiceManagement: React.FC = () => {
                         {inv.status === "CANCELLED" && (
                           <Badge variant="default">Đã Hủy</Badge>
                         )}
-                      </td>
-                      <td className="py-3 px-3 text-right">
+                      </TableCell>
+                      <TableCell align="right">
                         <div className="inline-flex gap-1">
                           <Button
                             variant="outline"
@@ -338,14 +479,14 @@ export const CmsEInvoiceManagement: React.FC = () => {
                             </Button>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DataTableCard>
       )}
 
       {/* TAB 2: CẤU HÌNH TT78 */}
@@ -645,28 +786,30 @@ export const CmsEInvoiceManagement: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-slate-200">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500">
-                        <th className="py-1">Nội Dung</th>
-                        <th className="py-1 text-right">Thành Tiền</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="py-1">Dịch vụ ăn uống theo hóa đơn {viewingInvoice.orderCode}</td>
-                        <td className="py-1 text-right font-mono">{viewingInvoice.totalBeforeTax.toLocaleString("vi-VN")} đ</td>
-                      </tr>
-                      <tr className="border-t border-slate-100">
-                        <td className="py-1 text-slate-500">Thuế suất GTGT ({viewingInvoice.vatRate}%)</td>
-                        <td className="py-1 text-right font-mono">{viewingInvoice.vatAmount.toLocaleString("vi-VN")} đ</td>
-                      </tr>
-                      <tr className="border-t border-slate-200 font-bold text-slate-900">
-                        <td className="py-1">Tổng cộng tiền thanh toán</td>
-                        <td className="py-1 text-right font-mono text-emerald-700">{viewingInvoice.totalPayment.toLocaleString("vi-VN")} đ</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <TableContainer className="border-0 shadow-none rounded-none bg-transparent">
+                    <Table>
+                      <TableHeader className="bg-transparent border-b border-slate-200">
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="py-1 px-0 text-slate-500 font-semibold normal-case text-xs">Nội Dung</TableHead>
+                          <TableHead align="right" className="py-1 px-0 text-slate-500 font-semibold normal-case text-xs">Thành Tiền</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow className="hover:bg-transparent">
+                          <TableCell className="py-1 px-0">Dịch vụ ăn uống theo hóa đơn {viewingInvoice.orderCode}</TableCell>
+                          <TableCell align="right" className="py-1 px-0 font-mono">{viewingInvoice.totalBeforeTax.toLocaleString("vi-VN")} đ</TableCell>
+                        </TableRow>
+                        <TableRow className="hover:bg-transparent border-t border-slate-100">
+                          <TableCell className="py-1 px-0 text-slate-500">Thuế suất GTGT ({viewingInvoice.vatRate}%)</TableCell>
+                          <TableCell align="right" className="py-1 px-0 font-mono">{viewingInvoice.vatAmount.toLocaleString("vi-VN")} đ</TableCell>
+                        </TableRow>
+                        <TableRow className="hover:bg-transparent border-t border-slate-200 font-bold text-slate-900">
+                          <TableCell className="py-1 px-0 font-bold text-slate-900">Tổng cộng tiền thanh toán</TableCell>
+                          <TableCell align="right" className="py-1 px-0 font-mono text-emerald-700 font-bold">{viewingInvoice.totalPayment.toLocaleString("vi-VN")} đ</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </div>
 
                 <div className="pt-3 border-t border-slate-200 flex justify-between items-center text-[11px] text-slate-500">

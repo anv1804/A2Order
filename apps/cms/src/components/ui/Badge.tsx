@@ -20,10 +20,10 @@ export const Badge: React.FC<BadgeProps> = ({
   const variantClasses = {
     default: "bg-surface-muted text-ink-muted border border-surface-border",
     brand: "bg-brand-100 text-brand-800 border border-brand-200",
-    success: "bg-[#E8F5EE] text-[#194B3A] border border-[#A3DBCE]",
-    warning: "bg-amber-50 text-amber-800 border border-amber-200",
-    danger: "bg-rose-50 text-rose-800 border border-rose-200",
-    info: "bg-blue-50 text-blue-800 border border-blue-200",
+    success: "bg-status-success-bg text-status-success-text border border-status-success-border",
+    warning: "bg-status-warning-bg text-status-warning-text border border-status-warning-border",
+    danger: "bg-status-danger-bg text-status-danger-text border border-status-danger-border",
+    info: "bg-status-info-bg text-status-info-text border border-status-info-border",
     outline: "bg-transparent text-ink-muted border border-surface-border",
   };
 

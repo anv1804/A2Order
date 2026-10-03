@@ -43,6 +43,7 @@ export interface CmsTableItem {
   name: string;
   code?: string;
   pin?: string;
+  zoneId?: string;
   orderUrl?: string;
   capacity: number;
   status: "EMPTY" | "OCCUPIED" | "WAITING_FOOD" | "SERVED" | "PAYMENT_PENDING";

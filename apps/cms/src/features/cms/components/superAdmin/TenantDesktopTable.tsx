@@ -1,5 +1,16 @@
 import React, { useState } from "react";
-import { Icon, Checkbox } from "@/components/ui";
+import {
+  Icon,
+  Checkbox,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+} from "@/components/ui";
 import { TenantStoreRecord, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
 import { BUSINESS_TYPE_ICONS } from "./modals/StoreOnboardingModal";
 import { toast } from "@/stores/notificationStore";
@@ -54,37 +65,34 @@ export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
 
   return (
     <div className="hidden lg:block w-full">
-      <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
-          <tr className="border-b border-surface-border text-slate-500 uppercase tracking-wider text-[10px] font-black">
-            <th className="py-3 pl-3.5 pr-1 w-10 bg-slate-50/95">
-              <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
-                onChange={onToggleSelectAll}
-                title="Chọn tất cả quán trên trang này"
+      <TableContainer className="rounded-none border-0 shadow-none">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
+            <TableRow>
+              <TableHead className="py-3 pl-3.5 pr-1 w-10">
+                <Checkbox
+                  checked={isAllSelected}
+                  indeterminate={isIndeterminate}
+                  onChange={onToggleSelectAll}
+                  title="Chọn tất cả quán trên trang này"
+                />
+              </TableHead>
+              <TableHead>Cửa Hàng & Chủ Quán</TableHead>
+              <TableHead>Gói Dịch Vụ</TableHead>
+              <TableHead>Hợp Đồng / Key</TableHead>
+              <TableHead>Hạn Dùng & Trạng Thái</TableHead>
+              <TableHead align="right">Thao Tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedStores.length === 0 ? (
+              <TableEmpty
+                colSpan={6}
+                icon="store"
+                title="Không tìm thấy quán nào"
+                description="Không tìm thấy quán nào phù hợp bộ lọc hoặc từ khóa tìm kiếm."
               />
-            </th>
-            <th className="py-3 px-3 bg-slate-50/95">Cửa Hàng & Chủ Quán</th>
-            <th className="py-3 px-3 bg-slate-50/95">Gói Dịch Vụ</th>
-            <th className="py-3 px-3 bg-slate-50/95">Hợp Đồng / Key</th>
-            <th className="py-3 px-3 bg-slate-50/95">Hạn Dùng & Trạng Thái</th>
-            <th className="py-3 px-3.5 text-right bg-slate-50/95">Thao Tác</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 font-medium">
-          {paginatedStores.length === 0 ? (
-            <tr>
-              <td colSpan={6} className="py-12 text-center text-xs text-slate-400 font-bold">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Icon name="store" size={24} />
-                  </div>
-                  <span>Không tìm thấy quán nào phù hợp bộ lọc</span>
-                </div>
-              </td>
-            </tr>
-          ) : (
+            ) : (
             paginatedStores.map((s) => {
               const isSelected = selectedStoreIds.includes(s.id);
               const bConfig = s.businessType ? BUSINESS_TYPE_CONFIG[s.businessType] : null;
@@ -300,8 +308,9 @@ export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
               );
             })
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div>
   );
 };

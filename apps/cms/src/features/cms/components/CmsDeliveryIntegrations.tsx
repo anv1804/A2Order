@@ -1,5 +1,21 @@
 import React, { useState } from "react";
-import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
+import {
+  Panel,
+  Button,
+  Badge,
+  Icon,
+  Portal,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  FilterSelect,
+  DataTableCard,
+} from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast } from "@/stores/notificationStore";
 import {
   DeliveryPlatform,
@@ -150,122 +166,132 @@ export const CmsDeliveryIntegrations: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Tabs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-ink-base">
-              App Giao Hàng
-            </h1>
-            <Badge variant="success">Grab & Shopee</Badge>
-          </div>
-          <p className="text-sm text-ink-muted mt-1">
-            Đồng bộ đơn hàng từ GrabFood, ShopeeFood về máy bán hàng và bếp
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "App Giao Hàng", dot: true }}
+        tagline={`${channels.filter((c) => c.isConnected).length}/4 kênh kết nối • ${stats.totalOrdersToday} đơn hôm nay`}
+        title="App Giao Hàng & Đối Tác"
+        description="Đồng bộ đơn hàng tự động từ GrabFood, ShopeeFood, BeFood về máy bán hàng POS và màn hình bếp KDS"
+        chips={[
+          { icon: "cart", label: `${stats.totalOrdersToday} Đơn hôm nay`, variant: "default" },
+          { icon: "kitchen", label: `${stats.activeCooking} Đang nấu KDS`, variant: stats.activeCooking > 0 ? "amber" : "teal", highlight: stats.activeCooking > 0 },
+          { icon: "clock", label: `${stats.readyForPickup} Chờ giao shipper`, variant: "blue" },
+          { icon: "banknote", label: `Thực nhận: ${stats.todayRevenue.toLocaleString("vi-VN")} đ`, variant: "teal" },
+        ]}
+        actions={
+          <button
+            type="button"
             onClick={handleSimulateNewOrder}
-            className="border-dashed border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
           >
-            <Icon name="bell" size={16} className="mr-1 text-emerald-600 animate-bounce" />
-            Giả Lập Nhận Đơn Mới
-          </Button>
+            <Icon name="bell" size={14} className="animate-bounce" />
+            <span>Giả Lập Đơn App</span>
+          </button>
+        }
+      />
 
-          <div className="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200">
-            <button
-              onClick={() => setActiveTab("live_orders")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                activeTab === "live_orders"
-                  ? "bg-white text-emerald-800 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Đơn Giao Hàng Live ({orders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED").length})
-            </button>
-            <button
-              onClick={() => setActiveTab("channels")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                activeTab === "channels"
-                  ? "bg-white text-emerald-800 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Kênh Kết Nối ({channels.filter((c) => c.isConnected).length}/4)
-            </button>
-            <button
-              onClick={() => setActiveTab("menu_sync")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                activeTab === "menu_sync"
-                  ? "bg-white text-emerald-800 shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Đồng Bộ Menu
-            </button>
-          </div>
+      {/* 2. 4 Thẻ Bento Chỉ Số Đơn Giao Hàng */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <StatCard
+          icon="cart"
+          variant="default"
+          title="Tổng Đơn App Hôm Nay"
+          value={stats.totalOrdersToday}
+          unit="đơn"
+          subtext="Đồng bộ tự động 100%"
+          badge="Hôm nay"
+        />
+        <StatCard
+          icon="kitchen"
+          variant="warning"
+          title="Đang Nấu / Chờ Nhận"
+          value={stats.activeCooking}
+          unit="đơn"
+          subtext="Đã bắn vào màn hình KDS"
+          badge={stats.activeCooking > 0 ? "Bếp nấu" : "0 đơn"}
+        />
+        <StatCard
+          icon="clock"
+          variant="info"
+          title="Chờ Shipper Đến Lấy"
+          value={stats.readyForPickup}
+          unit="đơn"
+          subtext="Món đã gói xong sẵn sàng"
+          badge={stats.readyForPickup > 0 ? "Giao shipper" : "0 chờ"}
+        />
+        <StatCard
+          icon="banknote"
+          variant="success"
+          title="Thực Nhận Từ App (Net)"
+          value={stats.todayRevenue.toLocaleString("vi-VN")}
+          unit="đ"
+          subtext="Đã khấu trừ hoa hồng sàn"
+          badge="Doanh thu"
+        />
+      </section>
+
+      {/* 3. Sticky Toolbar: Tabs Danh Mục */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <button
+            onClick={() => setActiveTab("live_orders")}
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all shrink-0 ${
+              activeTab === "live_orders"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Đơn Giao Hàng Live ({orders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED").length})
+          </button>
+          <button
+            onClick={() => setActiveTab("channels")}
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all shrink-0 ${
+              activeTab === "channels"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Kênh Kết Nối ({channels.filter((c) => c.isConnected).length}/4)
+          </button>
+          <button
+            onClick={() => setActiveTab("menu_sync")}
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all shrink-0 ${
+              activeTab === "menu_sync"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            Đồng Bộ Menu Thực Đơn
+          </button>
         </div>
-      </div>
-
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Tổng Đơn App Hôm Nay</div>
-          <div className="text-2xl font-bold text-slate-800 mt-1">{stats.totalOrdersToday} đơn</div>
-          <div className="text-xs text-emerald-600 mt-1 font-medium">Đồng bộ tự động 100%</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Đang Nấu / Chờ Nhận</div>
-          <div className="text-2xl font-bold text-amber-600 mt-1">{stats.activeCooking} đơn</div>
-          <div className="text-xs text-slate-500 mt-1">Đã bắn vào màn hình KDS</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Chờ Shipper Đến Lấy</div>
-          <div className="text-2xl font-bold text-blue-600 mt-1">{stats.readyForPickup} đơn</div>
-          <div className="text-xs text-slate-500 mt-1">Món đã gói xong sẵn sàng</div>
-        </Panel>
-        <Panel className="p-4 bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-medium text-slate-500">Thực Nhận Từ App (Net)</div>
-          <div className="text-2xl font-bold text-emerald-700 mt-1">
-            {stats.todayRevenue.toLocaleString("vi-VN")} đ
-          </div>
-          <div className="text-xs text-slate-500 mt-1">Đã khấu trừ hoa hồng sàn</div>
-        </Panel>
       </div>
 
       {/* TAB 1: ĐƠN HÀNG TRỰC TIẾP */}
       {activeTab === "live_orders" && (
-        <div className="space-y-4">
-          {/* Status filter bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-            <span className="font-semibold text-slate-600">Trạng thái:</span>
-            {[
-              { id: "ALL", label: "Tất cả đơn" },
-              { id: "WAITING_ACCEPT", label: "Chờ xác nhận" },
-              { id: "COOKING", label: "Bếp đang nấu" },
-              { id: "READY_FOR_PICKUP", label: "Chờ giao shipper" },
-              { id: "COMPLETED", label: "Đã hoàn thành" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1.5 rounded-full font-medium transition-all ${
-                  statusFilter === f.id
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
+        <DataTableCard
+          filters={
+            <FilterSelect
+              labelPrefix="Trạng thái: "
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: "ALL", label: "Tất cả đơn", count: orders.length },
+                { value: "WAITING_ACCEPT", label: "Chờ xác nhận", count: orders.filter((o) => o.status === "WAITING_ACCEPT").length },
+                { value: "COOKING", label: "Bếp đang nấu", count: orders.filter((o) => o.status === "COOKING").length },
+                { value: "READY_FOR_PICKUP", label: "Chờ giao shipper", count: orders.filter((o) => o.status === "READY_FOR_PICKUP").length },
+                { value: "COMPLETED", label: "Đã hoàn thành", count: orders.filter((o) => o.status === "COMPLETED").length },
+              ]}
+              className="w-56"
+            />
+          }
+          hasActiveFilters={statusFilter !== "ALL"}
+          onResetFilters={() => setStatusFilter("ALL")}
+          summaryText={`${filteredOrders.length} / ${orders.length} đơn hàng`}
+          scrollable={false}
+        >
           {/* Orders List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredOrders.length === 0 ? (
               <div className="col-span-full py-12 text-center text-slate-400 bg-white rounded-xl border border-slate-200">
                 <Icon name="cart" size={36} className="mx-auto mb-2 opacity-50" />
@@ -411,7 +437,7 @@ export const CmsDeliveryIntegrations: React.FC = () => {
               })
             )}
           </div>
-        </div>
+        </DataTableCard>
       )}
 
       {/* TAB 2: KÊNH KẾT NỐI */}
@@ -510,18 +536,18 @@ export const CmsDeliveryIntegrations: React.FC = () => {
             </Button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="py-2.5 px-3">Tên Món Ăn</th>
-                  <th className="py-2.5 px-3">Giá Bán Tại Bàn</th>
-                  <th className="py-2.5 px-3">Giá Bán Grab (+15%)</th>
-                  <th className="py-2.5 px-3">Giá Bán Shopee (+20%)</th>
-                  <th className="py-2.5 px-3 text-center">Bật Bán Trên App</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tên Món Ăn</TableHead>
+                  <TableHead>Giá Bán Tại Bàn</TableHead>
+                  <TableHead>Giá Bán Grab (+15%)</TableHead>
+                  <TableHead>Giá Bán Shopee (+20%)</TableHead>
+                  <TableHead align="center">Bật Bán Trên App</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {[
                   { name: "Phở Bò Tái Nạm Đặc Biệt", price: 55000 },
                   { name: "Phở Gà Đùi Lá Chanh", price: 45000 },
@@ -533,20 +559,20 @@ export const CmsDeliveryIntegrations: React.FC = () => {
                   const grabPrice = Math.round((item.price * 1.15) / 1000) * 1000;
                   const shopeePrice = Math.round((item.price * 1.2) / 1000) * 1000;
                   return (
-                    <tr key={i} className="hover:bg-slate-50/50">
-                      <td className="py-2.5 px-3 font-semibold text-slate-800">{item.name}</td>
-                      <td className="py-2.5 px-3 font-mono text-slate-600">{item.price.toLocaleString("vi-VN")} đ</td>
-                      <td className="py-2.5 px-3 font-mono text-emerald-700 font-semibold">{grabPrice.toLocaleString("vi-VN")} đ</td>
-                      <td className="py-2.5 px-3 font-mono text-orange-600 font-semibold">{shopeePrice.toLocaleString("vi-VN")} đ</td>
-                      <td className="py-2.5 px-3 text-center">
+                    <TableRow key={i}>
+                      <TableCell className="font-semibold text-slate-800">{item.name}</TableCell>
+                      <TableCell className="font-mono text-slate-600">{item.price.toLocaleString("vi-VN")} đ</TableCell>
+                      <TableCell className="font-mono text-emerald-700 font-semibold">{grabPrice.toLocaleString("vi-VN")} đ</TableCell>
+                      <TableCell className="font-mono text-orange-600 font-semibold">{shopeePrice.toLocaleString("vi-VN")} đ</TableCell>
+                      <TableCell align="center">
                         <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Panel>
       )}
 

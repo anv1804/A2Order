@@ -1,9 +1,31 @@
 import React, { useState } from "react";
-import { Button, Icon, Pagination, Portal } from "@/components/ui";
+import {
+  Button,
+  Icon,
+  Pagination,
+  Portal,
+  DataTableCard,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+  FilterSelect,
+  Badge,
+} from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { Reservation } from "@/types/cms.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
+import {
+  NewReservationModal,
+  AssignTableModal,
+  NoShowModal,
+  DepositResolutionType,
+} from "./reservations";
 
 const AVAILABLE_TABLES = [
   "Bàn 01 (Tầng 1 - 4 người)",
@@ -14,8 +36,92 @@ const AVAILABLE_TABLES = [
   "Bàn 12 (Sân vườn - 12 người)",
 ];
 
+const INITIAL_RESERVATIONS: Reservation[] = [
+  {
+    id: "r1",
+    guestName: "Anh Hoàng Tuấn",
+    phone: "0903 111 222",
+    guestCount: 6,
+    reservationTime: "19:00 - Tối nay",
+    dateCategory: "TODAY",
+    tableAssigned: "Bàn 04 (Phòng VIP 1)",
+    occasion: "BUSINESS",
+    depositAmount: 500000,
+    depositStatus: "PAID",
+    notes: "Cần không gian yên tĩnh ký hợp đồng, chuẩn bị trước 1 lẩu đuôi bò hầm vang",
+    source: "LANDING_PAGE",
+    status: "CONFIRMED",
+    createdAt: "10:30 Hôm nay",
+  },
+  {
+    id: "r2",
+    guestName: "Chị Thảo Mai",
+    phone: "0982 333 444",
+    guestCount: 4,
+    reservationTime: "12:15 - Trưa nay",
+    dateCategory: "TODAY",
+    tableAssigned: "Bàn 08 (Ban công tầng 2)",
+    occasion: "BIRTHDAY",
+    depositAmount: 200000,
+    depositStatus: "PAID",
+    notes: "Sinh nhật bạn, chuẩn bị đĩa hoa quả có nến thắp sẵn",
+    source: "LANDING_PAGE",
+    status: "ARRIVED",
+    createdAt: "09:00 Hôm nay",
+  },
+  {
+    id: "r3",
+    guestName: "Bác Hùng - BQL",
+    phone: "0915 777 888",
+    guestCount: 10,
+    reservationTime: "18:30 - Ngày mai",
+    dateCategory: "TOMORROW",
+    tableAssigned: "Chưa gán bàn",
+    occasion: "FAMILY",
+    depositAmount: 0,
+    depositStatus: "UNPAID",
+    notes: "Liên hoan gia đình 3 thế hệ có 2 ghế trẻ em",
+    source: "PHONE_CALL",
+    status: "PENDING",
+    createdAt: "11:15 Hôm nay",
+  },
+  {
+    id: "r4",
+    guestName: "Cô Hương Lan",
+    phone: "0977 456 789",
+    guestCount: 2,
+    reservationTime: "20:00 - Tối nay",
+    dateCategory: "TODAY",
+    tableAssigned: "Chưa gán bàn",
+    occasion: "ANNIVERSARY",
+    depositAmount: 0,
+    depositStatus: "UNPAID",
+    notes: "Kỷ niệm ngày cưới, hoa hồng trang trí bàn",
+    source: "LANDING_PAGE",
+    status: "PENDING",
+    createdAt: "14:20 Hôm nay",
+  },
+  {
+    id: "r5",
+    guestName: "Anh Minh Quân (Trễ Hẹn)",
+    phone: "0934 888 999",
+    guestCount: 5,
+    reservationTime: "18:45 - Tối nay",
+    dateCategory: "TODAY",
+    tableAssigned: "Bàn 03 (Tầng 1 - 6 người)",
+    occasion: "BUSINESS",
+    depositAmount: 300000,
+    depositStatus: "PAID",
+    notes: "Báo kẹt xe trễ 15p, đang tính thời gian ân hạn giữ chỗ (Grace Period)",
+    source: "PHONE_CALL",
+    status: "LATE",
+    extendedMinutes: 0,
+    createdAt: "18:00 Hôm nay",
+  },
+];
+
 export const CmsReservationsManagement: React.FC = () => {
-  const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", []);
+  const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", INITIAL_RESERVATIONS);
 
   // Bộ lọc & Phân trang
   const [filterDate, setFilterDate] = usePersistentState<"ALL" | "TODAY" | "TOMORROW" | "THIS_WEEK">("reservations_filter_date", "ALL");
@@ -333,201 +439,140 @@ export const CmsReservationsManagement: React.FC = () => {
     .reduce((sum, r) => sum + (r.depositAmount || 0), 0);
 
   return (
-    <div className="space-y-4 animate-fadeIn pb-16">
-      {/* Tiêu đề gọn gàng & Nút tạo mới */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Lịch Đặt Bàn
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200">
-              Đặt Chỗ
-            </span>
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "Đặt Chỗ", dot: true }}
+        tagline={`${reservations.length} lượt đặt • ${totalGuestsToday} khách hôm nay`}
+        title="Lịch Đặt Bàn"
+        description="Quản lý khách đặt trước, giờ nhận bàn, xếp bàn ăn và tiền đặt cọc giữ chỗ"
+        chips={[
+          { icon: "users", label: `${totalGuestsToday} Khách hôm nay`, variant: "default" },
+          { icon: "clock", label: `${pendingCount} Chờ duyệt`, variant: pendingCount > 0 ? "amber" : "teal", highlight: pendingCount > 0 },
+          { icon: "calendarCheck", label: `${confirmedCount} Bàn đã giữ`, variant: "teal" },
+          { icon: "vietqr", label: `Tiền cọc: ${totalDeposits.toLocaleString("vi-VN")} đ`, variant: "blue" },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => openModal("PHONE_CALL")}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
+            >
+              <Icon name="phone" size={14} />
+              <span>+ Đặt Bàn Hotline</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openModal("WALK_IN")}
+              className="inline-flex h-9 sm:h-10 w-9 sm:w-10 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white transition hover:bg-white/20 active:scale-95 shrink-0"
+              title="Tiếp nhận khách đến ngay"
+              aria-label="Tiếp nhận khách đến ngay"
+            >
+              <Icon name="plus" size={15} />
+            </button>
           </div>
-          <p className="text-xs text-ink-muted mt-1">
-            Quản lý khách đặt trước, giờ nhận bàn và tiền cọc
-          </p>
-        </div>
+        }
+      />
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            size="sm"
-            className="rounded-xl gap-2 text-xs bg-brand-950 text-white shadow-sm font-bold hover:bg-black transition-all px-3.5 py-2"
-            onClick={() => openModal("PHONE_CALL")}
-          >
-            <Icon name="phone" className="w-3.5 h-3.5 text-brand-400" />
-            <span>+ Đặt Bàn Hotline</span>
-          </Button>
+      {/* 2. 4 Thẻ Thống Kê Chỉ Số Đặt Bàn */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <StatCard
+          icon="users"
+          variant="default"
+          title="Khách Hôm Nay"
+          value={totalGuestsToday}
+          unit="khách"
+          subtext="khách đã ghi nhận"
+          badge="Hôm nay"
+        />
+        <StatCard
+          icon="clock"
+          variant="warning"
+          title="Chờ Xác Nhận"
+          value={pendingCount}
+          unit="yêu cầu"
+          subtext="cần xác nhận tiếp đón"
+          badge={pendingCount > 0 ? "Cần duyệt" : "0 chờ"}
+        />
+        <StatCard
+          icon="calendarCheck"
+          variant="success"
+          title="Bàn Đã Giữ"
+          value={confirmedCount}
+          unit="bàn"
+          subtext="sẵn sàng tiếp đón"
+          badge="Đã chốt"
+        />
+        <StatCard
+          icon="vietqr"
+          variant="info"
+          title="Tiền Cọc Đã Thu"
+          value={totalDeposits.toLocaleString("vi-VN")}
+          unit="đ"
+          subtext="hoàn tất thu cọc"
+          badge="Đã cọc"
+        />
+      </section>
 
-          {/* Nút Khách Đến Ngay / Thêm Lịch (Icon-only) */}
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-white border-surface-border text-ink-primary hover:bg-surface-canvas font-bold shadow-2xs shrink-0"
-            onClick={() => openModal("WALK_IN")}
-            title="Tiếp nhận khách đến ngay"
-            aria-label="Tiếp nhận khách đến ngay"
-          >
-            <Icon name="plus" className="w-4 h-4 text-ink-muted" />
-          </Button>
-        </div>
-      </div>
-
-      {/* 4 Thẻ Thống Kê Thiết Kế Tối Giản Cao Cấp */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-brand-300 transition-all group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Khách Hôm Nay</span>
-            <div className="w-8 h-8 rounded-xl bg-surface-canvas flex items-center justify-center text-ink-muted group-hover:text-brand-900 group-hover:bg-brand-50 transition-colors">
-              <Icon name="users" size={16} />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-ink-primary tracking-tight">{totalGuestsToday}</span>
-            <span className="text-xs font-medium text-ink-muted">khách đã ghi nhận</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-amber-300 transition-all group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Chờ Xác Nhận</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50/70 flex items-center justify-center text-amber-700 group-hover:bg-amber-100 transition-colors">
-              <Icon name="clock" size={16} />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-amber-700 tracking-tight">{pendingCount}</span>
-            <span className="text-xs font-medium text-amber-700/80">yêu cầu cần duyệt</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-emerald-300 transition-all group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Bàn Đã Giữ</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50/70 flex items-center justify-center text-emerald-700 group-hover:bg-emerald-100 transition-colors">
-              <Icon name="calendarCheck" size={16} />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-emerald-800 tracking-tight">{confirmedCount}</span>
-            <span className="text-xs font-medium text-ink-muted">bàn sẵn sàng đón</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-surface-border shadow-xs hover:border-brand-300 transition-all group">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-ink-muted">Tiền Cọc Đã Thu</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50/70 flex items-center justify-center text-blue-700 group-hover:bg-blue-100 transition-colors">
-              <Icon name="vietqr" size={16} />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-black text-brand-950 tracking-tight">
-              {totalDeposits.toLocaleString("vi-VN")}
-            </span>
-            <span className="text-xs font-bold text-ink-muted">đ</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Thanh Bộ Lọc & Tìm Kiếm Hợp Nhất Một Hộp Sang Trọng Chuẩn SaaS */}
-      <div className="bg-white rounded-2xl border border-surface-border p-3 shadow-xs space-y-2.5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Ô Tìm Kiếm Thanh Thoát */}
-          <div className="relative w-full min-w-0 max-w-md lg:flex-1">
-            <Icon name="search" className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted/70" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setReservationPage(1);
-              }}
-              placeholder="Tìm theo tên khách, số điện thoại, số bàn..."
-              className="w-full h-9 pl-9 pr-8 rounded-xl border border-surface-border text-xs font-medium text-ink-primary bg-surface-canvas/40 focus:bg-white focus:outline-none focus:border-brand-700 transition-all placeholder:text-ink-muted/60"
+      {/* DataTableCard: Filter Toolbar + Card List + Pagination */}
+      <DataTableCard
+        searchPlaceholder="Tìm theo tên khách, số điện thoại, số bàn..."
+        searchValue={searchQuery}
+        onSearchChange={(val) => { setSearchQuery(val); setReservationPage(1); }}
+        filters={
+          <>
+            <FilterSelect
+              labelPrefix="Ngày: "
+              value={filterDate}
+              onChange={(val) => { setFilterDate(val as typeof filterDate); setReservationPage(1); }}
+              options={[
+                { value: "ALL", label: "Tất cả ngày" },
+                { value: "TODAY", label: "Hôm nay" },
+                { value: "TOMORROW", label: "Ngày mai" },
+                { value: "THIS_WEEK", label: "Tuần này" },
+              ]}
+              className="w-full sm:w-40 shrink-0"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink-primary"
-              >
-                <Icon name="x" className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <FilterSelect
+              labelPrefix="Trạng thái: "
+              value={filterStatus}
+              onChange={(val) => { setFilterStatus(val); setReservationPage(1); }}
+              options={[
+                { value: "ALL", label: "Tất cả", count: reservations.length },
+                { value: "PENDING", label: "Chờ Duyệt", count: pendingCount },
+                { value: "CONFIRMED", label: "Đã Giữ Bàn", count: confirmedCount },
+                { value: "LATE", label: "Trễ Giờ (Grace)", count: lateCount },
+                { value: "ARRIVED", label: "Đang Tại Quán", count: arrivedCount },
+                { value: "NO_SHOW", label: "Vắng Mặt", count: reservations.filter((r) => r.status === "NO_SHOW").length },
+                { value: "CANCELLED", label: "Đã Hủy", count: reservations.filter((r) => r.status === "CANCELLED").length },
+              ]}
+              className="w-full sm:w-44 shrink-0"
+            />
+          </>
+        }
+        hasActiveFilters={filterDate !== "ALL" || filterStatus !== "ALL" || searchQuery.trim() !== ""}
+        onResetFilters={() => { setFilterDate("ALL"); setFilterStatus("ALL"); setSearchQuery(""); setReservationPage(1); }}
+        pagination={{
+          currentPage: reservationPage,
+          totalItems: filteredReservations.length,
+          pageSize: PAGE_SIZE,
+          onPageChange: setReservationPage,
+        }}
+        footer={
+          <div className="block md:hidden">
+            <MobileInfiniteSentinel
+              hasMore={hasMoreReservations}
+              totalCount={filteredReservations.length}
+              visibleCount={visibleReservationCount}
+              sentinelRef={reservationSentinelRef}
+            />
           </div>
-
-          {/* Nhóm Bộ Lọc Thời Gian */}
-          <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto rounded-xl border border-surface-border/60 bg-surface-canvas p-1 no-scrollbar sm:w-auto">
-            {(
-              [
-                { id: "ALL", label: "Tất cả ngày" },
-                { id: "TODAY", label: "Hôm nay" },
-                { id: "TOMORROW", label: "Ngày mai" },
-                { id: "THIS_WEEK", label: "Tuần này" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setFilterDate(tab.id);
-                  setReservationPage(1);
-                }}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                  filterDate === tab.id
-                    ? "bg-white text-ink-primary shadow-xs font-black"
-                    : "text-ink-muted hover:text-ink-primary"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Hàng Tab Trạng Thái Thanh Thoát */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2.5 border-t border-surface-border/50 text-xs">
-          {[
-            { id: "ALL", label: "Tất Cả", count: reservations.length },
-            { id: "PENDING", label: "Chờ Duyệt", count: pendingCount, highlight: pendingCount > 0 ? "text-amber-700 bg-amber-50" : "" },
-            { id: "CONFIRMED", label: "Đã Giữ Bàn", count: confirmedCount },
-            { id: "LATE", label: "Trễ Giờ (Grace)", count: lateCount, highlight: lateCount > 0 ? "text-amber-800 bg-amber-100 font-extrabold animate-pulse" : "" },
-            { id: "ARRIVED", label: "Đang Tại Quán", count: arrivedCount },
-            { id: "NO_SHOW", label: "Vắng Mặt", count: reservations.filter((r) => r.status === "NO_SHOW").length },
-            { id: "CANCELLED", label: "Đã Hủy", count: reservations.filter((r) => r.status === "CANCELLED").length },
-          ].map((st) => {
-            const isActive = filterStatus === st.id;
-            return (
-              <button
-                key={st.id}
-                onClick={() => {
-                  setFilterStatus(st.id);
-                  setReservationPage(1);
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 border ${
-                  isActive
-                    ? "bg-brand-950 text-white border-brand-950 shadow-xs"
-                    : "bg-white border-surface-border text-ink-muted hover:text-ink-primary hover:border-slate-300"
-                }`}
-              >
-                <span>{st.label}</span>
-                <span
-                  className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${
-                    isActive
-                      ? "bg-white/20 text-white"
-                      : st.highlight || "bg-surface-canvas text-ink-muted"
-                  }`}
-                >
-                  {st.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Danh Sách Thẻ Đặt Bàn Kiểu Dáng Cao Cấp (Luxury Timeline Cards) */}
-      <div className="space-y-3">
+        }
+        scrollable={false}
+      >
+        {/* Danh Sách Thẻ Đặt Bàn Kiểu Dáng Cao Cấp (Luxury Timeline Cards) */}
+        <div className="p-3 sm:p-4 space-y-3">
         {reservations.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-white border border-surface-border">
             <div className="w-12 h-12 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center mx-auto mb-3 text-brand-900">
@@ -555,8 +600,24 @@ export const CmsReservationsManagement: React.FC = () => {
             </div>
             <h4 className="text-sm font-bold text-ink-primary">Không tìm thấy lịch đặt bàn nào</h4>
             <p className="text-xs text-ink-muted mt-1">
-              Thử tìm kiếm với từ khóa khác hoặc chuyển sang khung thời gian khác
+              Không có lịch đặt bàn nào khớp với bộ lọc hiện tại. Thử đổi bộ lọc hoặc xóa lọc để xem toàn bộ danh sách.
             </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl gap-1.5 text-xs font-bold border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100"
+                onClick={() => {
+                  setFilterDate("ALL");
+                  setFilterStatus("ALL");
+                  setSearchQuery("");
+                  setReservationPage(1);
+                }}
+              >
+                <Icon name="refresh" size={13} />
+                <span>Xóa Bộ Lọc</span>
+              </Button>
+            </div>
           </div>
         ) : (
           displayedReservations.map((res) => {
@@ -819,385 +880,37 @@ export const CmsReservationsManagement: React.FC = () => {
             );
           })
         )}
-      </div>
-
-      {/* Mobile Infinite Scroll Sentinel */}
-      <div className="block md:hidden">
-        <MobileInfiniteSentinel
-          hasMore={hasMoreReservations}
-          totalCount={filteredReservations.length}
-          visibleCount={visibleReservationCount}
-          sentinelRef={reservationSentinelRef}
-        />
-      </div>
-
-      {/* Phân trang trên Desktop (>= md) */}
-      <div className="hidden md:block">
-        <Pagination
-          currentPage={reservationPage}
-          totalItems={filteredReservations.length}
-          pageSize={PAGE_SIZE}
-          onPageChange={setReservationPage}
-        />
-      </div>
+        </div>
+      </DataTableCard>
 
       {/* Modal Tiếp Nhận Đặt Bàn Mới (Hotline/Walk-in) */}
-      {isModalOpen && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-elevated border border-surface-border animate-scaleUp overflow-hidden">
-              {/* Header modal */}
-              <div className="p-6 border-b border-surface-border flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-black text-ink-primary">
-                    {formData.source === "PHONE_CALL" ? "Tiếp Nhận Đặt Bàn Hotline" : "Đặt Bàn Khách Đến Ngay"}
-                  </h3>
-                  <p className="text-xs text-ink-muted">Ghi nhận thông tin khách và giữ chỗ</p>
-                </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-canvas hover:text-ink-primary"
-                >
-                  <Icon name="x" size={16} />
-                </button>
-              </div>
-
-            <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Tên Khách Hàng *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.guestName}
-                    onChange={(e) => setFormData({ ...formData, guestName: e.target.value })}
-                    placeholder="Ví dụ: Anh Nam"
-                    required
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Số Điện Thoại *
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="09xx xxx xxx"
-                    required
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Số Lượng Khách
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={formData.guestCount}
-                    onChange={(e) => setFormData({ ...formData, guestCount: Number(e.target.value) })}
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Thời Gian Hẹn
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.reservationTime}
-                    onChange={(e) => setFormData({ ...formData, reservationTime: e.target.value })}
-                    placeholder="19:00 - Tối nay"
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Xếp Bàn Sẵn
-                  </label>
-                  <select
-                    value={formData.tableAssigned}
-                    onChange={(e) => setFormData({ ...formData, tableAssigned: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  >
-                    {AVAILABLE_TABLES.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-ink-secondary mb-1">
-                    Tiền Cọc (VNĐ)
-                  </label>
-                  <input
-                    type="number"
-                    step={50000}
-                    value={formData.depositAmount}
-                    onChange={(e) => setFormData({ ...formData, depositAmount: Number(e.target.value) })}
-                    placeholder="0 đ"
-                    className="w-full h-9 px-3 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-ink-secondary mb-1">
-                  Ghi Chú Khách Dặn
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Ghi chú món ăn trước, trang trí, ghế trẻ em..."
-                  className="w-full px-3 py-2 rounded-xl border border-surface-border text-xs font-semibold text-ink-primary bg-surface-canvas/50 focus:bg-white focus:outline-none focus:border-brand-800 resize-none"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-surface-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl text-xs"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Hủy Bỏ
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="rounded-xl bg-brand-900 text-white text-xs font-bold px-4 shadow-xs"
-                >
-                  Xác Nhận Giữ Chỗ
-                </Button>
-              </div>
-            </form>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <NewReservationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateSubmit}
+        formData={formData}
+        setFormData={setFormData}
+        availableTables={AVAILABLE_TABLES}
+      />
 
       {/* Modal Xếp / Đổi Bàn Nhanh */}
-      {tableAssignTarget && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-3xl shadow-elevated border border-surface-border p-5 space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                <div>
-                  <h3 className="text-sm font-black text-ink-primary">Xếp Bàn Cho Khách</h3>
-                  <span className="text-[11px] text-ink-muted font-bold">
-                    {tableAssignTarget.guestName} ({tableAssignTarget.guestCount} người)
-                  </span>
-                </div>
-                <button
-                  onClick={() => setTableAssignTarget(null)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-canvas"
-                >
-                  <Icon name="x" size={14} />
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-ink-secondary">
-                  Chọn Bàn Trống Sẵn Sàng
-                </label>
-                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                  {AVAILABLE_TABLES.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setSelectedTable(t)}
-                      className={`w-full text-left p-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-between ${
-                        selectedTable === t
-                          ? "bg-brand-50 border border-brand-800 text-brand-950 font-black shadow-2xs"
-                          : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-                      }`}
-                    >
-                      <span>{t}</span>
-                      {selectedTable === t && <Icon name="check" size={14} className="text-brand-900" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-surface-border">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl text-xs"
-                  onClick={() => setTableAssignTarget(null)}
-                >
-                  Hủy
-                </Button>
-                <Button
-                  size="sm"
-                  className="rounded-xl bg-brand-900 text-white text-xs font-bold px-4"
-                  onClick={handleSaveTableAssignment}
-                >
-                  Xác Nhận Xếp Bàn
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <AssignTableModal
+        target={tableAssignTarget}
+        onClose={() => setTableAssignTarget(null)}
+        onConfirm={handleSaveTableAssignment}
+        selectedTable={selectedTable}
+        setSelectedTable={setSelectedTable}
+        availableTables={AVAILABLE_TABLES}
+      />
 
       {/* MODAL XỬ LÝ NHẢ BÀN & TIỀN CỌC (NO-SHOW SOP) */}
-      {noShowModalTarget && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-ink-primary/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white w-full max-w-lg rounded-3xl shadow-elevated border border-surface-border p-5 sm:p-6 space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-surface-border pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
-                    <Icon name="alert" size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-ink-primary">
-                      Nhả Bàn & Xử Lý Cọc (No-Show SOP)
-                    </h3>
-                    <p className="text-xs text-ink-muted">
-                      {noShowModalTarget.guestName} ({noShowModalTarget.phone}) • {noShowModalTarget.tableAssigned || "Bàn chưa gán"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setNoShowModalTarget(null)}
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-ink-subtle hover:bg-surface-canvas"
-                >
-                  <Icon name="x" size={14} />
-                </button>
-              </div>
-
-              {/* Cảnh báo quy định giữ bàn */}
-              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200/80 text-xs text-amber-900 leading-relaxed">
-                ⏳ <strong>Quy Định Thời Gian Ân Hạn (Grace Period 15p):</strong> Khách đã quá giờ hẹn {noShowModalTarget.reservationTime}. Để tránh lãng phí công suất bàn trong khung giờ cao điểm, hệ thống sẽ <strong>giải phóng bàn về trạng thái TRỐNG</strong> để tiếp đón khách vãng lai đang chờ.
-              </div>
-
-              {/* Phần xử lý tiền cọc */}
-              {(noShowModalTarget.depositAmount || 0) > 0 && noShowModalTarget.depositStatus === "PAID" ? (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between text-xs">
-                    <span className="text-emerald-950 font-bold">Tiền cọc giữ chỗ của khách:</span>
-                    <span className="text-base font-black text-emerald-900">
-                      {(noShowModalTarget.depositAmount || 0).toLocaleString("vi-VN")} đ
-                    </span>
-                  </div>
-
-                  <label className="text-xs font-black text-ink-primary block">
-                    Chọn nghiệp vụ xử lý tiền cọc:
-                  </label>
-
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => setDepositResolution("FORFEIT_PENALTY")}
-                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
-                        depositResolution === "FORFEIT_PENALTY"
-                          ? "border-rose-500 bg-rose-50/50 shadow-2xs"
-                          : "border-surface-border bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      <span className="p-1 rounded-lg bg-rose-600 text-white shrink-0 mt-0.5">
-                        <Icon name="trash" size={13} />
-                      </span>
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <div className="text-xs font-black text-rose-950">
-                          1. Thu cọc vi phạm chính sách (Không hoàn lại)
-                        </div>
-                        <p className="text-[11px] text-rose-900/80 leading-snug">
-                          Khách vắng mặt không báo trước làm trống bàn giờ vàng. Chuyển tiền cọc vào mục bồi hoàn doanh thu.
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDepositResolution("VOUCHER_CREDIT")}
-                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
-                        depositResolution === "VOUCHER_CREDIT"
-                          ? "border-brand-600 bg-brand-50/50 shadow-2xs"
-                          : "border-surface-border bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      <span className="p-1 rounded-lg bg-brand-800 text-white shrink-0 mt-0.5">
-                        <Icon name="refresh" size={13} />
-                      </span>
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <div className="text-xs font-black text-brand-950">
-                          2. Cấp Voucher Cọc Bảo Lưu 30 Ngày (Khuyên dùng)
-                        </div>
-                        <p className="text-[11px] text-brand-900/80 leading-snug">
-                          Giữ chân khách hàng: Bảo lưu {(noShowModalTarget.depositAmount || 0).toLocaleString("vi-VN")} đ thành mã giảm giá cho lần ghé quán tiếp theo.
-                        </p>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setDepositResolution("REFUNDED")}
-                      className={`w-full text-left p-3 rounded-2xl border-2 transition-all flex items-start gap-3 ${
-                        depositResolution === "REFUNDED"
-                          ? "border-slate-500 bg-slate-50 shadow-2xs"
-                          : "border-surface-border bg-white hover:border-slate-300"
-                      }`}
-                    >
-                      <span className="p-1 rounded-lg bg-slate-700 text-white shrink-0 mt-0.5">
-                        <Icon name="refresh" size={13} />
-                      </span>
-                      <div className="space-y-0.5 min-w-0 flex-1">
-                        <div className="text-xs font-black text-slate-900">
-                          3. Hoàn trả lại tiền cọc (Lý do bất khả kháng)
-                        </div>
-                        <p className="text-[11px] text-slate-600 leading-snug">
-                          Khách báo gặp sự cố khẩn cấp, thời tiết xấu hoặc lý do bất khả kháng. Quán hoàn lại 100% cọc qua tài khoản.
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3 bg-surface-canvas rounded-2xl border border-surface-border text-xs text-ink-muted">
-                  ℹ️ Lịch đặt bàn này <strong>chưa đặt cọc</strong>. Sau khi xác nhận, bàn sẽ được chuyển về trạng thái TRỐNG ngay lập tức để tiếp đón khách mới.
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-surface-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl text-xs"
-                  onClick={() => setNoShowModalTarget(null)}
-                >
-                  Đóng
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs px-5 shadow-sm font-black"
-                  onClick={handleConfirmNoShow}
-                >
-                  Xác Nhận Nhả Bàn & Đổi Trạng Thái Trống
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <NoShowModal
+        target={noShowModalTarget}
+        onClose={() => setNoShowModalTarget(null)}
+        onConfirm={handleConfirmNoShow}
+        depositResolution={depositResolution}
+        setDepositResolution={setDepositResolution}
+      />
     </div>
   );
 };

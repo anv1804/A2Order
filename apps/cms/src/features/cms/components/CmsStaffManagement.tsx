@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
+import {
+  Panel,
+  Button,
+  Badge,
+  Icon,
+  Portal,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+  SearchInput,
+  FilterSelect,
+  DataTableCard,
+  Pagination,
+} from "@/components/ui";
+import { HeroBanner, StatCard, EmptyState } from "@/components/shared";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { staffApi } from "@/services/api/staffApi";
 
 import { StaffRole, StaffUser, PermissionItem, AttendanceLogRecord } from "@/types/cms.types";
+import { AddStaffModal } from "./staff";
 
 const PERMISSIONS: PermissionItem[] = [
   {
@@ -300,161 +320,119 @@ export const CmsStaffManagement: React.FC = () => {
   const onDutyCount = attendanceLogs.filter((a) => a.status === "ACTIVE").length;
   const totalOrdersToday = staffList.reduce((acc, s) => acc + s.ordersServedToday, 0);
 
+  const [staffPage, setStaffPage] = useState(1);
+  const STAFF_PAGE_SIZE = 8;
+
+  const paginatedDesktopStaff = staffList.slice(
+    (staffPage - 1) * STAFF_PAGE_SIZE,
+    staffPage * STAFF_PAGE_SIZE
+  );
+
   const {
-    displayedItems: displayedStaff,
+    displayedItems: mobileStaff,
     sentinelRef,
     isLoadingMore,
     hasMore,
+    isMobile,
   } = useMobileInfiniteScroll(staffList, 10);
 
+  const displayedStaff = isMobile ? mobileStaff : paginatedDesktopStaff;
+
   return (
-    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
       {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Nhân Viên
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {totalStaff} Nhân viên • {PERMISSIONS.length} Quyền truy cập
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Quản Lý Nhân Viên
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Danh sách tài khoản nhân viên, mã PIN đăng nhập POS và phân quyền
-            </p>
-
-            {/* Quick Live Stats Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="users" size={12} className="text-emerald-300" />
-                <span>{totalStaff} Nhân viên quán</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="userCheck" size={12} className="text-teal-300" />
-                <span>{onDutyCount} Đang trong ca làm</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="shield" size={12} className="text-blue-300" />
-                <span>Bảo mật PIN 4 số</span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="cart" size={12} className="text-amber-300" />
-                <span>{totalOrdersToday} Bills ca hôm nay</span>
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition hover:bg-emerald-300 active:scale-95 shrink-0"
-            >
-              <Icon name="plus" size={14} />
-              <span>Thêm Nhân Viên</span>
-            </button>
-          </div>
-        </div>
-      </section>
+      <HeroBanner
+        badge={{ label: "Nhân Viên", dot: true }}
+        tagline={`${totalStaff} Nhân viên • ${PERMISSIONS.length} Quyền truy cập`}
+        title="Quản Lý Nhân Viên"
+        description="Danh sách tài khoản nhân viên, mã PIN đăng nhập POS và phân quyền"
+        chips={[
+          {
+            icon: "users",
+            label: `${totalStaff} Nhân viên quán`,
+            variant: "default",
+          },
+          {
+            icon: "userCheck",
+            label: `${onDutyCount} Đang trong ca làm`,
+            variant: "teal",
+          },
+          {
+            icon: "shield",
+            label: "Bảo mật PIN 4 số",
+            variant: "blue",
+          },
+          {
+            icon: "cart",
+            label: `${totalOrdersToday} Bills ca hôm nay`,
+            variant: "amber",
+          },
+        ]}
+        actions={
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
+          >
+            <Icon name="plus" size={14} />
+            <span>Thêm Nhân Viên</span>
+          </button>
+        }
+      />
 
       {/* 2. 4 Thẻ Bento Chỉ Số Nhân Sự */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="users" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              Toàn quán
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tổng Số Nhân Sự
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {totalStaff} <span className="text-xs font-bold text-slate-400">nhân viên</span>
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              {activeStaff} tài khoản đang hoạt động
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="users"
+          title="Tổng Số Nhân Sự"
+          value={
+            <>
+              {totalStaff} <span className="text-xs font-bold text-ink-muted">nhân viên</span>
+            </>
+          }
+          subtext={`${activeStaff} tài khoản đang hoạt động`}
+          badge="Toàn quán"
+          variant="success"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
-              <Icon name="userCheck" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.5 rounded-md">
-              Đang làm
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Đang Trực Ca Bán
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {onDutyCount} <span className="text-xs font-bold text-slate-400">nhân sự</span>
-            </p>
-            <p className="text-[10px] font-semibold text-teal-600 mt-1 truncate">
-              Đã chấm công vào ca
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="userCheck"
+          title="Đang Trực Ca Bán"
+          value={
+            <>
+              {onDutyCount} <span className="text-xs font-bold text-ink-muted">nhân sự</span>
+            </>
+          }
+          subtext="Đã chấm công vào ca"
+          badge={{ text: "Đang làm", variant: "info" }}
+          variant="info"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Icon name="cart" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-md">
-              Hôm nay
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Đơn Phục Vụ Hôm Nay
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {totalOrdersToday} <span className="text-xs font-bold text-slate-400">bills</span>
-            </p>
-            <p className="text-[10px] font-semibold text-slate-500 mt-1 truncate">
-              Hiệu suất phục vụ tốt
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="cart"
+          title="Đơn Phục Vụ Hôm Nay"
+          value={
+            <>
+              {totalOrdersToday} <span className="text-xs font-bold text-ink-muted">bills</span>
+            </>
+          }
+          subtext="Hiệu suất phục vụ tốt"
+          badge="Hôm nay"
+          variant="default"
+        />
 
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name="shield" size={16} />
-            </span>
-            <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
-              RBAC
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Quyền Hạn Hệ Thống
-            </h4>
-            <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {PERMISSIONS.length} <span className="text-xs font-bold text-slate-400">quyền</span>
-            </p>
-            <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
-              Kiểm soát phân quyền theo vai trò
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="shield"
+          title="Quyền Hạn Hệ Thống"
+          value={
+            <>
+              {PERMISSIONS.length} <span className="text-xs font-bold text-ink-muted">quyền</span>
+            </>
+          }
+          subtext="Kiểm soát phân quyền theo vai trò"
+          badge={{ text: "RBAC", variant: "warning" }}
+          variant="warning"
+        />
       </section>
 
       {/* 3. Sticky Segmented Control Tabs */}
@@ -520,42 +498,41 @@ export const CmsStaffManagement: React.FC = () => {
       {activeTab === "STAFF_LIST" && (
         <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white shadow-2xs">
           {staffList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-4">
-                <Icon name="users" size={28} className="text-emerald-500" />
-              </div>
-              <h3 className="text-base font-black text-slate-900 mb-1">Chưa có nhân viên nào</h3>
-              <p className="text-sm text-slate-500 mb-5 max-w-xs">
-                Thêm nhân viên đầu tiên để bắt đầu quản lý ca làm việc, phân quyền và chấm công.
-              </p>
-              <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>
-                <Icon name="plus" size={14} />
-                Thêm Nhân Viên Đầu Tiên
-              </Button>
+            <div className="p-6">
+              <EmptyState
+                icon="users"
+                title="Chưa có nhân viên nào"
+                description="Thêm nhân viên đầu tiên để bắt đầu quản lý ca làm việc, phân quyền và chấm công."
+                action={{
+                  label: "Thêm Nhân Viên Đầu Tiên",
+                  onClick: () => setIsModalOpen(true),
+                  icon: "plus",
+                }}
+              />
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 uppercase tracking-wider text-[10px] font-black">
-                      <th className="py-3 px-4">Nhân Viên</th>
-                      <th className="py-3 px-3">Vai Trò</th>
-                      <th className="py-3 px-3">Ca Làm Việc</th>
-                      <th className="py-3 px-3">Mã PIN Đăng Nhập</th>
-                      <th className="py-3 px-3 text-center">Đơn Hôm Nay</th>
-                      <th className="py-3 px-3">Trạng Thái</th>
-                      <th className="py-3 px-4 text-right">Thao Tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+              <TableContainer className="rounded-none border-0 shadow-none">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nhân Viên</TableHead>
+                      <TableHead>Vai Trò</TableHead>
+                      <TableHead>Ca Làm Việc</TableHead>
+                      <TableHead>Mã PIN Đăng Nhập</TableHead>
+                      <TableHead align="center">Đơn Hôm Nay</TableHead>
+                      <TableHead>Trạng Thái</TableHead>
+                      <TableHead align="right">Thao Tác</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {displayedStaff.map((staff) => {
                       const isPinVisible = showPins[staff.id];
 
                       return (
-                        <tr key={staff.id} className="hover:bg-slate-50/70 transition-colors">
+                        <TableRow key={staff.id}>
                           {/* Name & Code */}
-                          <td className="py-3.5 px-4">
+                          <TableCell>
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-950 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-200/70 shadow-2xs">
                                 {staff.name.charAt(0)}
@@ -573,24 +550,24 @@ export const CmsStaffManagement: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Role */}
-                          <td className="py-3.5 px-3">
+                          <TableCell>
                             <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black border ${getRoleBadge(staff.role)}`}>
                               {getRoleLabel(staff.role)}
                             </span>
-                          </td>
+                          </TableCell>
 
                           {/* Shift */}
-                          <td className="py-3.5 px-3">
+                          <TableCell>
                             <span className="text-[11px] font-semibold text-slate-700">
                               {getShiftLabel(staff.shift)}
                             </span>
-                          </td>
+                          </TableCell>
 
                           {/* PIN with Toggle and Quick Reset */}
-                          <td className="py-3.5 px-3">
+                          <TableCell>
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono font-black text-xs bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-lg text-slate-900 tracking-widest min-w-[54px] text-center shadow-2xs">
                                 {isPinVisible ? staff.pin : "••••"}
@@ -612,17 +589,17 @@ export const CmsStaffManagement: React.FC = () => {
                                 <Icon name="refresh" size={14} />
                               </button>
                             </div>
-                          </td>
+                          </TableCell>
 
                           {/* Orders */}
-                          <td className="py-3.5 px-3 text-center">
+                          <TableCell align="center">
                             <span className="font-black text-emerald-950 text-xs bg-emerald-50 border border-emerald-200/60 px-2.5 py-1 rounded-full">
                               {staff.ordersServedToday} bills
                             </span>
-                          </td>
+                          </TableCell>
 
                           {/* Status */}
-                          <td className="py-3.5 px-3">
+                          <TableCell>
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
                                 staff.isActive
@@ -637,10 +614,10 @@ export const CmsStaffManagement: React.FC = () => {
                               />
                               <span>{staff.isActive ? "Đang mở ca" : "Đã tạm khóa"}</span>
                             </span>
-                          </td>
+                          </TableCell>
 
                           {/* Action */}
-                          <td className="py-3.5 px-4 text-right">
+                          <TableCell align="right">
                             <button
                               type="button"
                               onClick={() => handleToggleActive(staff.id, staff.name, staff.isActive)}
@@ -652,21 +629,33 @@ export const CmsStaffManagement: React.FC = () => {
                             >
                               {staff.isActive ? "Khóa ca" : "Mở ca"}
                             </button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <div className="block md:hidden">
+                <MobileInfiniteSentinel
+                  sentinelRef={sentinelRef}
+                  isLoadingMore={isLoadingMore}
+                  hasMore={hasMore}
+                  displayedCount={mobileStaff.length}
+                  totalCount={staffList.length}
+                />
               </div>
 
-              <MobileInfiniteSentinel
-                sentinelRef={sentinelRef}
-                isLoadingMore={isLoadingMore}
-                hasMore={hasMore}
-                displayedCount={displayedStaff.length}
-                totalCount={staffList.length}
-              />
+              <div className="hidden md:block p-3 sm:p-4 border-t border-slate-100">
+                <Pagination
+                  currentPage={staffPage}
+                  totalItems={staffList.length}
+                  pageSize={STAFF_PAGE_SIZE}
+                  onPageChange={setStaffPage}
+                  bordered={false}
+                />
+              </div>
             </>
           )}
         </div>
@@ -693,22 +682,22 @@ export const CmsStaffManagement: React.FC = () => {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 text-[10px] uppercase font-black tracking-wider">
-                  <th className="py-3 px-3 w-1/3">Quyền Hạn Hệ Thống</th>
-                  <th className="py-3 px-3 text-center">Chủ Quán</th>
-                  <th className="py-3 px-3 text-center">Quản Lý</th>
-                  <th className="py-3 px-3 text-center">Thu Ngân</th>
-                  <th className="py-3 px-3 text-center">Phục Vụ</th>
-                  <th className="py-3 px-3 text-center">Bếp/Bar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
+          <TableContainer>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/3">Quyền Hạn Hệ Thống</TableHead>
+                  <TableHead align="center">Chủ Quán</TableHead>
+                  <TableHead align="center">Quản Lý</TableHead>
+                  <TableHead align="center">Thu Ngân</TableHead>
+                  <TableHead align="center">Phục Vụ</TableHead>
+                  <TableHead align="center">Bếp/Bar</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {PERMISSIONS.map((perm) => (
-                  <tr key={perm.id} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="py-3.5 px-3">
+                  <TableRow key={perm.id}>
+                    <TableCell>
                       <div className="font-black text-slate-900 flex items-center gap-1.5">
                         <span>{perm.name}</span>
                         {perm.isSensitive && (
@@ -718,7 +707,7 @@ export const CmsStaffManagement: React.FC = () => {
                         )}
                       </div>
                       <div className="text-[10px] text-slate-500 font-medium mt-0.5">{perm.description}</div>
-                    </td>
+                    </TableCell>
 
                     {/* Columns for 5 main roles */}
                     {(
@@ -734,7 +723,7 @@ export const CmsStaffManagement: React.FC = () => {
                       const isOwner = r === "STORE_OWNER";
 
                       return (
-                        <td key={r} className="py-3.5 px-3 text-center">
+                        <TableCell key={r} align="center">
                           <input
                             type="checkbox"
                             checked={isGranted}
@@ -744,159 +733,25 @@ export const CmsStaffManagement: React.FC = () => {
                               isOwner ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                             }`}
                           />
-                        </td>
+                        </TableCell>
                       );
                     })}
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
       )}
 
       {/* Modal Thêm Nhân Viên Mới */}
-      {isModalOpen && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 border border-slate-200/80 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shadow-2xs">
-                    <Icon name="users" size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900">Thêm Nhân Sự Mới</h3>
-                    <p className="text-xs text-slate-500 font-medium">Cấp mã PIN đăng nhập POS và phân ca</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition"
-                >
-                  <Icon name="x" size={16} />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateStaffSubmit} className="space-y-3.5">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Họ Và Tên Nhân Viên *
-                  </label>
-                  <input
-                    type="text"
-                    value={modalForm.name}
-                    onChange={(e) => setModalForm({ ...modalForm, name: e.target.value })}
-                    placeholder="Ví dụ: Nguyễn Văn Hùng"
-                    required
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Vai Trò (Role)
-                    </label>
-                    <select
-                      value={modalForm.role}
-                      onChange={(e) =>
-                        setModalForm({ ...modalForm, role: e.target.value as StaffRole })
-                      }
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                    >
-                      <option value="WAITER">Phục Vụ Bàn</option>
-                      <option value="CASHIER">Thu Ngân</option>
-                      <option value="CHEF">Bếp / Bar</option>
-                      <option value="STORE_MANAGER">Quản Lý Ca</option>
-                      <option value="ACCOUNTANT">Kế Toán</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Ca Làm Việc
-                    </label>
-                    <select
-                      value={modalForm.shift}
-                      onChange={(e) =>
-                        setModalForm({
-                          ...modalForm,
-                          shift: e.target.value as "MORNING" | "EVENING" | "FULL_TIME",
-                        })
-                      }
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                    >
-                      <option value="MORNING">Ca Sáng (06h - 14h)</option>
-                      <option value="EVENING">Ca Tối (14h - 22h30)</option>
-                      <option value="FULL_TIME">Toàn Thời Gian</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Số Điện Thoại *
-                    </label>
-                    <input
-                      type="tel"
-                      value={modalForm.phone}
-                      onChange={(e) => setModalForm({ ...modalForm, phone: e.target.value })}
-                      placeholder="09xx xxx xxx"
-                      required
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Mã PIN 4 Số Vào Ca
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={4}
-                      value={modalForm.pin}
-                      onChange={(e) => setModalForm({ ...modalForm, pin: e.target.value })}
-                      className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-mono font-black tracking-widest text-center text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Email (Tùy chọn)
-                  </label>
-                  <input
-                    type="email"
-                    value={modalForm.email}
-                    onChange={(e) => setModalForm({ ...modalForm, email: e.target.value })}
-                    placeholder="nhanvien@a2order.vn"
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition"
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl bg-slate-950 hover:bg-slate-900 text-white text-xs font-black shadow-sm active:scale-95 transition"
-                  >
-                    Lưu Nhân Viên
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <AddStaffModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateStaffSubmit}
+        form={modalForm}
+        setForm={setModalForm}
+      />
 
       {/* TAB 3: Lịch Làm Việc Tuần */}
       {activeTab === "SCHEDULE" && (() => {
@@ -955,30 +810,30 @@ export const CmsStaffManagement: React.FC = () => {
 
             {/* Schedule grid */}
             <div className="rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs border-collapse min-w-[700px]">
-                  <thead>
-                    <tr className="border-b border-slate-100">
-                      <th className="text-left pb-3 pr-4 text-[10px] text-slate-400 uppercase tracking-wider font-black w-32">Ca Làm</th>
+              <TableContainer className="rounded-none border-0 shadow-none">
+                <Table className="min-w-[700px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32">Ca Làm</TableHead>
                       {days.map((d, i) => (
-                        <th key={d} className="pb-3 px-2 text-center text-[10px] text-slate-400 uppercase tracking-wider font-black">
+                        <TableHead key={d} align="center">
                           <div className="font-black text-slate-900">{d}</div>
                           <div className="text-[9px] text-slate-400 font-medium">{daysFull[i]}</div>
-                        </th>
+                        </TableHead>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {shifts.map((shift) => (
-                      <tr key={shift.id}>
-                        <td className="py-3 pr-4 align-top">
+                      <TableRow key={shift.id}>
+                        <TableCell className="align-top">
                           <div className="font-black text-slate-900 text-xs">{shift.label}</div>
                           <div className="text-[10px] text-slate-400 font-medium">{shift.time}</div>
-                        </td>
+                        </TableCell>
                         {days.map((day) => {
                           const staffIds = scheduleGrid[shift.id]?.[day] || [];
                           return (
-                            <td key={day} className="py-3 px-2 align-top">
+                            <TableCell key={day} className="align-top">
                               <div className="space-y-1 min-h-[48px]">
                                 {staffIds.length === 0 ? (
                                   <span className="text-[10px] text-slate-300 italic">—</span>
@@ -995,14 +850,14 @@ export const CmsStaffManagement: React.FC = () => {
                                   })
                                 )}
                               </div>
-                            </td>
+                            </TableCell>
                           );
                         })}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </TableContainer>
 
               {/* Legend */}
               <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-2 items-center">
@@ -1100,132 +955,123 @@ export const CmsStaffManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Filter controls */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-              <div className="relative flex-1 max-w-sm">
-                <Icon name="search" size={14} className="text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Tìm nhân viên, ca làm, ghi chú..."
-                  value={attendanceSearch}
-                  onChange={(e) => setAttendanceSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
+            {/* Attendance Table wrapped in DataTableCard */}
+            <DataTableCard
+              searchPlaceholder="Tìm nhân viên, ca làm, ghi chú..."
+              searchValue={attendanceSearch}
+              onSearchChange={setAttendanceSearch}
+              onSearchClear={() => setAttendanceSearch("")}
+              filters={
+                <FilterSelect
+                  labelPrefix="Trạng thái: "
+                  value={attendanceFilterStatus}
+                  onChange={(val) => setAttendanceFilterStatus(val as "ALL" | "ACTIVE" | "COMPLETED")}
+                  options={[
+                    { value: "ALL", label: "Tất cả lượt", count: attendanceLogs.length },
+                    { value: "ACTIVE", label: "Đang làm việc", count: attendanceLogs.filter((l) => l.status === "ACTIVE").length },
+                    { value: "COMPLETED", label: "Đã kết ca", count: attendanceLogs.filter((l) => l.status === "COMPLETED").length },
+                  ]}
+                  className="w-48"
                 />
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                {(["ALL", "ACTIVE", "COMPLETED"] as const).map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setAttendanceFilterStatus(st)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap shadow-2xs ${
-                      attendanceFilterStatus === st
-                        ? "bg-slate-950 text-white font-black"
-                        : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    }`}
-                  >
-                    {st === "ALL" && "Tất Cả Lượt"}
-                    {st === "ACTIVE" && "Đang Làm Việc"}
-                    {st === "COMPLETED" && "Đã Kết Ca"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Attendance Table */}
-            <div className="overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white shadow-2xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 uppercase tracking-wider text-[10px] font-black">
-                      <th className="py-3 px-4">Nhân Viên</th>
-                      <th className="py-3 px-3">Vai Trò</th>
-                      <th className="py-3 px-3">Ca Làm</th>
-                      <th className="py-3 px-3">Giờ Vào Ca</th>
-                      <th className="py-3 px-3">Giờ Ra Ca</th>
-                      <th className="py-3 px-3 text-center">Tổng Giờ</th>
-                      <th className="py-3 px-3">Trạng Thái</th>
-                      <th className="py-3 px-3">Ghi Chú</th>
-                      <th className="py-3 px-4 text-right">Thao Tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {filteredLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="py-8 text-center text-xs text-slate-400">
-                          Không tìm thấy lượt chấm công nào phù hợp bộ lọc
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-3.5 px-4 font-bold text-slate-900">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-950 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200">
-                                {log.staffName.charAt(0)}
-                              </div>
-                              <span>{log.staffName}</span>
+              }
+              hasActiveFilters={attendanceFilterStatus !== "ALL" || attendanceSearch.trim() !== ""}
+              onResetFilters={() => {
+                setAttendanceFilterStatus("ALL");
+                setAttendanceSearch("");
+              }}
+              summaryText={`Hiển thị ${filteredLogs.length} / ${attendanceLogs.length} lượt chấm công`}
+            >
+              <TableContainer>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nhân Viên</TableHead>
+                    <TableHead>Vai Trò</TableHead>
+                    <TableHead>Ca Làm</TableHead>
+                    <TableHead>Giờ Vào Ca</TableHead>
+                    <TableHead>Giờ Ra Ca</TableHead>
+                    <TableHead align="center">Tổng Giờ</TableHead>
+                    <TableHead>Trạng Thái</TableHead>
+                    <TableHead>Ghi Chú</TableHead>
+                    <TableHead align="right">Thao Tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLogs.length === 0 ? (
+                    <TableEmpty
+                      colSpan={9}
+                      title="Không tìm thấy lượt chấm công nào"
+                      description="Thử thay đổi từ khóa tìm kiếm hoặc điều chỉnh bộ lọc trạng thái."
+                    />
+                  ) : (
+                    filteredLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-bold text-slate-900">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-950 flex items-center justify-center font-black text-xs shrink-0 border border-emerald-200">
+                              {log.staffName.charAt(0)}
                             </div>
-                          </td>
-                          <td className="py-3.5 px-3">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black border ${getRoleBadge(log.role)}`}>
-                              {getRoleLabel(log.role)}
+                            <span>{log.staffName}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-black border ${getRoleBadge(log.role)}`}>
+                            {getRoleLabel(log.role)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-600">{log.shiftName}</TableCell>
+                        <TableCell className="font-black text-emerald-700">
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>{log.clockInTime}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-bold text-slate-700">
+                          {log.clockOutTime ? (
+                            <span>{log.clockOutTime}</span>
+                          ) : (
+                            <span className="text-[10px] text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              Đang trực
                             </span>
-                          </td>
-                          <td className="py-3.5 px-3 font-semibold text-slate-600">{log.shiftName}</td>
-                          <td className="py-3.5 px-3 font-black text-emerald-700">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                              <span>{log.clockInTime}</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-3 font-bold text-slate-700">
-                            {log.clockOutTime ? (
-                              <span>{log.clockOutTime}</span>
-                            ) : (
-                              <span className="text-[10px] text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                                Đang trực
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-3 text-center font-black text-slate-900">
-                            {log.workHours ? `${log.workHours}h` : "—"}
-                          </td>
-                          <td className="py-3.5 px-3">
-                            {log.status === "ACTIVE" ? (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                Đang Làm
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200">
-                                Đã Kết Ca
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-3 text-[11px] text-slate-500 max-w-[200px] truncate" title={log.note}>
-                            {log.note || "—"}
-                          </td>
-                          <td className="py-3.5 px-4 text-right">
-                            {log.status === "ACTIVE" ? (
-                              <button
-                                type="button"
-                                className="rounded-xl text-[11px] font-bold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 h-7 px-2.5 shadow-2xs transition"
-                                onClick={() => handleClockOutStaff(log.id, log.staffName)}
-                              >
-                                Chốt Ra Ca
-                              </button>
-                            ) : (
-                              <span className="text-[11px] text-slate-400 italic">Hoàn tất</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          )}
+                        </TableCell>
+                        <TableCell align="center" className="font-black text-slate-900">
+                          {log.workHours ? `${log.workHours}h` : "—"}
+                        </TableCell>
+                        <TableCell>
+                          {log.status === "ACTIVE" ? (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200">
+                              Đang Làm
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-slate-100 text-slate-600 border border-slate-200">
+                              Đã Kết Ca
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-[11px] text-slate-500 max-w-[200px] truncate" title={log.note}>
+                          {log.note || "—"}
+                        </TableCell>
+                        <TableCell align="right">
+                          {log.status === "ACTIVE" ? (
+                            <button
+                              type="button"
+                              className="rounded-xl text-[11px] font-bold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 h-7 px-2.5 shadow-2xs transition"
+                              onClick={() => handleClockOutStaff(log.id, log.staffName)}
+                            >
+                              Chốt Ra Ca
+                            </button>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic">Hoàn tất</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            </DataTableCard>
           </div>
         );
       })()}

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Icon, Panel } from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { TenantStoreRecord, SoftwareInvoiceRecord, SystemAuditLogRecord } from "@/types/cms.types";
 import { LicenseKeyRecord } from "./superAdminMockData";
 import { formatCurrency } from "@/lib/formatters";
@@ -284,54 +285,35 @@ export const SaasDashboard: React.FC<SaasDashboardProps> = ({
   return (
     <div className="space-y-3 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
       {/* 1. Header Trung Tâm Điều Hành - Tinh gọn, responsive, 100% dữ liệu thực */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
-        <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-          {/* Left: Tiêu đề & Trạng thái quán thực tế */}
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                SaaS Super Admin
-              </span>
-              <span className="text-[10px] text-emerald-100/70 font-semibold truncate">
-                {stores.length} cơ sở F&B • {licenses.length} License key
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-xl lg:text-2xl font-black text-white tracking-tight">
-              Trung Tâm Quản Trị & Đối Soát Nền Tảng
-            </h2>
-            <p className="text-[11px] sm:text-xs text-emerald-100/70 font-medium mt-0.5 max-w-xl">
-              Giám sát dòng tiền bản quyền, tình trạng thiết bị POS/KDS và hóa đơn đối soát thực tế.
-            </p>
-
-            {/* Quick Live Stats Chips: Dữ liệu thật từ props */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-2.5">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="store" size={12} className="text-emerald-300" />
-                <span>
-                  {activeStores.length}/{stores.length} Quán hoạt động
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
-                <Icon name="activity" size={12} className="text-teal-300" />
-                <span>
-                  {onlineDevices}/{totalDevices} Thiết bị online
-                </span>
-              </span>
-              {pendingInvoices.length > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-500/20 border border-amber-400/30 text-[10px] sm:text-[10.5px] font-bold text-amber-200">
-                  <Icon name="alert" size={12} className="text-amber-300" />
-                  <span>{pendingInvoices.length} Hóa đơn chờ thu</span>
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Right: Nút Thao Tác Nhanh */}
-          <div className="flex items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/10 shrink-0">
+      <HeroBanner
+        badge={{ label: "SaaS Super Admin", dot: true }}
+        tagline={`${stores.length} cơ sở F&B • ${licenses.length} License key`}
+        title="Trung Tâm Quản Trị & Đối Soát Nền Tảng"
+        description="Giám sát dòng tiền bản quyền, tình trạng thiết bị POS/KDS và hóa đơn đối soát thực tế."
+        chips={[
+          {
+            icon: "store",
+            label: `${activeStores.length}/${stores.length} Quán hoạt động`,
+            variant: "default",
+          },
+          {
+            icon: "activity",
+            label: `${onlineDevices}/${totalDevices} Thiết bị online`,
+            variant: "teal",
+          },
+          ...(pendingInvoices.length > 0
+            ? [
+                {
+                  icon: "alert" as const,
+                  label: `${pendingInvoices.length} Hóa đơn chờ thu`,
+                  variant: "amber" as const,
+                  highlight: true,
+                },
+              ]
+            : []),
+        ]}
+        actions={
+          <>
             <button
               type="button"
               onClick={onRefresh}
@@ -346,154 +328,82 @@ export const SaasDashboard: React.FC<SaasDashboardProps> = ({
             <button
               type="button"
               onClick={onOpenNewStoreModal}
-              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition hover:bg-emerald-300 active:scale-95 shrink-0"
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition hover:bg-brand-300 active:scale-95 shrink-0"
             >
               <Icon name="plus" size={14} />
               <span>Tạo Quán Mới</span>
             </button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {/* 2. Bento Grid: 6 Chỉ Số Nghiệp Vụ Cốt Lõi (100% Dữ Liệu Thực) */}
       <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
-        {/* Metric 1: Doanh Thu MRR */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-              <Icon name="creditCard" size={15} />
-            </span>
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">MRR</span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Doanh Thu MRR
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {formatCurrency(mrr)}
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {activeStores.length} quán gói tháng
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="creditCard"
+          title="Doanh Thu MRR"
+          value={formatCurrency(mrr)}
+          subtext={`${activeStores.length} quán gói tháng`}
+          badge="MRR"
+          variant="success"
+        />
 
-        {/* Metric 2: Thực Thu (Đã Thu) */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 border border-teal-100">
-              <Icon name="banknote" size={15} />
-            </span>
-            <span className="text-[9px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-1.5 py-0.2 rounded">
-              Đã thu
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Tiền Đã Đối Soát
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {formatCurrency(totalPaidRevenue)}
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {paidInvoices.length} hóa đơn đã trả
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="banknote"
+          title="Tiền Đã Đối Soát"
+          value={formatCurrency(totalPaidRevenue)}
+          subtext={`${paidInvoices.length} hóa đơn đã trả`}
+          badge={{ text: "Đã thu", variant: "success" }}
+          variant="info"
+        />
 
-        {/* Metric 3: Chờ Thu (Hóa đơn PENDING) */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
-              <Icon name="fileText" size={15} />
-            </span>
-            {pendingInvoices.length > 0 && (
-              <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">
-                Chờ duyệt
-              </span>
-            )}
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Chờ Đối Soát
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {formatCurrency(pendingAmount)}
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {pendingInvoices.length} hóa đơn chờ tiền
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="fileText"
+          title="Chờ Đối Soát"
+          value={formatCurrency(pendingAmount)}
+          subtext={`${pendingInvoices.length} hóa đơn chờ tiền`}
+          badge={pendingInvoices.length > 0 ? { text: "Chờ duyệt", variant: "warning" } : undefined}
+          variant="warning"
+        />
 
-        {/* Metric 4: Cơ Sở Hoạt Động */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 border border-blue-100">
-              <Icon name="store" size={15} />
-            </span>
-            <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1.5 py-0.2 rounded">
-              Quán F&B
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Cơ Sở Hoạt Động
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {activeStores.length} <span className="text-xs font-bold text-slate-400">/ {stores.length}</span>
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {expiringStores.length > 0 ? `${expiringStores.length} quán sắp hết cước` : "Không có quán nợ cước"}
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="store"
+          title="Cơ Sở Hoạt Động"
+          value={
+            <>
+              {activeStores.length} <span className="text-xs font-bold text-ink-muted">/ {stores.length}</span>
+            </>
+          }
+          subtext={expiringStores.length > 0 ? `${expiringStores.length} quán sắp hết cước` : "Không có quán nợ cước"}
+          badge={{ text: "Quán F&B", variant: "info" }}
+          variant="default"
+        />
 
-        {/* Metric 5: Máy POS / KDS Online */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-600 border border-purple-100">
-              <Icon name="activity" size={15} />
-            </span>
-            <span className="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-100 px-1.5 py-0.2 rounded">
-              Thiết bị
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Thiết Bị Online
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {onlineDevices} <span className="text-xs font-bold text-slate-400">/ {totalDevices} máy</span>
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {totalDevices > 0 ? `${Math.round((onlineDevices / totalDevices) * 100)}% trực tuyến` : "Chưa có máy POS"}
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="activity"
+          title="Thiết Bị Online"
+          value={
+            <>
+              {onlineDevices} <span className="text-xs font-bold text-ink-muted">/ {totalDevices} máy</span>
+            </>
+          }
+          subtext={totalDevices > 0 ? `${Math.round((onlineDevices / totalDevices) * 100)}% trực tuyến` : "Chưa có máy POS"}
+          badge="Thiết bị"
+          variant="info"
+        />
 
-        {/* Metric 6: Kho License Key */}
-        <article className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-3.5 shadow-2xs transition hover:shadow-md flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-              <Icon name="key" size={15} />
-            </span>
-            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 rounded">
-              License
-            </span>
-          </div>
-          <div>
-            <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              License Hoạt Động
-            </h4>
-            <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight leading-tight truncate">
-              {activeLicenses.length} <span className="text-xs font-bold text-slate-400">/ {licenses.length} key</span>
-            </p>
-            <p className="text-[9px] font-semibold text-slate-500 mt-1 truncate">
-              {unassignedLicenses.length > 0 ? `${unassignedLicenses.length} key chờ cấp` : "Đã cấp toàn bộ"}
-            </p>
-          </div>
-        </article>
+        <StatCard
+          icon="key"
+          title="License Hoạt Động"
+          value={
+            <>
+              {activeLicenses.length} <span className="text-xs font-bold text-ink-muted">/ {licenses.length} key</span>
+            </>
+          }
+          subtext={unassignedLicenses.length > 0 ? `${unassignedLicenses.length} key chờ cấp` : "Đã cấp toàn bộ"}
+          badge="License"
+          variant="default"
+        />
       </section>
 
       {/* 3. Operational Panels: Charts Hóa Đơn & Bảng Phân Bổ License / Trạm Bếp */}

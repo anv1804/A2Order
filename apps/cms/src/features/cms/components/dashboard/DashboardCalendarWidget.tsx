@@ -204,7 +204,7 @@ export const DashboardCalendarWidget: React.FC<DashboardCalendarWidgetProps> = (
       {/* 1. KHỐI THỜI GIAN & LỊCH ĐIỀU HÀNH THỐNG NHẤT (Executive Time & Calendar Hub) */}
       <div className="rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden">
         {/* Header Doanh Nhân: Giờ Hệ Thống & Thứ Ngày Tháng */}
-        <div className="bg-gradient-to-br from-[#0a271d] via-[#103a2c] to-[#0d3125] p-3.5 sm:p-4 text-white relative overflow-hidden">
+        <div className="bg-[#061F17] bg-brand-gradient p-3.5 sm:p-4 text-white relative overflow-hidden">
           <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
 
           <div className="relative z-10 flex items-center justify-between mb-2 pb-1.5 border-b border-white/10">

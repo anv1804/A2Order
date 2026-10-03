@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --port 3001",
     "dev:store": "vite --port 3001",
-    "dev:admin": "vite --port 3002",
+    "dev:admin": "vite --port 3000",
     "build": "tsc && vite build",
     "lint": "tsc --noEmit",
     "preview": "vite preview --port 3001"

@@ -1,5 +1,16 @@
 import React, { useState } from "react";
-import { Icon, Checkbox } from "@/components/ui";
+import {
+  Icon,
+  Checkbox,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+} from "@/components/ui";
 import { PlatformStoreUserRecord } from "@/types/cms.types";
 import { toast } from "@/stores/notificationStore";
 
@@ -58,38 +69,35 @@ export const StoreUserDesktopTable: React.FC<StoreUserDesktopTableProps> = ({
 
   return (
     <div className="hidden lg:block w-full">
-      <table className="w-full text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
-          <tr className="border-b border-surface-border text-slate-500 uppercase tracking-wider text-[10px] font-black">
-            <th className="py-3 pl-3.5 pr-1 w-10 bg-slate-50/95">
-              <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
-                onChange={onToggleSelectAll}
-                title="Chọn tất cả người dùng trên trang này"
+      <TableContainer className="rounded-none border-0 shadow-none">
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs shadow-2xs">
+            <TableRow>
+              <TableHead className="py-3 pl-3.5 pr-1 w-10">
+                <Checkbox
+                  checked={isAllSelected}
+                  indeterminate={isIndeterminate}
+                  onChange={onToggleSelectAll}
+                  title="Chọn tất cả người dùng trên trang này"
+                />
+              </TableHead>
+              <TableHead>Tài Khoản & Người Dùng</TableHead>
+              <TableHead>Cửa Hàng Trực Thuộc</TableHead>
+              <TableHead>Vai Trò</TableHead>
+              <TableHead>Mã PIN POS</TableHead>
+              <TableHead>Trạng Thái</TableHead>
+              <TableHead align="right">Thao Tác</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedUsers.length === 0 ? (
+              <TableEmpty
+                colSpan={7}
+                icon="users"
+                title="Không tìm thấy tài khoản"
+                description="Không tìm thấy tài khoản người dùng nào phù hợp với bộ lọc."
               />
-            </th>
-            <th className="py-3 px-3 bg-slate-50/95">Tài Khoản & Người Dùng</th>
-            <th className="py-3 px-3 bg-slate-50/95">Cửa Hàng Trực Thuộc</th>
-            <th className="py-3 px-3 bg-slate-50/95">Vai Trò</th>
-            <th className="py-3 px-3 bg-slate-50/95">Mã PIN POS</th>
-            <th className="py-3 px-3 bg-slate-50/95">Trạng Thái</th>
-            <th className="py-3 px-3.5 text-right bg-slate-50/95">Thao Tác</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 font-medium">
-          {paginatedUsers.length === 0 ? (
-            <tr>
-              <td colSpan={7} className="py-12 text-center text-xs text-slate-400 font-bold">
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400">
-                    <Icon name="users" size={24} />
-                  </div>
-                  <span>Không tìm thấy tài khoản người dùng nào phù hợp</span>
-                </div>
-              </td>
-            </tr>
-          ) : (
+            ) : (
             paginatedUsers.map((user) => {
               const isSelected = selectedUserIds.includes(user.id);
               const isPinRevealed = !!revealedPins[user.id];
@@ -242,8 +250,9 @@ export const StoreUserDesktopTable: React.FC<StoreUserDesktopTableProps> = ({
               );
             })
           )}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </div>
   );
 };

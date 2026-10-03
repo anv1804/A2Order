@@ -1,16 +1,116 @@
 import React, { useState, useMemo } from "react";
-import { Icon, Button, Badge, Panel, Portal } from "@/components/ui";
+import {
+  Icon,
+  Button,
+  Badge,
+  Panel,
+  Portal,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableEmpty,
+  SearchInput,
+  FilterSelect,
+  DataTableCard,
+} from "@/components/ui";
+import { HeroBanner, StatCard } from "@/components/shared";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { PromotionVoucherRecord, DiscountType } from "@/types/cms.types";
 
-const INITIAL_PROMOTIONS: PromotionVoucherRecord[] = [];
+const INITIAL_PROMOTIONS: PromotionVoucherRecord[] = [
+  {
+    id: "promo-1",
+    code: "HAPPYHOUR",
+    title: "Giờ Vàng Trưa Vui Vẻ",
+    description: "Giảm 15% cho bàn dùng bữa trong khung giờ trưa từ 11:00 đến 13:30",
+    discountType: "PERCENTAGE",
+    discountValue: 15,
+    minOrderAmount: 200000,
+    maxDiscountAmount: 100000,
+    startDate: "01/05/2026",
+    endDate: "30/12/2026",
+    usageLimit: 500,
+    usedCount: 142,
+    happyHourOnly: true,
+    happyHourTimeRange: "11:00 - 13:30",
+    isActive: true,
+  },
+  {
+    id: "promo-2",
+    code: "CHAOBAN50K",
+    title: "Chào Bạn Mới Giảm 50K",
+    description: "Tặng ngay 50.000đ cho khách hàng đăng ký thành viên lần đầu",
+    discountType: "FIXED_AMOUNT",
+    discountValue: 50000,
+    minOrderAmount: 250000,
+    startDate: "01/01/2026",
+    endDate: "31/12/2026",
+    usageLimit: 300,
+    usedCount: 89,
+    happyHourOnly: false,
+    isActive: true,
+  },
+  {
+    id: "promo-3",
+    code: "VIPGOLD20",
+    title: "Đặc Quyền Thành Viên Vàng",
+    description: "Chiết khấu 20% cho hạng thẻ Gold và Diamond",
+    discountType: "PERCENTAGE",
+    discountValue: 20,
+    minOrderAmount: 500000,
+    maxDiscountAmount: 200000,
+    startDate: "01/01/2026",
+    endDate: "31/12/2026",
+    usageLimit: 200,
+    usedCount: 45,
+    happyHourOnly: false,
+    isActive: true,
+  },
+  {
+    id: "promo-4",
+    code: "COMBOFAMILY",
+    title: "Gia Đình Sum Vầy Giảm 100K",
+    description: "Áp dụng cho hóa đơn từ 4 người trở lên hoặc trên 1 triệu đồng",
+    discountType: "FIXED_AMOUNT",
+    discountValue: 100000,
+    minOrderAmount: 1000000,
+    startDate: "15/04/2026",
+    endDate: "15/10/2026",
+    usageLimit: 150,
+    usedCount: 68,
+    happyHourOnly: false,
+    isActive: true,
+  },
+  {
+    id: "promo-5",
+    code: "WEEKEND10",
+    title: "Cuối Tuần Rộn Ràng",
+    description: "Giảm 10% toàn bộ thực đơn vào thứ 7 và chủ nhật",
+    discountType: "PERCENTAGE",
+    discountValue: 10,
+    minOrderAmount: 300000,
+    maxDiscountAmount: 80000,
+    startDate: "01/06/2026",
+    endDate: "31/08/2026",
+    usageLimit: 400,
+    usedCount: 210,
+    happyHourOnly: false,
+    isActive: false,
+  },
+];
 
 export const CmsPromotionsManagement: React.FC = () => {
   const [promotions, setPromotions] = usePersistentState<PromotionVoucherRecord[]>("promotions_list", INITIAL_PROMOTIONS);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
+  const [promoPage, setPromoPage] = useState(1);
+  const PROMO_PAGE_SIZE = 8;
 
   // Modal Thêm / Chỉnh Sửa Voucher
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -179,196 +279,195 @@ export const CmsPromotionsManagement: React.FC = () => {
     return { activeCount, totalUsed };
   }, [promotions]);
 
+  const paginatedPromotions = useMemo(() => {
+    const start = (promoPage - 1) * PROMO_PAGE_SIZE;
+    return filteredPromotions.slice(start, start + PROMO_PAGE_SIZE);
+  }, [filteredPromotions, promoPage]);
+
   const {
-    displayedItems: displayedPromotions,
+    displayedItems: mobilePromotions,
     sentinelRef,
     isLoadingMore,
     hasMore,
   } = useMobileInfiniteScroll(filteredPromotions, 10);
 
   return (
-    <div className="space-y-5 animate-fadeIn pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Khuyến Mãi & Voucher
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Giảm Giá
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Chương trình giảm giá theo %, tiền mặt, giờ vàng và mã voucher
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm"
-            className="rounded-xl h-8 sm:h-9 w-8 sm:w-9 p-0 flex items-center justify-center bg-brand-950 text-white hover:bg-black font-bold shadow-sm transition-all shrink-0"
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-16">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "Khuyến Mãi", dot: true }}
+        tagline={`${promotions.length} chương trình • ${stats.activeCount} đang hoạt động`}
+        title="Khuyến Mãi & Voucher"
+        description="Chương trình giảm giá theo %, tiền mặt, giờ vàng happy hour và mã voucher tự động"
+        chips={[
+          { icon: "tag", label: `${stats.activeCount} Đang chạy`, variant: "default" },
+          { icon: "users", label: `${stats.totalUsed} Lượt sử dụng`, variant: "teal" },
+          { icon: "banknote", label: "Doanh thu kích cầu: 52.8M", variant: "amber" },
+          { icon: "clock", label: "Giờ vàng: 11h - 13h30", variant: "blue" },
+        ]}
+        actions={
+          <button
+            type="button"
             onClick={handleOpenCreateModal}
-            title="Tạo Khuyến Mãi Mới"
-            aria-label="Tạo Khuyến Mãi Mới"
+            className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
           >
-            <Icon name="plus" className="w-4 h-4 text-brand-400" />
-          </Button>
-        </div>
-      </div>
+            <Icon name="plus" size={14} />
+            <span>Tạo Khuyến Mãi Mới</span>
+          </button>
+        }
+      />
 
-      {/* 4 Thẻ KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Chương Trình Đang Chạy</span>
-            <div className="w-7 h-7 rounded-xl bg-brand-50 text-brand-900 flex items-center justify-center">
-              <Icon name="tag" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-ink-primary">{stats.activeCount} <span className="text-xs text-ink-muted font-medium">chương trình</span></h3>
-            <span className="text-[10px] text-emerald-700 font-bold">Tự động áp dụng trên máy thu ngân</span>
-          </div>
-        </Panel>
+      {/* 2. 4 Thẻ KPI Chỉ Số Khuyến Mãi */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+        <StatCard
+          icon="tag"
+          variant="default"
+          title="Chương Trình Đang Chạy"
+          value={stats.activeCount}
+          unit="CT"
+          subtext="Tự động áp dụng trên POS"
+          badge="Đang chạy"
+        />
 
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Lượt Khách Đã Sử Dụng</span>
-            <div className="w-7 h-7 rounded-xl bg-purple-50 text-purple-900 flex items-center justify-center">
-              <Icon name="users" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-purple-950">{stats.totalUsed} <span className="text-xs text-ink-muted font-medium">lượt</span></h3>
-            <span className="text-[10px] text-purple-700 font-bold">Tỷ lệ sử dụng voucher đạt 68%</span>
-          </div>
-        </Panel>
+        <StatCard
+          icon="users"
+          variant="info"
+          title="Lượt Đã Sử Dụng"
+          value={stats.totalUsed}
+          unit="lượt"
+          subtext="Tỷ lệ sử dụng voucher 68%"
+          badge="Hiệu quả"
+        />
 
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Doanh Thu Kích Cầu</span>
-            <div className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-900 flex items-center justify-center">
-              <Icon name="banknote" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-brand-950">52.800.000 đ</h3>
-            <span className="text-[10px] text-emerald-700 font-bold">Từ các hóa đơn có áp dụng voucher</span>
-          </div>
-        </Panel>
+        <StatCard
+          icon="banknote"
+          variant="success"
+          title="Doanh Thu Kích Cầu"
+          value="52.800.000"
+          unit="đ"
+          subtext="Từ hóa đơn có mã giảm giá"
+          badge="+35% DT"
+        />
 
-        <Panel variant="default" padding="lg" className="flex flex-col justify-between min-h-[110px]">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted">Khung Giờ Vàng Happy Hour</span>
-            <div className="w-7 h-7 rounded-xl bg-amber-50 text-amber-900 flex items-center justify-center">
-              <Icon name="clock" className="w-3.5 h-3.5" />
-            </div>
-          </div>
-          <div className="mt-2">
-            <h3 className="text-2xl font-black text-amber-900">11h - 13h30</h3>
-            <span className="text-[10px] text-amber-700 font-bold">Tăng 35% lượt khách buổi trưa</span>
-          </div>
-        </Panel>
-      </div>
+        <StatCard
+          icon="clock"
+          variant="warning"
+          title="Giờ Vàng Happy Hour"
+          value="11h - 13h30"
+          subtext="Tăng 35% lượt khách trưa"
+          badge="Khung giờ"
+        />
+      </section>
 
       {/* Danh Sách Khuyến Mãi */}
-      <Panel variant="default" padding="lg" className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-border pb-3">
-          <div className="relative flex-1 max-w-md">
-            <Icon name="search" className="w-4 h-4 text-ink-subtle absolute left-3 top-3" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo mã voucher, tên chương trình..."
-              className="w-full h-10 pl-9 pr-3 rounded-2xl border border-surface-border text-xs font-bold focus:outline-none focus:border-brand-800 bg-surface-canvas"
+      <DataTableCard
+        searchPlaceholder="Tìm theo mã voucher, tên chương trình..."
+        searchValue={searchQuery}
+        onSearchChange={(val) => {
+          setSearchQuery(val);
+          setPromoPage(1);
+        }}
+        onSearchClear={() => {
+          setSearchQuery("");
+          setPromoPage(1);
+        }}
+        filters={
+          <FilterSelect
+            labelPrefix="Trạng thái: "
+            value={statusFilter}
+            onChange={(val) => {
+              setStatusFilter(val as "ALL" | "ACTIVE" | "INACTIVE");
+              setPromoPage(1);
+            }}
+            options={[
+              { value: "ALL", label: "Tất cả", count: promotions.length },
+              { value: "ACTIVE", label: "Đang chạy", count: promotions.filter((p) => p.isActive).length },
+              { value: "INACTIVE", label: "Đã tạm dừng", count: promotions.filter((p) => !p.isActive).length },
+            ]}
+            className="w-full sm:w-44 shrink-0"
+          />
+        }
+        hasActiveFilters={statusFilter !== "ALL" || searchQuery.trim() !== ""}
+        onResetFilters={() => {
+          setStatusFilter("ALL");
+          setSearchQuery("");
+          setPromoPage(1);
+        }}
+        pagination={{
+          currentPage: promoPage,
+          totalItems: filteredPromotions.length,
+          pageSize: PROMO_PAGE_SIZE,
+          onPageChange: setPromoPage,
+        }}
+        footer={
+          <div className="block md:hidden">
+            <MobileInfiniteSentinel
+              sentinelRef={sentinelRef}
+              isLoadingMore={isLoadingMore}
+              hasMore={hasMore}
+              displayedCount={mobilePromotions.length}
+              totalCount={filteredPromotions.length}
             />
           </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs font-bold py-0.5">
-            <button
-              type="button"
-              onClick={() => setStatusFilter("ALL")}
-              className={`px-3 py-1.5 rounded-full transition-all shrink-0 ${
-                statusFilter === "ALL"
-                  ? "bg-brand-900 text-white shadow-xs"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-              }`}
-            >
-              Tất Cả ({promotions.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("ACTIVE")}
-              className={`px-3 py-1.5 rounded-full transition-all shrink-0 ${
-                statusFilter === "ACTIVE"
-                  ? "bg-brand-900 text-white shadow-xs"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-              }`}
-            >
-              Đang Chạy ({promotions.filter((p) => p.isActive).length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("INACTIVE")}
-              className={`px-3 py-1.5 rounded-full transition-all shrink-0 ${
-                statusFilter === "INACTIVE"
-                  ? "bg-brand-900 text-white shadow-xs"
-                  : "bg-surface-canvas border border-surface-border text-ink-muted hover:text-ink-primary"
-              }`}
-            >
-              Đã Tạm Dừng ({promotions.filter((p) => !p.isActive).length})
-            </button>
-          </div>
-        </div>
+        }
+      >
 
         {/* Bảng Voucher */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-surface-border text-ink-muted uppercase tracking-wider text-[10px] font-extrabold">
-                <th className="pb-3 px-3">Mã Voucher & Tiêu Đề</th>
-                <th className="pb-3 px-3">Mức Giảm Giá</th>
-                <th className="pb-3 px-3">Điều Kiện Áp Dụng</th>
-                <th className="pb-3 px-3">Thời Hạn & Lượt Dùng</th>
-                <th className="pb-3 px-3">Trạng Thái</th>
-                <th className="pb-3 px-3 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-border font-medium">
-              {displayedPromotions.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="w-10 h-10 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-900">
-                        <Icon name="tag" className="w-5 h-5" />
-                      </div>
-                      <p className="text-xs font-bold text-ink-primary">
-                        {promotions.length === 0 ? "Chưa có chương trình khuyến mãi nào" : "Không tìm thấy chương trình phù hợp"}
-                      </p>
-                      <p className="text-[11px] text-ink-muted max-w-sm">
-                        {promotions.length === 0
-                          ? "Tạo mã giảm giá theo %, số tiền cố định hoặc khung giờ vàng để thu hút khách hàng."
-                          : "Thử tìm kiếm với từ khóa khác hoặc bỏ bộ lọc trạng thái."}
-                      </p>
-                      {promotions.length === 0 && (
-                        <Button
-                          size="sm"
-                          className="mt-2 rounded-xl gap-2 text-xs bg-brand-950 text-white hover:bg-black font-bold"
-                          onClick={handleOpenCreateModal}
-                        >
-                          <Icon name="plus" className="w-3.5 h-3.5 text-brand-400" />
-                          <span>Tạo Voucher Đầu Tiên</span>
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+        <TableContainer>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Mã Voucher & Tiêu Đề</TableHead>
+                <TableHead>Mức Giảm Giá</TableHead>
+                <TableHead>Điều Kiện Áp Dụng</TableHead>
+                <TableHead>Thời Hạn & Lượt Dùng</TableHead>
+                <TableHead>Trạng Thái</TableHead>
+                <TableHead align="right">Thao Tác</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedPromotions.length === 0 ? (
+                <TableEmpty
+                  colSpan={6}
+                  icon="tag"
+                  title={promotions.length === 0 ? "Chưa có chương trình khuyến mãi nào" : "Không tìm thấy chương trình phù hợp"}
+                  description={
+                    promotions.length === 0
+                      ? "Tạo mã giảm giá theo %, số tiền cố định hoặc khung giờ vàng để thu hút khách hàng."
+                      : "Thử tìm kiếm với từ khóa khác hoặc bỏ bộ lọc trạng thái."
+                  }
+                  action={
+                    promotions.length === 0 ? (
+                      <Button
+                        size="sm"
+                        variant="emerald"
+                        className="gap-2 font-bold"
+                        onClick={handleOpenCreateModal}
+                      >
+                        <Icon name="plus" className="w-3.5 h-3.5" />
+                        <span>Tạo Voucher Đầu Tiên</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 font-bold"
+                        onClick={() => {
+                          setStatusFilter("ALL");
+                          setSearchQuery("");
+                          setPromoPage(1);
+                        }}
+                      >
+                        <Icon name="x" className="w-3.5 h-3.5" />
+                        <span>Xóa Bộ Lọc</span>
+                      </Button>
+                    )
+                  }
+                />
               ) : (
-                displayedPromotions.map((p) => (
-                  <tr key={p.id} className="hover:bg-brand-50/20 transition-colors">
-                    <td className="py-3.5 px-3">
+                paginatedPromotions.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs font-black text-brand-950 px-2 py-0.5 rounded-lg bg-surface-canvas border border-surface-border shadow-xs">
                           {p.code}
@@ -384,9 +483,9 @@ export const CmsPromotionsManagement: React.FC = () => {
                       </div>
                       <div className="font-bold text-ink-primary mt-1">{p.title}</div>
                       <div className="text-[10px] text-ink-muted line-clamp-1">{p.description}</div>
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-3">
+                    <TableCell>
                       <div className="font-black text-brand-900 text-sm">
                         {p.discountType === "PERCENTAGE"
                           ? `Giảm ${p.discountValue}%`
@@ -397,9 +496,9 @@ export const CmsPromotionsManagement: React.FC = () => {
                           Tối đa {p.maxDiscountAmount.toLocaleString("vi-VN")} đ
                         </span>
                       )}
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-3">
+                    <TableCell>
                       <div className="font-bold text-ink-primary">
                         Đơn từ {p.minOrderAmount.toLocaleString("vi-VN")} đ
                       </div>
@@ -409,16 +508,16 @@ export const CmsPromotionsManagement: React.FC = () => {
                           Giờ vàng: {p.happyHourTimeRange}
                         </span>
                       )}
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-3">
+                    <TableCell>
                       <div className="font-bold text-ink-primary">{p.usedCount} / {p.usageLimit} lượt</div>
                       <span className="text-[10px] text-ink-muted">
                         Hạn: {p.startDate} - {p.endDate}
                       </span>
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-3">
+                    <TableCell>
                       <button
                         type="button"
                         onClick={() => handleToggleActive(p)}
@@ -430,9 +529,9 @@ export const CmsPromotionsManagement: React.FC = () => {
                       >
                         {p.isActive ? "● Đang Chạy" : "○ Tạm Dừng"}
                       </button>
-                    </td>
+                    </TableCell>
 
-                    <td className="py-3.5 px-3 text-right">
+                    <TableCell align="right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
@@ -452,22 +551,15 @@ export const CmsPromotionsManagement: React.FC = () => {
                           <Icon name="trash" className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
 
-        <MobileInfiniteSentinel
-          sentinelRef={sentinelRef}
-          isLoadingMore={isLoadingMore}
-          hasMore={hasMore}
-          displayedCount={displayedPromotions.length}
-          totalCount={filteredPromotions.length}
-        />
-      </Panel>
+      </DataTableCard>
 
       {/* MODAL TẠO / SỬA VOUCHER */}
       {isModalOpen && (

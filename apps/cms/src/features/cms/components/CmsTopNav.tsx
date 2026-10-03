@@ -87,8 +87,8 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
             <kbd className="hidden rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-black text-slate-500 sm:block">⌘K</kbd>
           </button>
 
-          {/* Chỉ hiển thị link quay lại quán trên Cổng Admin (Port 3002) - Tuyệt đối không hiện trên Cổng Quán */}
-          {typeof window !== "undefined" && window.location.port === "3002" && (
+          {/* Chỉ hiển thị link quay lại quán trên Cổng Admin (Port 3000) - Tuyệt đối không hiện trên Cổng Quán */}
+          {typeof window !== "undefined" && window.location.port === "3000" && (
             <a
               href="http://localhost:3001"
               target="_blank"
@@ -97,7 +97,7 @@ export const CmsTopNav: React.FC<CmsTopNavProps> = ({
               className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold text-slate-700 transition shadow-2xs"
             >
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-              <span>Cổng Admin (3002)</span>
+              <span>Cổng Admin (3000)</span>
               <span className="text-slate-300">|</span>
               <span className="text-emerald-700 font-extrabold hover:underline">Mở Cổng Quán (3001) ↗</span>
             </a>

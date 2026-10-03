@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AppModule, APP_MODULE_CATALOG } from "@a2order/shared";
 import { Panel, Button, Icon } from "@/components/ui";
+import { HeroBanner } from "@/components/shared";
 import { toast } from "@/stores/notificationStore";
 import { CmsStoreSettingsProps } from "@/types/cms.types";
 import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
@@ -82,49 +83,57 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   const finalTotal = rawTotal - discountAmount;
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-10">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-              Cài Đặt Quán
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-brand-50 text-brand-900 border border-brand-200 shadow-2xs">
-              Cài Đặt
-            </span>
-          </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Tài khoản nhận tiền VietQR, thông tin hóa đơn và gói dịch vụ
-          </p>
-        </div>
+    <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
+      <HeroBanner
+        badge={{ label: "Cài Đặt", dot: true }}
+        tagline={storeName || "A2Order Store"}
+        title="Cài Đặt Nhà Hàng & Bản Quyền"
+        description="Cấu hình tài khoản nhận tiền VietQR động, thông tin hóa đơn và các gói tính năng bản quyền của quán"
+        chips={[
+          { icon: "store", label: storeName || "A2Order Store", variant: "default" },
+          { icon: "vietqr", label: bankAccount ? `${bankOwnerName || "VietQR"} • ${bankAccount}` : "VietQR: Chưa cấu hình", variant: "teal" },
+          { icon: "key", label: `${enabledModules.length} Module đã kích hoạt`, variant: "amber" },
+        ]}
+        actions={
+          activeTab === "store_info" ? (
+            <button
+              type="button"
+              onClick={handleSaveStoreInfo}
+              className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-400 hover:bg-brand-300 px-3.5 sm:px-4 text-xs font-black text-brand-950 shadow-card transition active:scale-95 shrink-0"
+            >
+              <Icon name="checkCircle" size={14} />
+              <span>Lưu Cài Đặt Quán</span>
+            </button>
+          ) : undefined
+        }
+      />
 
-        {/* Tab navigation buttons */}
-        <div className="flex items-center gap-1.5 p-1 bg-surface-muted rounded-2xl border border-surface-border overflow-x-auto no-scrollbar shrink-0 max-w-full">
+      {/* 2. Sticky Toolbar: Tabs Danh Mục */}
+      <div className="sticky top-0 sm:top-2 z-10 p-2 sm:p-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
           <button
             onClick={() => setActiveTab("store_info")}
-            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === "store_info"
-                ? "bg-white text-brand-900 shadow-sm"
-                : "text-ink-muted hover:text-ink-primary"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            <Icon name="store" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Quán & VietQR</span>
-            <span className="hidden sm:inline">Thông Tin Quán & VietQR</span>
+            <Icon name="store" size={14} />
+            <span>Thông Tin Quán & VietQR</span>
           </button>
 
           <button
             onClick={() => setActiveTab("modules_license")}
-            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+            className={`px-3 sm:px-3.5 py-1.5 font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === "modules_license"
-                ? "bg-white text-brand-900 shadow-sm"
-                : "text-ink-muted hover:text-ink-primary"
+                ? "bg-brand-900 text-white shadow-xs"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            <Icon name="key" className="w-3.5 h-3.5" />
-            <span className="sm:hidden">Bản Quyền</span>
-            <span className="hidden sm:inline">Gói Tính Năng & Bản Quyền</span>
+            <Icon name="key" size={14} />
+            <span>Gói Tính Năng & Bản Quyền</span>
           </button>
         </div>
       </div>

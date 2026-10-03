@@ -147,7 +147,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div
       ref={containerRef}
-      className={twMerge("relative inline-block w-full", className)}
+      className={twMerge("relative inline-block", className || "w-full")}
     >
       {/* Nút Trigger chuẩn SaaS: chiều cao h-9 (36px) đồng bộ tuyệt đối */}
       <button

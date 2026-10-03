@@ -112,18 +112,18 @@ export const CmsProfileView: React.FC<CmsProfileViewProps> = ({ user, currentRol
   return (
     <div className="mx-auto w-full max-w-4xl space-y-4 sm:space-y-5">
       {/* 1. HERO BANNER: Tinh tế, bảo mật cao, không bẻ dòng */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0a231b] via-[#0e2f24] to-[#154636] p-4 sm:p-6 text-white shadow-xl border border-emerald-900/40">
+      <section className="relative overflow-hidden rounded-3xl bg-[#061F17] bg-brand-gradient p-4 sm:p-6 text-white shadow-xl border border-white/10">
         <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-emerald-400/15 blur-3xl" />
         <div className="pointer-events-none absolute -left-10 -bottom-16 h-56 w-56 rounded-full bg-emerald-600/10 blur-3xl" />
 
         <div className="relative flex items-center gap-3.5 sm:gap-5 min-w-0">
           {/* Avatar với Online Dot */}
           <div className="relative shrink-0">
-            <div className="flex h-13 w-13 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-300 via-emerald-400 to-emerald-600 text-xl sm:text-2xl font-black text-[#0a231b] shadow-md ring-4 ring-white/10">
+            <div className="flex h-13 w-13 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-300 via-emerald-400 to-emerald-600 text-xl sm:text-2xl font-black text-brand-dark shadow-md ring-4 ring-white/10">
               {(user.name || user.email || "A").charAt(0).toUpperCase()}
             </div>
             <span
-              className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 ring-2 ring-[#0a231b]"
+              className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-400 ring-2 ring-brand-dark"
               title="Đang trực tuyến"
             />
           </div>

@@ -146,6 +146,72 @@ const ROLE_DEFAULT_MENUS: Record<CmsAppRole, string> = {
   WAITER: "tables",
 };
 
+export const PATH_TO_MENU_MAP: Record<string, string> = {
+  "/admin": "telemetry",
+  "/admin/telemetry": "telemetry",
+  "/admin/tenants": "tenants",
+  "/admin/store_users": "store_users",
+  "/admin/licenses": "license_manager",
+  "/admin/license_manager": "license_manager",
+  "/admin/invoices": "software_invoices",
+  "/admin/software_invoices": "software_invoices",
+  "/admin/pricing": "pricing_config",
+  "/admin/pricing_config": "pricing_config",
+  "/admin/scenarios": "scenarios",
+  "/admin/audit": "audit_logs",
+  "/admin/audit_logs": "audit_logs",
+  "/admin/profile": "profile",
+  "/dashboard": "dashboard",
+  "/tables": "tables",
+  "/staff_order": "staff_order",
+  "/pos": "staff_order",
+  "/kds": "kds",
+  "/menu": "menu",
+  "/inventory": "inventory",
+  "/customers": "customers",
+  "/promotions": "promotions",
+  "/reservations": "reservations",
+  "/analytics": "analytics",
+  "/einvoice": "einvoice",
+  "/delivery": "delivery_integrations",
+  "/delivery_integrations": "delivery_integrations",
+  "/team": "team",
+  "/staff": "team",
+  "/hardware": "hardware",
+  "/settings": "settings",
+  "/landing": "landing_page",
+  "/landing_page": "landing_page",
+  "/profile": "profile",
+};
+
+export const MENU_TO_PATH_MAP: Record<string, string> = {
+  telemetry: "/admin/telemetry",
+  tenants: "/admin/tenants",
+  store_users: "/admin/store_users",
+  license_manager: "/admin/licenses",
+  software_invoices: "/admin/invoices",
+  pricing_config: "/admin/pricing",
+  scenarios: "/admin/scenarios",
+  audit_logs: "/admin/audit",
+  dashboard: "/dashboard",
+  tables: "/tables",
+  staff_order: "/staff_order",
+  kds: "/kds",
+  menu: "/menu",
+  inventory: "/inventory",
+  customers: "/customers",
+  promotions: "/promotions",
+  reservations: "/reservations",
+  analytics: "/analytics",
+  einvoice: "/einvoice",
+  delivery_integrations: "/delivery",
+  team: "/team",
+  hardware: "/hardware",
+  settings: "/settings",
+  landing_page: "/landing_page",
+  profile: "/profile",
+};
+
 export const normalizeAppRole = (role?: string | null): CmsAppRole => {
   if (!role) return "STORE_OWNER";
   const upper = role.toUpperCase();
@@ -275,11 +341,46 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentPath(window.location.pathname || "/");
+      const path = window.location.pathname || "/";
+      setCurrentPath(path);
+      const matched = PATH_TO_MENU_MAP[path];
+      if (matched) {
+        setActiveMenu(matched);
+      }
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  // Khởi tạo activeMenu ban đầu dựa trên URL hiện tại
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname || "/";
+      const matched = PATH_TO_MENU_MAP[path];
+      if (matched) {
+        setActiveMenu(matched);
+      }
+    }
+  }, []);
+
+  // Đồng bộ Tiêu đề trang (Document Title) theo Cổng và Vai trò
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isPort3000Current = window.location.port === "3000";
+    if (isPort3000Current) {
+      document.title = "A2Order Platform - Quản Trị Hệ Thống SaaS (Port 3000)";
+    } else {
+      const roleTitles: Record<CmsAppRole, string> = {
+        SUPER_ADMIN: "Admin Nền Tảng",
+        STORE_OWNER: currentUser?.storeName ? `${currentUser.storeName} - Quản Trị Quán` : "A2Order CMS - Quản Trị Cửa Hàng",
+        CASHIER: "A2Order POS - Thu Ngân & Điểm Bán",
+        WAITER: "A2Order POS - Phục Vụ Bàn",
+        CHEF: "A2Order KDS - Màn Hình Bếp Trưởng",
+        ACCOUNTANT: "A2Order - Kế Toán & Dòng Tiền",
+      };
+      document.title = `${roleTitles[currentRole] || "A2Order Store"} (Port 3001)`;
+    }
+  }, [currentRole, currentUser?.storeName]);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -405,6 +506,19 @@ export const App: React.FC = () => {
     if (menu === activeMenu) return;
     if (!(await confirmLeaveUnsaved())) return;
     setActiveMenu(menu);
+
+    if (typeof window !== "undefined") {
+      const isPort3000Now = window.location.port === "3000";
+      let targetPath = isPort3000Now ? `/admin/${menu}` : `/${menu}`;
+      if (MENU_TO_PATH_MAP[menu]) {
+        targetPath = MENU_TO_PATH_MAP[menu];
+        if (isPort3000Now && !targetPath.startsWith("/admin")) {
+          targetPath = `/admin/${menu}`;
+        }
+      }
+      window.history.pushState({}, "", targetPath);
+      setCurrentPath(targetPath);
+    }
   };
 
   const handleNavigateToOrderWithTable = async (tableId: string) => {
@@ -451,8 +565,8 @@ export const App: React.FC = () => {
     );
   }
 
-  const isPort3002 = typeof window !== "undefined" && window.location.port === "3002";
-  const isPort3001 = typeof window !== "undefined" && window.location.port === "3001";
+  const isPort3000 = typeof window !== "undefined" && window.location.port === "3000";
+  const isPort3001 = typeof window !== "undefined" && (window.location.port === "3001" || (!isPort3000 && window.location.port !== "3002"));
 
   // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
   if (currentPath.startsWith("/order")) {
@@ -466,7 +580,7 @@ export const App: React.FC = () => {
   // 2. Nếu chưa đăng nhập: Phân nhánh hiển thị riêng biệt theo Port hoặc URL
   if (!currentUser) {
     const isAdminRoute =
-      isPort3002 ||
+      isPort3000 ||
       currentPath.startsWith("/admin") ||
       currentPath.startsWith("/saas-admin");
 
@@ -477,7 +591,7 @@ export const App: React.FC = () => {
           <AdminLoginPage
             onLoginSuccess={handleLoginSuccess}
             onNavigateToOwner={() => {
-              if (isPort3002) {
+              if (isPort3000) {
                 window.location.href = "http://localhost:3001";
               } else {
                 navigateTo("/login");
@@ -489,7 +603,7 @@ export const App: React.FC = () => {
             onLoginSuccess={handleLoginSuccess}
             onNavigateToAdmin={() => {
               if (isPort3001) {
-                window.location.href = "http://localhost:3002";
+                window.location.href = "http://localhost:3000";
               } else {
                 navigateTo("/admin/login");
               }
@@ -501,8 +615,16 @@ export const App: React.FC = () => {
   }
 
   // Tự động phân tách cổng khi đã đăng nhập:
-  // Nếu đang mở Cổng Admin (3002) nhưng tài khoản là Chủ Quán/Nhân Viên:
-  if (isPort3002 && currentRole !== "SUPER_ADMIN") {
+  // Nếu đang mở Cổng Admin (3000) nhưng tài khoản là Chủ Quán/Nhân Viên:
+  if (isPort3000 && currentRole !== "SUPER_ADMIN") {
+    const roleLabels: Record<CmsAppRole, string> = {
+      SUPER_ADMIN: "Super Admin",
+      STORE_OWNER: "Chủ Quán",
+      ACCOUNTANT: "Kế Toán",
+      CASHIER: "Thu Ngân",
+      CHEF: "Bếp Trưởng / Pha Chế",
+      WAITER: "Nhân Viên Phục Vụ",
+    };
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
@@ -511,11 +633,11 @@ export const App: React.FC = () => {
           </div>
           <div>
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              Cổng Admin Nền Tảng (Port 3002)
+              Cổng Admin Nền Tảng (Port 3000)
             </span>
             <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2">Tài Khoản Không Có Quyền Admin</h3>
             <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> ({currentRole === "STORE_OWNER" ? "Chủ Quán" : currentRole}). Vui lòng chuyển sang Cổng Quán (Port 3001) để quản lý quán.
+              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> ({roleLabels[currentRole] || currentRole}). Cổng Admin (Port 3000) chỉ dành cho Quản trị viên SaaS. Vui lòng chuyển sang Cổng Quán (Port 3001) để quản lý hoặc bán hàng.
             </p>
           </div>
           <div className="pt-2 flex flex-col gap-2">
@@ -523,7 +645,7 @@ export const App: React.FC = () => {
               href="http://localhost:3001"
               className="w-full py-3 px-4 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-sm"
             >
-              <span>Mở Cổng Chủ Quán (Port 3001)</span>
+              <span>Mở Cổng Quán & Bán Hàng (Port 3001)</span>
               <Icon name="arrowRight" size={14} />
             </a>
             <button
@@ -553,15 +675,15 @@ export const App: React.FC = () => {
             </span>
             <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2">Bạn Là Quản Trị Viên Nền Tảng</h3>
             <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> (Super Admin). Vui lòng chuyển sang Cổng Admin Nền Tảng (Port 3002) để quản trị đối tác, license và cấu hình SaaS.
+              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> (Super Admin). Vui lòng chuyển sang Cổng Admin Nền Tảng (Port 3000) để quản trị đối tác, license và cấu hình SaaS.
             </p>
           </div>
           <div className="pt-2 flex flex-col gap-2">
             <a
-              href="http://localhost:3002"
+              href="http://localhost:3000"
               className="w-full py-3 px-4 rounded-xl bg-slate-950 text-white font-black text-xs hover:bg-slate-800 transition flex items-center justify-center gap-2 shadow-sm"
             >
-              <span>Mở Cổng Admin Nền Tảng (Port 3002)</span>
+              <span>Mở Cổng Admin Nền Tảng (Port 3000)</span>
               <Icon name="arrowRight" size={14} />
             </a>
             <button
