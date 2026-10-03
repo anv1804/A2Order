@@ -8,6 +8,7 @@
     "dev:store": "vite --port 3001",
     "dev:admin": "vite --port 3002",
     "build": "tsc && vite build",
+    "lint": "tsc --noEmit",
     "preview": "vite preview --port 3001"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "vite-plugin-pwa": "^0.19.2"
   }
 }

@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyPluginAsync } from "fastify";
 import { prisma } from "../../core/database/prismaClient.js";
 import { emitToStore } from "../../core/websocket/socketServer.js";
 import { SocketEvents } from "@a2order/shared";
+import { antiSpamMiddleware } from "../../core/middlewares/antiSpamMiddleware.js";
 
 // Bộ đệm lưu trữ các đơn chờ duyệt từ khách QR
 interface PendingOrder {
@@ -31,12 +32,90 @@ interface PendingOrder {
 
 const pendingOrders = new Map<string, PendingOrder>();
 
+async function persistApprovedOrderToDb(order: PendingOrder) {
+  try {
+    let session = await prisma.orderSession.findFirst({
+      where: {
+        storeId: order.storeId,
+        tableId: order.tableId,
+        status: "ACTIVE",
+      },
+      include: { batches: true },
+    });
+
+    if (!session) {
+      session = await prisma.orderSession.create({
+        data: {
+          storeId: order.storeId,
+          tableId: order.tableId,
+          status: "ACTIVE",
+        },
+        include: { batches: true },
+      });
+      await prisma.table.update({
+        where: { id: order.tableId },
+        data: { currentSessionId: session.id, status: "OCCUPIED" },
+      }).catch(() => {});
+    }
+
+    const nextBatchNum = (session.batches?.length || 0) + 1;
+    const batch = await prisma.orderBatch.create({
+      data: {
+        orderSessionId: session.id,
+        batchNumber: nextBatchNum,
+        isCustomerQr: true,
+      },
+    });
+
+    const sampleMenuItem = await prisma.menuItem.findFirst({
+      where: { storeId: order.storeId },
+      select: { id: true },
+    });
+
+    for (const item of order.items) {
+      let validMenuItemId = item.dishId;
+      if (validMenuItemId) {
+        const exists = await prisma.menuItem.findUnique({
+          where: { id: validMenuItemId },
+          select: { id: true },
+        });
+        if (!exists) validMenuItemId = sampleMenuItem?.id;
+      } else {
+        validMenuItemId = sampleMenuItem?.id;
+      }
+
+      if (validMenuItemId) {
+        await prisma.orderItem.create({
+          data: {
+            id: item.id,
+            orderBatchId: batch.id,
+            menuItemId: validMenuItemId,
+            quantity: item.quantity,
+            price: item.price,
+            notes: item.notes || null,
+            status: "COOKING",
+          },
+        }).catch((err) => {
+          console.warn("[Prisma] Lỗi tạo OrderItem:", err?.message);
+        });
+      }
+    }
+  } catch (err: any) {
+    console.warn("[Prisma] Lỗi lưu trữ Order xuống DB:", err?.message);
+  }
+}
+
 export const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   /**
    * 1. KHÁCH GỬI ĐƠN GỌI MÓN (Chờ quán duyệt trước khi vào bếp)
    * POST /api/orders/submit
    */
-  fastify.post("/submit", async (request, reply) => {
+  fastify.post(
+    "/submit",
+    {
+      preHandler: [async (req, rep) => antiSpamMiddleware(req, rep, "order")],
+    },
+    async (request, reply) => {
     const {
       storeId,
       tableId,
@@ -144,6 +223,11 @@ export const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       totalAmount: order.totalAmount,
     });
 
+    // Ghi nhận đơn hàng bền bỉ xuống database PostgreSQL qua Prisma
+    persistApprovedOrderToDb(order).catch((err) => {
+      console.warn("[Order] Lỗi lưu DB ngầm:", err?.message);
+    });
+
     return { success: true, message: `Đã duyệt đơn ${order.tableName} vào bếp`, data: order };
   });
 
@@ -230,13 +314,168 @@ export const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
     return { success: true, message: "Đã gửi yêu cầu hủy món" };
   });
 
-  // Màn hình KDS Bếp: Lấy danh sách món đang cần nấu
-  fastify.get("/kds/tickets", async (request, reply) => {
-    return { success: true, data: [] };
+  /**
+   * 6. LẤY TẤT CẢ MÓN ĐÃ ĐẶT CỦA BÀN TRONG PHIÊN HIỆN TẠI (Đồng bộ đa thiết bị & sau khi F5)
+   * GET /api/orders/:storeId/table/:tableId
+   */
+  fastify.get("/:storeId/table/:tableId", async (request, reply) => {
+    const { storeId, tableId } = request.params as { storeId: string; tableId: string };
+    const { tableCode } = (request.query || {}) as { tableCode?: string };
+
+    const orders = Array.from(pendingOrders.values()).filter(
+      (o) =>
+        o.storeId === storeId &&
+        (o.tableId === tableId ||
+          (tableCode && o.tableCode.toUpperCase() === tableCode.toUpperCase())) &&
+        o.status !== "REJECTED"
+    );
+
+    let allItems = orders.flatMap((o) =>
+      o.items.map((it) => ({
+        ...it,
+        orderId: o.orderId,
+        orderedAt: new Date(o.submittedAt).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      }))
+    );
+
+    // Nếu in-memory không có (ví dụ server vừa restart), fallback truy vấn từ PostgreSQL
+    if (allItems.length === 0) {
+      try {
+        const activeSession = await prisma.orderSession.findFirst({
+          where: {
+            storeId,
+            tableId,
+            status: "ACTIVE",
+          },
+          include: {
+            batches: {
+              include: {
+                items: {
+                  include: { menuItem: true },
+                },
+              },
+            },
+          },
+        });
+
+        if (activeSession && activeSession.batches.length > 0) {
+          allItems = activeSession.batches.flatMap((b) =>
+            b.items.map((it) => ({
+              id: it.id,
+              dishId: it.menuItemId,
+              name: it.menuItem?.name || "Món ăn",
+              price: it.price,
+              quantity: it.quantity,
+              notes: it.notes || "",
+              category: "Món đã gọi",
+              status: (it.status === "QUEUED" ? "PENDING_APPROVAL" : it.status) as any,
+              orderId: b.id,
+              orderedAt: new Date(it.createdAt).toLocaleTimeString("vi-VN", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }))
+          );
+        }
+      } catch (err: any) {
+        console.warn("[Prisma] Lỗi đọc OrderSession từ DB:", err?.message);
+      }
+    }
+
+    return {
+      success: true,
+      orders,
+      items: allItems,
+      totalAmount: allItems
+        .filter((it) => it.status !== "CANCELLED")
+        .reduce((sum, it) => sum + it.price * it.quantity, 0),
+    };
   });
 
-  // Bếp cập nhật trạng thái món: Đang nấu -> Xong
+  // Màn hình KDS Bếp: Lấy danh sách vé món đang cần nấu (Hỗ trợ cả /kds/tickets và /:storeId/kds/tickets)
+  const handleGetKdsTickets = async (request: any) => {
+    const storeId = request.params?.storeId || request.query?.storeId;
+    const allOrders = Array.from(pendingOrders.values()).filter(
+      (o) => (!storeId || o.storeId === storeId) && o.status !== "REJECTED"
+    );
+
+    const tickets = allOrders
+      .filter((o) => o.items.some((i) => i.status === "COOKING" || i.status === "PENDING_APPROVAL"))
+      .map((o) => {
+        const cookingItems = o.items.filter((i) => i.status !== "CANCELLED");
+        return {
+          id: o.orderId,
+          ticketCode: o.orderId.slice(-6).toUpperCase(),
+          tableName: o.tableName || `Bàn ${o.tableCode}`,
+          tableCode: o.tableCode,
+          station: "KITCHEN",
+          status: o.items.some((i) => i.status === "COOKING") ? "IN_PROGRESS" : "NEW",
+          createdAt: o.submittedAt,
+          priority: "NORMAL",
+          items: cookingItems.map((it) => ({
+            id: it.id,
+            name: it.name,
+            quantity: it.quantity,
+            notes: it.notes,
+            status: it.status === "COOKING" ? "COOKING" : "QUEUED",
+          })),
+        };
+      });
+
+    return { success: true, count: tickets.length, data: tickets };
+  };
+
+  fastify.get("/kds/tickets", handleGetKdsTickets);
+  fastify.get("/:storeId/kds/tickets", handleGetKdsTickets);
+
+  // Bếp hoặc Quán cập nhật trạng thái món: COOKING -> SERVED hoặc CANCELLED
   fastify.patch("/items/:itemId/status", async (request, reply) => {
-    return { success: true };
+    const { itemId } = request.params as { itemId: string };
+    const { storeId, tableId, tableCode, status, dishName } = (request.body || {}) as {
+      storeId?: string;
+      tableId?: string;
+      tableCode?: string;
+      status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
+      dishName?: string;
+    };
+
+    let updated = false;
+    for (const [_, order] of pendingOrders) {
+      if (storeId && order.storeId !== storeId) continue;
+      const targetItem = order.items.find((i) => i.id === itemId || (dishName && i.name === dishName));
+      if (targetItem) {
+        targetItem.status = status;
+        updated = true;
+      }
+    }
+
+    if (storeId) {
+      emitToStore(storeId, SocketEvents.ORDER_ITEM_STATUS_CHANGED, {
+        storeId,
+        tableId,
+        tableCode,
+        itemId,
+        dishName,
+        status,
+      });
+    }
+
+    return { success: true, updated, message: `Đã cập nhật trạng thái món thành ${status}` };
   });
 };
+
+export function clearOrdersForTable(storeId: string, tableId?: string, tableCode?: string) {
+  for (const [orderId, order] of pendingOrders) {
+    if (order.storeId === storeId) {
+      if (
+        (tableId && order.tableId === tableId) ||
+        (tableCode && order.tableCode.toUpperCase() === tableCode.toUpperCase())
+      ) {
+        pendingOrders.delete(orderId);
+      }
+    }
+  }
+}

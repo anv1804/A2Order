@@ -28,6 +28,8 @@ export type KdsStation = "KITCHEN" | "BAR" | "DESSERT";
 export type KdsStatus = "NEW" | "IN_PROGRESS" | "DONE";
 
 export interface KdsOrderItem {
+  id?: string;
+  name?: string;
   dishName: string;
   quantity: number;
   notes?: string;
@@ -40,6 +42,7 @@ export interface CmsKdsTicket {
   tableName: string;
   orderTime: string;
   orderTimestamp: number;
+  createdAt?: number;
   status: KdsStatus;
   station: KdsStation;
   items: KdsOrderItem[];

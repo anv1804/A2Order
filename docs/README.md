@@ -12,6 +12,11 @@ Hệ thống tài liệu A2Order được cấu trúc thành **3 phân vùng chu
 docs/
 ├── README.md                          <-- [Bạn đang ở đây] Bản đồ tra cứu tài liệu
 ├── .agent-guidelines.md               <-- QUY TẮC BẤT BIẾN cho AI Agent khi lập trình
+├── AI_DEVELOPMENT_GUIDE.md            <-- Cẩm nang phát triển cùng AI Agent
+├── BAO_CAO_DO_AN_A2ORDER.md           <-- Báo cáo đề tài hệ thống toàn diện
+├── ARCHITECTURE_FLOW.md               <-- Sơ đồ luồng dữ liệu & kiến trúc vận hành
+├── HE_THONG_A2ORDER_VA_BAO_MAT.md     <-- Báo cáo bảo mật 5 lớp & kiến trúc phòng thủ
+├── UI_UX_GUIDELINES.md                <-- Hướng dẫn thiết kế giao diện & trải nghiệm
 │
 ├── 00-overview/                       <-- TỔNG QUAN HỆ THỐNG
 │   ├── 01-project-vision.md           # Tầm nhìn, định vị sản phẩm & sứ mệnh F&B
@@ -21,7 +26,11 @@ docs/
 │   ├── database-schema.md             # Mô hình dữ liệu Prisma/PostgreSQL, Multi-tenant Isolation
 │   ├── security-and-rbac.md           # Hệ thống phòng thủ 5 lớp, Ma trận phân quyền 6 cấp
 │   ├── realtime-websocket.md          # Giao thức thời gian thực Bàn -> Bếp -> Thu ngân
-│   └── pwa-offline-strategy.md        # Hướng dẫn cài đặt PWA (iOS/Android) & Cache Service Worker
+│   ├── pwa-offline-strategy.md        # Hướng dẫn cài đặt PWA (iOS/Android) & Cache Service Worker
+│   ├── anti-spam-and-idempotency.md   # Cơ chế chống Spam, Rate-limit & Idempotency Key
+│   ├── design-system-standards.md     # Quy chuẩn Design System & UI Components
+│   ├── design-tokens-palette.md       # Bảng mã màu tokens & bảng màu chuẩn F&B
+│   └── tech-stack-decision.md         # Quyết định công nghệ Frontend & Backend
 │
 ├── 02-features/                       <-- TÀI LIỆU CHỨC NĂNG (Mỗi tính năng 1 module riêng)
 │   ├── TEMPLATE_FEATURE.md            # MẪU CHUẨN BẮT BUỘC khi phát triển tính năng mới

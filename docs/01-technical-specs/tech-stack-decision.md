@@ -15,10 +15,11 @@
 ```
 A2Order/
 ├── apps/
-│   ├── client/       <-- FRONTEND: React (Vite) + TailwindCSS + Zustand + PWA
-│   └── server/       <-- BACKEND: Node.js (Fastify) + TypeScript + Socket.io + Prisma
+│   ├── cms/          <-- ALL-IN-ONE APP (Port 3001, v7.0.0): Super Admin + Owner CMS + POS + KDS + Customer QR
+│   ├── client/       <-- STANDALONE CLIENT (Port 5173, v1.0.0): Prototype POS PWA
+│   └── server/       <-- BACKEND (Port 4000): Fastify + TypeScript + Socket.io + Prisma (Supabase Postgres)
 ├── packages/
-│   └── shared/       <-- SHARED: Types, Enums, Zod Schemas, Socket Events
+│   └── shared/       <-- SHARED: Types, Enums, Zod Schemas, Socket Events, Pricing Rules
 └── docs/             <-- HỆ THỐNG TÀI LIỆU TOÀN DIỆN
 ```
 

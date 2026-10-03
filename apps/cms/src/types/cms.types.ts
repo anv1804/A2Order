@@ -796,4 +796,86 @@ export interface CrmCampaign {
   lastRunAt?: string;
 }
 
+// ================= GỌI MÓN POS NHÂN VIÊN & KHÁCH QUÉT QR (STAFF ORDER & QR) =================
+export interface PendingSessionRequest {
+  tableId: string;
+  tableName: string;
+  tableCode: string;
+  zoneName: string;
+  storeId: string;
+  requestedAt: number;
+  guestCount: number;
+}
+
+export interface DishItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  description: string;
+  isPopular?: boolean;
+  modifiers?: string[];
+}
+
+export interface ServiceRequestItem {
+  id: string;
+  tableId?: string;
+  tableName?: string;
+  type: string;
+  note?: string;
+  time: string;
+}
+
+export interface VoidCookingModalState {
+  isOpen: boolean;
+  item: WaiterOrderItem | null;
+  itemIndex: number;
+  reason: string;
+  pin: string;
+  pinError: string;
+  notes: string;
+}
+
+export interface CustomerOrderedItem {
+  id: string;
+  dishId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
+  orderId?: string;
+  orderedAt: string;
+  notes?: string;
+}
+
+export interface CustomerMenuItem {
+  id: string;
+  name: string;
+  price: number;
+  image?: string;
+  isAvailable?: boolean;
+}
+
+export interface CustomerCategory {
+  id: string;
+  name: string;
+  menuItems: CustomerMenuItem[];
+}
+
+export interface CustomerCartItem {
+  menuItem: CustomerMenuItem;
+  quantity: number;
+  notes?: string;
+}
+
+export interface CustomerVoucher {
+  code: string;
+  discountType: "PERCENT" | "FIXED";
+  value: number;
+  description: string;
+  minOrder?: number;
+}
+
+
 

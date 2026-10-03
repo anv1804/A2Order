@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { prisma } from "../../core/database/prismaClient.js";
 import { emitToStore } from "../../core/websocket/socketServer.js";
 import { SocketEvents } from "@a2order/shared";
+import { clearOrdersForTable } from "../order/order.routes.js";
 
 // Bộ đệm lưu trữ tạm thời các yêu cầu mở bàn chờ nhân viên duyệt (Staff Confirmation Gate)
 interface PendingSessionRequest {
@@ -341,7 +342,7 @@ export const tableRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
 
       const activeSession = table.orderSessions[0] || null;
       const isSessionActive = Boolean(
-        activeSession || (table.currentSessionId && table.status !== "EMPTY")
+        table.status !== "EMPTY" && (activeSession || table.currentSessionId)
       );
       const isPending = pendingSessionRequests.has(`${storeId}:${table.id}`);
 
@@ -562,9 +563,15 @@ export const tableRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) 
       const newPin = getTablePin(updatedTable);
 
       pendingSessionRequests.delete(`${storeId}:${tableId}`);
+      clearOrdersForTable(storeId, tableId, table.code || undefined);
 
       // Bắn WebSocket thông báo phiên đã đóng -> khách ở nhà hoặc link cũ bị văng ra
-      emitToStore(storeId, SocketEvents.SESSION_CLOSED, { storeId, tableId, tableName: table.name });
+      emitToStore(storeId, SocketEvents.SESSION_CLOSED, {
+        storeId,
+        tableId,
+        tableCode: table.code,
+        tableName: table.name,
+      });
       emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, { storeId, tableId, status: "EMPTY", pin: newPin });
 
       return { success: true, message: `Đã đóng phiên ${table.name}`, pin: newPin };

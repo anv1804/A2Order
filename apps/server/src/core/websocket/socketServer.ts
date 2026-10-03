@@ -83,6 +83,66 @@ export function initSocketServer(httpServer: HttpServer): SocketIOServer {
       }
     });
 
+    // Bếp hoặc Thu ngân đổi trạng thái món (Chờ -> Đang nấu -> Đã lên bàn)
+    socket.on(SocketEvents.ORDER_ITEM_STATUS_CHANGED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.ORDER_ITEM_STATUS_CHANGED, payload);
+      }
+    });
+
+    // Khách hoặc nhân viên yêu cầu tính tiền
+    socket.on(SocketEvents.BILL_REQUESTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.BILL_REQUESTED, payload);
+      }
+    });
+
+    // Xác nhận đã thanh toán tiền
+    socket.on(SocketEvents.PAYMENT_CONFIRMED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.PAYMENT_CONFIRMED, payload);
+      }
+    });
+
+    // Sự kiện mở bàn và phiên bàn
+    socket.on(SocketEvents.SESSION_REQUESTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.SESSION_REQUESTED, payload);
+      }
+    });
+
+    socket.on(SocketEvents.SESSION_APPROVED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.SESSION_APPROVED, payload);
+      }
+    });
+
+    socket.on(SocketEvents.SESSION_REJECTED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.SESSION_REJECTED, payload);
+      }
+    });
+
+    socket.on(SocketEvents.SESSION_CLOSED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.SESSION_CLOSED, payload);
+      }
+    });
+
+    socket.on(SocketEvents.TABLE_STATUS_UPDATED, (payload: any) => {
+      const targetStore = payload?.storeId || currentStoreId;
+      if (targetStore) {
+        emitToStore(targetStore, SocketEvents.TABLE_STATUS_UPDATED, payload);
+      }
+    });
+
     // Đo tốc độ đường truyền (Heartbeat Ping/Pong) cho Super Admin & Quán
     socket.on(SocketEvents.PING, (timestamp: number) => {
       const now = Date.now();

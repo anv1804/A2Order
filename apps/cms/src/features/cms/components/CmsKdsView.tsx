@@ -2,10 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Button, Badge, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { KdsStation, KdsStatus, KdsOrderItem, CmsKdsTicket } from "@/types/kds.types";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import { getSocketClient, joinStoreRoom } from "@/lib/socket";
+import { SocketEvents } from "@a2order/shared";
+import { sound } from "@/lib/sound";
+import { orderApi } from "@/services/api/orderApi";
+import { requestApi } from "@/services/api/apiClient";
 
 const MOCK_TICKETS: CmsKdsTicket[] = [];
-
-import { usePersistentState } from "@/hooks/usePersistentState";
 
 function minutesAgo(ts: number): number {
   return Math.floor((Date.now() - ts) / 60000);
@@ -17,15 +21,126 @@ export const CmsKdsView: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>("kds_sound_enabled", true);
   const [now, setNow] = useState(Date.now());
 
+  const userStr = typeof window !== "undefined" ? localStorage.getItem("a2order_current_user") || localStorage.getItem("user") : null;
+  const storeId = userStr ? JSON.parse(userStr).storeId || "store-bubble-tea" : "store-bubble-tea";
+
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
 
+  // 1. Tải danh sách vé từ Backend API khi mở màn hình Bếp
+  useEffect(() => {
+    requestApi<any>(`/orders/${storeId}/kds/tickets`).then((res) => {
+      const serverTickets = res && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+      if (serverTickets.length > 0) {
+        setTickets((prev) => {
+          const map = new Map<string, CmsKdsTicket>();
+          serverTickets.forEach((t: any) => map.set(t.id, t));
+          prev.forEach((t) => {
+            if (!map.has(t.id) || t.status === "DONE" || t.status === "IN_PROGRESS") {
+              map.set(t.id, t);
+            }
+          });
+          return Array.from(map.values());
+        });
+      }
+    }).catch(() => {});
+  }, [storeId, setTickets]);
+
+  // 2. Lắng nghe WebSocket sự kiện thời gian thực (Bàn -> Thu ngân -> Bếp KDS)
+  useEffect(() => {
+    const socket = getSocketClient();
+    joinStoreRoom(storeId);
+
+    const handleNewOrder = (payload: any) => {
+      if (!payload || !payload.items || payload.items.length === 0) return;
+      if (payload.storeId && payload.storeId !== storeId) return;
+
+      const orderId = payload.orderId || `ord-${Date.now()}`;
+      const nowTs = payload.submittedAt || Date.now();
+      const newTicket: CmsKdsTicket = {
+        id: orderId,
+        ticketCode: orderId.slice(-6).toUpperCase(),
+        tableName: payload.tableName || `Bàn ${payload.tableCode || ""}`,
+        station: "KITCHEN",
+        status: "NEW",
+        orderTime: new Date(nowTs).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+        orderTimestamp: nowTs,
+        createdAt: nowTs,
+        waiterName: payload.waiterName || "Khách QR",
+        priority: payload.priority || "NORMAL",
+        items: payload.items.map((it: any) => ({
+          id: it.id || `kds-it-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+          dishName: it.name || it.dishName || "Món ăn",
+          name: it.name || it.dishName || "Món ăn",
+          quantity: it.quantity || 1,
+          notes: it.notes,
+        })),
+      };
+
+      setTickets((prev) => {
+        if (prev.some((t) => t.id === newTicket.id)) return prev;
+        return [newTicket, ...prev];
+      });
+
+      if (soundEnabled) {
+        sound.playKitchenChime();
+      }
+      toast.info(`🔔 Bếp có đơn mới: ${newTicket.tableName} (${newTicket.items.length} món)`);
+    };
+
+    const handleItemCancelled = (payload: any) => {
+      if (!payload || !payload.itemId) return;
+      setTickets((prev) =>
+        prev.map((t) => ({
+          ...t,
+          items: t.items.map((it) =>
+            it.id === payload.itemId ? { ...it, isCanceled: true } : it
+          ),
+        }))
+      );
+      toast.warning(`⚠️ Món ${payload.dishName || ""} tại ${payload.tableName || "bàn"} đã bị hủy!`);
+    };
+
+    const handleItemStatusChanged = (payload: any) => {
+      if (!payload || !payload.itemId) return;
+      setTickets((prev) =>
+        prev.map((t) => ({
+          ...t,
+          items: t.items.map((it) =>
+            it.id === payload.itemId ? { ...it, status: payload.status } : it
+          ),
+        }))
+      );
+    };
+
+    socket.on(SocketEvents.ORDER_APPROVED, handleNewOrder);
+    socket.on(SocketEvents.ORDER_SUBMITTED, handleNewOrder);
+    socket.on(SocketEvents.ORDER_ITEM_CANCELLED, handleItemCancelled);
+    socket.on(SocketEvents.ORDER_ITEM_STATUS_CHANGED, handleItemStatusChanged);
+
+    return () => {
+      socket.off(SocketEvents.ORDER_APPROVED, handleNewOrder);
+      socket.off(SocketEvents.ORDER_SUBMITTED, handleNewOrder);
+      socket.off(SocketEvents.ORDER_ITEM_CANCELLED, handleItemCancelled);
+      socket.off(SocketEvents.ORDER_ITEM_STATUS_CHANGED, handleItemStatusChanged);
+    };
+  }, [storeId, soundEnabled, setTickets]);
+
   const handleStartCooking = (ticket: CmsKdsTicket) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
     );
+    ticket.items.forEach((it) => {
+      if (it.id) {
+        orderApi.updateItemStatus(it.id, {
+          storeId,
+          status: "COOKING",
+          dishName: it.dishName || it.name,
+        }).catch(() => {});
+      }
+    });
     toast.info(`Bếp đã nhận chế biến vé ${ticket.ticketCode} - ${ticket.tableName}`);
   };
 
@@ -33,13 +148,34 @@ export const CmsKdsView: React.FC = () => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "DONE" } : t))
     );
-    toast.success(`Vé ${ticket.ticketCode} đã xong! Phục vụ mang ra bàn.`);
+    ticket.items.forEach((it) => {
+      if (it.id) {
+        orderApi.updateItemStatus(it.id, {
+          storeId,
+          status: "SERVED",
+          dishName: it.dishName || it.name,
+        }).catch(() => {});
+      }
+    });
+    if (soundEnabled) {
+      sound.playKitchenChime();
+    }
+    toast.success(`Vé ${ticket.ticketCode} (${ticket.tableName}) đã nấu xong! Phục vụ lên món.`);
   };
 
   const handleRecall = (ticket: CmsKdsTicket) => {
     setTickets((prev) =>
       prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
     );
+    ticket.items.forEach((it) => {
+      if (it.id) {
+        orderApi.updateItemStatus(it.id, {
+          storeId,
+          status: "COOKING",
+          dishName: it.dishName || it.name,
+        }).catch(() => {});
+      }
+    });
     toast.info(`Đã thu hồi vé ${ticket.ticketCode} về trạng thái Đang Chế Biến`);
   };
 

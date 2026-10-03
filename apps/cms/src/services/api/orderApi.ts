@@ -97,4 +97,37 @@ export const orderApi = {
       body: JSON.stringify(data),
     });
   },
+
+  /**
+   * Lấy danh sách món đã đặt của bàn trong phiên hiện tại (đồng bộ nhiều thiết bị)
+   */
+  async getTableOrders(storeId: string, tableId: string, tableCode?: string): Promise<{
+    orders: PendingOrder[];
+    items: PendingOrderItem[];
+    totalAmount: number;
+  }> {
+    const query = tableCode ? `?tableCode=${encodeURIComponent(tableCode)}` : "";
+    const res = await requestApi<any>(`/orders/${storeId}/table/${tableId}${query}`);
+    return res && res.data ? res.data : res;
+  },
+
+  /**
+   * Bếp hoặc Quán cập nhật trạng thái món (COOKING, SERVED, CANCELLED)
+   */
+  async updateItemStatus(
+    itemId: string,
+    data: {
+      storeId: string;
+      tableId?: string;
+      tableCode?: string;
+      status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
+      dishName?: string;
+    }
+  ): Promise<any> {
+    return requestApi(`/orders/items/${itemId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
 };
+

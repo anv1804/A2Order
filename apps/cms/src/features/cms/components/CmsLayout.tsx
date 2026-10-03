@@ -416,12 +416,14 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
         </div>
       </div>
 
-      {/* Floating Support Group: Back to Top, Chat Drawer, and Admin Request Modal */}
-      <FloatingSupportGroup
-        storeName={displayStore}
-        storeId={(currentUser as any)?.storeId || "store-bubble-tea"}
-        currentUser={currentUser}
-      />
+      {/* Floating Support Group: Back to Top, Chat Drawer, and Admin Request Modal (ẩn khi ở màn hình POS gọi món để tránh che nút thanh toán) */}
+      {activeMenu !== "staff_order" && (
+        <FloatingSupportGroup
+          storeName={displayStore}
+          storeId={(currentUser as any)?.storeId || "store-bubble-tea"}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };

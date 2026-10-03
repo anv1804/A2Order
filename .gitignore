@@ -37,3 +37,7 @@ dev.db-journal
 # Agent skills
 .agents/
 skills-lock.json
+
+# Scratch scripts
+*.py
+scratch/
