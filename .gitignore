@@ -34,6 +34,11 @@ pnpm-debug.log*
 dev.db
 dev.db-journal
 
-# Agent skills
-.agents/
+# Temporary scripts & Python artifacts
+__pycache__/
+*.py[cod]
+replace_*.py
+
+# Agent dynamic lockfiles
 skills-lock.json
+
