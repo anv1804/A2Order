@@ -3,13 +3,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { Button, Badge, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
-import { TableItem, CashierBillItem } from "@/types";
+import { TableItem, CashierBillItem, CashierWorkstationProps } from "@/types";
 import { SAMPLE_BILLS } from "@/data";
-
-interface CashierWorkstationProps {
-  tables: TableItem[];
-  onFinishPayment: (tableId: string) => void;
-}
 
 export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   tables,

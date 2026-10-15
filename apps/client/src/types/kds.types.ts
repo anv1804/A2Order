@@ -21,3 +21,15 @@ export interface KdsTicketCardProps {
   onItemStatusToggle: (itemId: string) => void;
   onCompleteTicket: (ticketId: string) => void;
 }
+
+export interface KdsDashboardProps {
+  kdsTickets: KdsTicket[];
+  onItemStatusToggle: (itemId: string) => void;
+  onCompleteTicket: (ticketId: string) => void;
+}
+
+export interface UseKdsActionsParams {
+  setKdsTickets: React.Dispatch<React.SetStateAction<KdsTicket[]>>;
+}
+
+

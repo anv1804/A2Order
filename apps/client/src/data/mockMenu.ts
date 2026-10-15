@@ -1,4 +1,4 @@
-import { MenuItemData } from "@/types";
+import { MenuItemData, MenuDishItem } from "@/types";
 
 /** Menu hiển thị trên tab "Kiểm Soát Thực Đơn (Báo Hết Món)" trong App.tsx */
 export const INITIAL_MENU: (MenuItemData & { category: string })[] = [
@@ -68,36 +68,12 @@ export const INITIAL_MENU: (MenuItemData & { category: string })[] = [
   },
 ];
 
-export interface DishOption {
-  id: string;
-  name: string;
-  priceModifier?: number;
-}
-
-export interface DishOptionGroup {
-  id: string;
-  name: string;
-  required?: boolean;
-  options: DishOption[];
-}
-
-/** Interface cho món ăn trong OrderMenuModal (có thêm fields riêng) */
-export interface MenuDishItem {
-  id: string;
-  name: string;
-  category: "PHO_BUN" | "NUONG_LAU" | "KHAI_VI" | "DOUONG";
-  categoryLabel: string;
-  price: number;
-  image?: string;
-  isAvailable: boolean;
-  isPopular?: boolean;
-  variants?: { id: string; name: string; price: number }[];
-  optionGroups?: DishOptionGroup[];
-}
+export { QUICK_NOTES } from "./menuConstants";
 
 /** Menu database dùng bên trong OrderMenuModal */
 export const MENU_DATABASE: MenuDishItem[] = [
   {
+
     id: "m1",
     name: "Phở Bò Tái Nạm",
     category: "PHO_BUN",
@@ -286,5 +262,3 @@ export const MENU_DATABASE: MenuDishItem[] = [
   },
 ];
 
-/** Ghi chú nhanh khi gọi món */
-export const QUICK_NOTES = ["Không hành", "Nhiều nước béo", "Ít cay", "Cay nhiều", "Ít đá", "Để riêng nước dùng"];

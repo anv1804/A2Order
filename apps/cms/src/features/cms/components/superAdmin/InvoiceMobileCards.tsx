@@ -1,18 +1,12 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { SoftwareInvoiceRecord } from "@/types/cms.types";
+import { SoftwareInvoiceRecord, InvoiceMobileCardsProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 
-export interface InvoiceMobileCardsProps {
-  paginatedInvoices: SoftwareInvoiceRecord[];
-  selectedInvoiceIds: string[];
-  onToggleSelectInvoice: (id: string) => void;
-  setViewingInvoice: (inv: SoftwareInvoiceRecord) => void;
-  handleConfirmInvoice: (inv: SoftwareInvoiceRecord) => void;
-  confirmingInvoiceId: string | null;
-}
+export type { InvoiceMobileCardsProps };
 
 export const InvoiceMobileCards: React.FC<InvoiceMobileCardsProps> = ({
+
   paginatedInvoices,
   selectedInvoiceIds,
   onToggleSelectInvoice,

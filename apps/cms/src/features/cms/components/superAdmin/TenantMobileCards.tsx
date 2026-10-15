@@ -1,18 +1,12 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { TenantStoreRecord, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
+import { TenantStoreRecord, BUSINESS_TYPE_CONFIG, TenantMobileCardsProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface TenantMobileCardsProps {
-  paginatedStores: TenantStoreRecord[];
-  selectedStoreIds: string[];
-  onToggleSelectStore: (storeId: string) => void;
-  setViewingStoreDetails: (store: TenantStoreRecord) => void;
-  setLicenseTargetStore: (store: TenantStoreRecord) => void;
-  handleToggleStoreStatus: (store: TenantStoreRecord) => void;
-}
+export type { TenantMobileCardsProps };
 
 export const TenantMobileCards: React.FC<TenantMobileCardsProps> = ({
+
   paginatedStores,
   selectedStoreIds,
   onToggleSelectStore,

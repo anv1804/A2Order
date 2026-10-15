@@ -15,33 +15,15 @@ import { getSocketClient, joinStoreRoom } from "@/lib/socket";
 import { SocketEvents } from "@a2order/shared";
 import { tableApi } from "@/services/api/tableApi";
 import { menuApi } from "@/services/api/menuApi";
-import { orderApi, PendingOrder } from "@/services/api/orderApi";
+import { orderApi } from "@/services/api/orderApi";
 import { sound } from "@/lib/sound";
+import { PendingSessionRequest, StaffOrderDishItem as DishItem, PendingOrder } from "@/types";
 
-export interface PendingSessionRequest {
-  tableId: string;
-  tableName: string;
-  tableCode: string;
-  zoneName: string;
-  storeId: string;
-  requestedAt: number;
-  guestCount: number;
-}
-
-interface DishItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  image: string;
-  description: string;
-  isPopular?: boolean;
-  modifiers?: string[];
-}
 
 const SAMPLE_DISHES: DishItem[] = [];
 
 const INITIAL_TABLES: WaiterTableOrder[] = [];
+
 
 const calculateTableTotal = (
   items: WaiterOrderItem[],

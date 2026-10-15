@@ -2,10 +2,7 @@ import React from "react";
 import { Icon } from "@/components/ui";
 import { SystemAuditLogRecord } from "@/types/cms.types";
 
-export interface AuditMobileCardsProps {
-  paginatedLogs: SystemAuditLogRecord[];
-  onViewDetails: (log: SystemAuditLogRecord) => void;
-}
+import { AuditMobileCardsProps } from "@/types";
 
 export const AuditMobileCards: React.FC<AuditMobileCardsProps> = ({
   paginatedLogs,

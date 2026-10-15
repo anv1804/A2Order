@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
+import { UnsavedChangesState } from "@/types";
 
-interface UnsavedChangesState {
-  dirtySources: Record<string, boolean>;
-  setDirty: (source: string, dirty: boolean) => void;
-  clearAll: () => void;
-}
 
 export const useUnsavedChangesStore = create<UnsavedChangesState>((set) => ({
   dirtySources: {},

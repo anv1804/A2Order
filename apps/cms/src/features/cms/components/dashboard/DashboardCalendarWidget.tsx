@@ -1,15 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@/components/ui";
 import { usePersistentState } from "@/hooks/usePersistentState";
-
-export interface CalendarNote {
-  id: string;
-  date: string; // YYYY-MM-DD
-  content: string;
-  tag: "URGENT" | "INVENTORY" | "STAFF" | "GENERAL";
-  isCompleted: boolean;
-  createdAt: string;
-}
+import { CalendarNote, DashboardCalendarWidgetProps } from "@/types";
 
 const TAG_CONFIG: Record<CalendarNote["tag"], { label: string; bg: string; text: string; border: string }> = {
   URGENT: { label: "Khẩn cấp", bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
@@ -27,11 +19,8 @@ const formatDateKey = (d: Date): string => {
 
 const VIETNAMESE_DAYS = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
 
-export interface DashboardCalendarWidgetProps {
-  onNavigateTab?: (tab: string) => void;
-}
-
 export const DashboardCalendarWidget: React.FC<DashboardCalendarWidgetProps> = ({ onNavigateTab }) => {
+
   // 1. Đồng hồ thời gian thực
   const [now, setNow] = useState(new Date());
 

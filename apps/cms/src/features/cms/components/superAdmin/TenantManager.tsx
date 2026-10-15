@@ -2,35 +2,14 @@ import React, { useState, useMemo, useEffect } from "react";
 import { TenantDesktopTable } from "./TenantDesktopTable";
 import { TenantMobileCards } from "./TenantMobileCards";
 import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
-import { TenantStoreRecord } from "@/types/cms.types";
+import { TenantStoreRecord, TenantManagerProps } from "@/types";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface TenantManagerProps {
-  stores: TenantStoreRecord[];
-  storeSearch: string;
-  setStoreSearch: (val: string) => void;
-  storeStatusFilter: string;
-  setStoreStatusFilter: (val: string) => void;
-  storePlanFilter: string;
-  setStorePlanFilter: (val: string) => void;
-  storeProvinceFilter: string;
-  setStoreProvinceFilter: (val: string) => void;
-  tenantPage: number;
-  setTenantPage: (page: number) => void;
-  filteredStores: TenantStoreRecord[];
-  paginatedStores: TenantStoreRecord[];
-  TENANT_PAGE_SIZE: number;
-  downloadCsv: (filename: string, headers: string[], rows: unknown[][]) => void;
-  setViewingStoreDetails: (store: TenantStoreRecord) => void;
-  setLicenseTargetStore: (store: TenantStoreRecord) => void;
-  handleToggleStoreStatus: (store: TenantStoreRecord) => void;
-  onOpenNewStoreModal?: () => void;
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+export type { TenantManagerProps };
 
 export const TenantManager: React.FC<TenantManagerProps> = ({
+
   stores,
   storeSearch,
   setStoreSearch,

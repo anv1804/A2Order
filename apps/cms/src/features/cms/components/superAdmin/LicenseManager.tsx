@@ -2,30 +2,14 @@ import React, { useState, useMemo, useEffect } from "react";
 import { LicenseDesktopTable } from "./LicenseDesktopTable";
 import { LicenseMobileCards } from "./LicenseMobileCards";
 import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
-import { LicenseKeyRecord } from "./superAdminMockData";
+import { LicenseKeyRecord, LicenseManagerProps } from "@/types";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface LicenseManagerProps {
-  licenses: LicenseKeyRecord[];
-  licenseSearch: string;
-  setLicenseSearch: (val: string) => void;
-  licenseStatusFilter: string;
-  setLicenseStatusFilter: (val: string) => void;
-  licensePage: number;
-  setLicensePage: (page: number) => void;
-  filteredLicenses: LicenseKeyRecord[];
-  paginatedLicenses: LicenseKeyRecord[];
-  LICENSE_PAGE_SIZE: number;
-  downloadCsv: (filename: string, headers: string[], rows: unknown[][]) => void;
-  setIsCreateLicenseModalOpen: (val: boolean) => void;
-  handleCopyKey: (key: string) => void;
-  handleRevokeKey: (lic: LicenseKeyRecord) => void;
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+export type { LicenseManagerProps };
 
 export const LicenseManager: React.FC<LicenseManagerProps> = ({
+
   licenses,
   licenseSearch,
   setLicenseSearch,

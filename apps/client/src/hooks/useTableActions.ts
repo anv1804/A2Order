@@ -1,20 +1,7 @@
 import { TableStatus, OrderItemStatus } from "@a2order/shared";
-import { TableItem, KdsTicket, CartItem } from "@/types";
+import { TableItem, KdsTicket, CartItem, UseTableActionsParams } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
-
-interface UseTableActionsParams {
-  tables: TableItem[];
-  setTables: React.Dispatch<React.SetStateAction<TableItem[]>>;
-  setKdsTickets: React.Dispatch<React.SetStateAction<KdsTicket[]>>;
-  setMyStaffSales: React.Dispatch<React.SetStateAction<number>>;
-  setMyServedTablesCount: React.Dispatch<React.SetStateAction<number>>;
-  setActiveTableForOrder: React.Dispatch<React.SetStateAction<TableItem | null>>;
-  setIsOrderModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  setActiveTableMenuActions: React.Dispatch<React.SetStateAction<TableItem | null>>;
-  setActiveTab: React.Dispatch<React.SetStateAction<"tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings">>;
-  currentStaff: { role: string };
-}
 
 export function useTableActions(params: UseTableActionsParams) {
   const {

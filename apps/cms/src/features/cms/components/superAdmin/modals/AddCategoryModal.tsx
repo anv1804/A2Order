@@ -2,15 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { FnbCategoryTemplate, FnbMajorCategory, FNB_MAJOR_CONFIG } from "@a2order/shared";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
+import { AddCategoryModalProps } from "@/types";
 
-export interface AddCategoryModalProps {
-  isOpen: boolean;
-  initialMajorType?: FnbMajorCategory;
-  onClose: () => void;
-  onSave: (category: Omit<FnbCategoryTemplate, "id">) => void;
-}
+export type { AddCategoryModalProps };
 
 export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
+
   isOpen,
   initialMajorType = "FOOD",
   onClose,

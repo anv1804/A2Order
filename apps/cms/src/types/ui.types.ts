@@ -87,3 +87,89 @@ export interface PaginationProps {
   onPageChange: (page: number) => void;
   className?: string;
 }
+
+export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+  className?: string;
+}
+
+export interface SearchableSelectOption {
+  value: string;
+  label: string;
+  icon?: any;
+  badge?: string | number;
+  description?: string;
+}
+
+export interface SearchableSelectProps {
+  options: SearchableSelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  labelPrefix?: string;
+  className?: string;
+  triggerClassName?: string;
+  menuClassName?: string;
+  disabled?: boolean;
+  showSearch?: boolean;
+  align?: "left" | "right" | "auto";
+  id?: string;
+}
+
+export interface CheckboxProps {
+  checked: boolean;
+  indeterminate?: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  className?: string;
+  id?: string;
+  title?: string;
+  label?: React.ReactNode;
+  size?: "sm" | "md";
+}
+
+export interface PortalProps {
+  children: React.ReactNode;
+}
+
+export interface MobileInfiniteSentinelProps {
+  hasMore: boolean;
+  totalCount: number;
+  visibleCount?: number;
+  displayedCount?: number;
+  isLoadingMore?: boolean;
+  sentinelRef: React.RefObject<HTMLDivElement | null> | React.MutableRefObject<HTMLDivElement | null>;
+  className?: string;
+}
+
+export interface CmsPageHeaderProps {
+  title: string;
+  badge?: React.ReactNode;
+  description?: string;
+  actions?: React.ReactNode;
+  className?: string;
+}
+
+export interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export interface UseMobileInfiniteScrollProps<T> {
+  items: T[];
+  pageSize?: number;
+  mobileBreakpoint?: number;
+}
+
+export interface UnsavedChangesState {
+  dirtySources: Record<string, boolean>;
+  setDirty: (source: string, dirty: boolean) => void;
+  clearAll: () => void;
+}
+
+

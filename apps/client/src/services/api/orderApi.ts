@@ -1,31 +1,9 @@
 import { requestApi } from "./apiClient";
 
-export interface PendingOrderItem {
-  id: string;
-  dishId?: string;
-  name: string;
-  price: number;
-  quantity: number;
-  notes?: string;
-  category?: string;
-  status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
-}
+import type { PendingOrderItem, PendingOrder } from "@/types";
+export type { PendingOrderItem, PendingOrder };
 
-export interface PendingOrder {
-  orderId: string;
-  storeId: string;
-  tableId: string;
-  tableCode: string;
-  tableName: string;
-  items: PendingOrderItem[];
-  voucherCode?: string;
-  discountAmount?: number;
-  customerPhone?: string;
-  totalAmount: number;
-  finalAmount: number;
-  submittedAt: number;
-  status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
-}
+
 
 export const orderApi = {
   /**

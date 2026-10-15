@@ -1,32 +1,16 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
-import { SoftwareInvoiceRecord } from "@/types/cms.types";
+import { SoftwareInvoiceRecord, InvoiceManagerProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 import { InvoiceDesktopTable } from "./InvoiceDesktopTable";
 import { InvoiceMobileCards } from "./InvoiceMobileCards";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface InvoiceManagerProps {
-  invoices: SoftwareInvoiceRecord[];
-  invoiceSearch: string;
-  setInvoiceSearch: (val: string) => void;
-  invoiceStatusFilter: string;
-  setInvoiceStatusFilter: (val: string) => void;
-  invoicePage: number;
-  setInvoicePage: (page: number) => void;
-  filteredInvoices: SoftwareInvoiceRecord[];
-  paginatedInvoices: SoftwareInvoiceRecord[];
-  INVOICE_PAGE_SIZE: number;
-  downloadCsv: (filename: string, headers: string[], rows: unknown[][]) => void;
-  setViewingInvoice: (inv: SoftwareInvoiceRecord) => void;
-  handleConfirmInvoice: (inv: SoftwareInvoiceRecord) => void;
-  confirmingInvoiceId: string | null;
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+export type { InvoiceManagerProps };
 
 export const InvoiceManager: React.FC<InvoiceManagerProps> = ({
+
   invoices,
   invoiceSearch,
   setInvoiceSearch,

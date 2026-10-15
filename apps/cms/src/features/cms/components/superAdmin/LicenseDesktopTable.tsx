@@ -1,19 +1,11 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { LicenseKeyRecord } from "./superAdminMockData";
+import { LicenseKeyRecord, LicenseDesktopTableProps } from "@/types";
 
-export interface LicenseDesktopTableProps {
-  paginatedLicenses: LicenseKeyRecord[];
-  selectedLicenseIds: string[];
-  onToggleSelectLicense: (id: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  handleCopyKey: (key: string) => void;
-  handleRevokeKey: (lic: LicenseKeyRecord) => void;
-}
+export type { LicenseDesktopTableProps };
 
 export const LicenseDesktopTable: React.FC<LicenseDesktopTableProps> = ({
+
   paginatedLicenses,
   selectedLicenseIds,
   onToggleSelectLicense,

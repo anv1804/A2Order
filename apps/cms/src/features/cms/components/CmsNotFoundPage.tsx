@@ -1,15 +1,9 @@
 import React from "react";
 import { Button, Icon, Panel } from "@/components/ui";
-import { CmsAppRole } from "@/types/cms.types";
+import { CmsAppRole, CmsNotFoundPageProps } from "@/types/cms.types";
 import { AuthUser } from "@/types";
 
-interface CmsNotFoundPageProps {
-  currentRole: CmsAppRole;
-  attemptedMenu?: string;
-  currentUser?: AuthUser | null;
-  onGoHome: () => void;
-  onLogout?: () => void;
-}
+
 
 const ROLE_LABELS: Record<CmsAppRole, string> = {
   SUPER_ADMIN: "Quản Trị Viên Nền Tảng (Super Admin)",

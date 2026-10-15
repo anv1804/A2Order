@@ -1,14 +1,9 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
-
-interface OrderStepNavProps {
-  orderStep: "TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART";
-  setOrderStep: (step: "TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART") => void;
-  totalQuantity: number;
-  totalAmount: number;
-}
+import { OrderStepNavProps } from "@/types";
 
 export const OrderStepNav: React.FC<OrderStepNavProps> = ({
+
   orderStep,
   setOrderStep,
   totalQuantity,

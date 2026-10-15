@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Panel, Icon, Pagination, SearchableSelect, SearchableSelectOption, Portal } from "@/components/ui";
-import { PlatformStoreUserRecord, TenantStoreRecord } from "@/types/cms.types";
+import { PlatformStoreUserRecord, TenantStoreRecord, StoreUserManagerProps } from "@/types";
 import { StoreUserDesktopTable } from "./StoreUserDesktopTable";
 import { StoreUserMobileCards } from "./StoreUserMobileCards";
 import { StoreUserModal } from "./modals/StoreUserModal";
@@ -10,14 +10,10 @@ import { toast, confirmDialog } from "@/stores/notificationStore";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface StoreUserManagerProps {
-  stores: TenantStoreRecord[];
-  downloadCsv: (filename: string, headers: string[], rows: unknown[][]) => void;
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+export type { StoreUserManagerProps };
 
 export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
+
   stores,
   downloadCsv,
   isMaximized: propIsMaximized,

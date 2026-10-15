@@ -69,6 +69,13 @@ export interface AppShellProps {
   children: React.ReactNode;
 }
 
+export interface ExtendedAppShellProps extends AppShellProps {
+  configVersion?: string;
+  hasNewVersionNotice?: boolean;
+  onSyncNewVersion?: () => void;
+  enabledModules?: string[];
+}
+
 export interface LoadingScreenProps {
   message?: string;
   subMessage?: string;
@@ -87,4 +94,14 @@ export interface PaginationProps {
   onPageChange: (page: number) => void;
   className?: string;
 }
+
+export interface NotificationModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export interface PortalProps {
+  children: React.ReactNode;
+}
+
 

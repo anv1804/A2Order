@@ -4,31 +4,10 @@ import { Icon } from "./Icon";
 import { sound } from "@/lib/sound";
 import { toast } from "@/stores/notificationStore";
 
-export interface NotificationItem {
-  id: string | number;
-  type: "payment" | "license" | "alert" | "kds" | "security" | "system" | "inventory";
-  tag: string;
-  title: string;
-  desc: string;
-  time: string;
-  icon: string;
-  color: string;
-  bg: string;
-  isRead?: boolean;
-  actionText?: string;
-  actionType?: "tenants" | "invoices" | "licenses" | "kds" | "inventory";
-}
+import { NotificationItem, NotificationModalProps } from "@/types";
 
 export const INITIAL_NOTIFICATIONS: NotificationItem[] = [];
 
-
-export interface NotificationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  notifications?: NotificationItem[];
-  onNotificationsChange?: (items: NotificationItem[]) => void;
-  onNavigateTab?: (tab: string) => void;
-}
 
 export const NotificationModal: React.FC<NotificationModalProps> = ({
   isOpen,

@@ -1,14 +1,12 @@
 import React, { useState } from "react";
 import { Icon, Button } from "@/components/ui";
-import { SystemAuditLogRecord } from "@/types/cms.types";
+import { SystemAuditLogRecord, AuditDetailModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface AuditDetailModalProps {
-  log: SystemAuditLogRecord | null;
-  onClose: () => void;
-}
+export type { AuditDetailModalProps };
 
 export const AuditDetailModal: React.FC<AuditDetailModalProps> = ({ log, onClose }) => {
+
   const [copied, setCopied] = useState(false);
 
   if (!log) return null;

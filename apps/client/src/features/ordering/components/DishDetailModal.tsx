@@ -1,27 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Icon } from "@/components/ui";
-import { MenuDishItem, QUICK_NOTES } from "@/data/mockMenu";
-
-interface DishDetailModalProps {
-  isOpen: boolean;
-  dish: MenuDishItem | null;
-  initialQuantity?: number;
-  initialNotes?: string;
-  initialVariant?: string;
-  initialOptions?: string[];
-  onClose: () => void;
-  onConfirm: (payload: {
-    dish: MenuDishItem;
-    quantity: number;
-    notes: string;
-    selectedVariant?: string;
-    selectedOptions?: string[];
-    priceWithExtras: number;
-  }) => void;
-}
+import { DishDetailModalProps, MenuDishItem } from "@/types";
+import { QUICK_NOTES } from "@/data/menuConstants";
 
 export const DishDetailModal: React.FC<DishDetailModalProps> = ({
+
   isOpen,
   dish,
   initialQuantity = 1,

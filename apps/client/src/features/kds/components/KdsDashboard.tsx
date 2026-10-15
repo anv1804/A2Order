@@ -1,17 +1,12 @@
 import React from "react";
 import { Button, Badge, Icon } from "@/components/ui";
 import { KdsTicketCard } from "@/features/kds/components/KdsTicketCard";
-import { KdsTicket } from "@/types";
+import { KdsTicket, KdsDashboardProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 
-interface KdsDashboardProps {
-  kdsTickets: KdsTicket[];
-  onItemStatusToggle: (itemId: string) => void;
-  onCompleteTicket: (ticketId: string) => void;
-}
-
 export const KdsDashboard: React.FC<KdsDashboardProps> = ({
+
   kdsTickets,
   onItemStatusToggle,
   onCompleteTicket,

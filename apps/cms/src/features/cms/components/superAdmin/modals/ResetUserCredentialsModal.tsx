@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Portal, Icon } from "@/components/ui";
-import { PlatformStoreUserRecord } from "@/types/cms.types";
+import { PlatformStoreUserRecord, ResetUserCredentialsModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface ResetUserCredentialsModalProps {
-  user: PlatformStoreUserRecord | null;
-  onClose: () => void;
-  onReset: (userId: string, payload: { password?: string; pinCode?: string }) => Promise<void>;
-}
+export type { ResetUserCredentialsModalProps };
 
 export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps> = ({
+
   user,
   onClose,
   onReset,

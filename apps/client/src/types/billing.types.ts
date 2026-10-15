@@ -15,6 +15,12 @@ export interface CashierTableRecord {
   items: CashierBillItem[];
 }
 
+export interface CashierWorkstationProps {
+  tables: TableItem[];
+  onFinishPayment: (tableId: string) => void;
+}
+
+
 export interface DynamicVietQrModalProps {
   isOpen: boolean;
   tableName: string;

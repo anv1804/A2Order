@@ -1,15 +1,10 @@
 import React from "react";
 import { Icon } from "./Icon.js";
 
-export interface MobileInfiniteSentinelProps {
-  hasMore: boolean;
-  totalCount: number;
-  visibleCount?: number;
-  displayedCount?: number;
-  isLoadingMore?: boolean;
-  sentinelRef: React.RefObject<HTMLDivElement | null> | React.MutableRefObject<HTMLDivElement | null>;
-  className?: string;
-}
+import type { MobileInfiniteSentinelProps } from "@/types";
+export type { MobileInfiniteSentinelProps };
+
+
 
 export const MobileInfiniteSentinel: React.FC<MobileInfiniteSentinelProps> = ({
   hasMore,

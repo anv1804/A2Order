@@ -2,25 +2,18 @@ import React, { Component, ErrorInfo, ReactNode } from "react";
 import { Icon } from "./Icon";
 import { Button } from "./Button";
 
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
+import { ErrorBoundaryProps, ErrorBoundaryState } from "@/types";
 
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
-
-export class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  public state: ErrorBoundaryState = {
     hasError: false,
     error: null,
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
+
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error in component tree:", error, errorInfo);

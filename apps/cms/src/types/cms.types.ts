@@ -1,9 +1,32 @@
 import React from "react";
 import { IconName } from "./icon.types.js";
-import { AppModule, StoreScale } from "@a2order/shared";
+import {
+  AppModule,
+  StoreScale,
+  BusinessType,
+  ModifierOption,
+  DishVariantOption,
+  DishCustomizationOption,
+  DishCustomizationGroup,
+  FnbDishItem,
+  BusinessScenarioCategory,
+  BusinessScenarioTable,
+  BusinessScenarioTemplate,
+} from "@a2order/shared";
 
 export { AppModule };
-export type { StoreScale };
+export type {
+  StoreScale,
+  BusinessType,
+  ModifierOption,
+  DishVariantOption,
+  DishCustomizationOption,
+  DishCustomizationGroup,
+  FnbDishItem,
+  BusinessScenarioCategory,
+  BusinessScenarioTable,
+  BusinessScenarioTemplate,
+};
 
 export interface CmsMetric {
   id: string;
@@ -55,79 +78,6 @@ export interface TableZoneData {
   tables: CmsTableItem[];
 }
 
-// Menu Management Types
-export interface ModifierOption {
-  name: string;
-  price: number;
-}
-
-export interface DishVariantOption {
-  id: string;
-  name: string;
-  price: number;
-}
-
-export interface DishCustomizationOption {
-  id: string;
-  name: string;
-  priceModifier?: number;
-}
-
-export interface DishCustomizationGroup {
-  id: string;
-  name: string;
-  required?: boolean;
-  minSelect?: number;
-  maxSelect?: number;
-  type?: "SINGLE" | "MULTIPLE";
-  options: DishCustomizationOption[];
-}
-
-export interface FnbDishItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  costPrice: number;
-  station: "KITCHEN" | "BAR" | "DESSERT";
-  isAvailable: boolean;
-  stockCount?: number;
-  image?: string;
-  description?: string;
-  isBestSeller?: boolean;
-  modifiers?: ModifierOption[];
-  variants?: DishVariantOption[];
-  customizationGroups?: DishCustomizationGroup[];
-}
-
-export interface BusinessScenarioCategory {
-  id: string;
-  name: string;
-  emoji?: string;
-  icon?: string;
-}
-
-export interface BusinessScenarioTable {
-  id: string;
-  name: string;
-  capacity: number;
-  zone: string;
-}
-
-export interface BusinessScenarioTemplate {
-  type: BusinessType;
-  label: string;
-  businessName?: string;
-  emoji: string;
-  tagline: string;
-  description: string;
-  suggestedModules: AppModule[];
-  categories: BusinessScenarioCategory[];
-  suggestedCategories?: BusinessScenarioCategory[];
-  defaultTables: BusinessScenarioTable[];
-  suggestedTables?: BusinessScenarioTable[];
-  dishes: FnbDishItem[];
-}
 
 // Inventory & Inward Stock Types
 export interface InventoryIngredient {
@@ -390,16 +340,6 @@ export interface CanceledItemRecord {
 }
 
 // Super Admin Platform Types
-
-export type BusinessType =
-  | "RESTAURANT"
-  | "BEER_GARDEN"
-  | "SNACK_SHOP"
-  | "BUBBLE_TEA"
-  | "COFFEE_SHOP"
-  | "SPICY_NOODLE"
-  | "JUICE_BAR"
-  | "OTHER";
 
 export const BUSINESS_TYPE_CONFIG: Record<
   BusinessType,
@@ -790,10 +730,66 @@ export interface CrmCampaign {
   voucherDiscount: number;
   voucherType: "PERCENT" | "FIXED";
   channels: ("ZALO_ZNS" | "SMS_BRANDNAME" | "IN_APP")[];
-  isActive: boolean;
   sentCount: number;
   convertedCount: number;
   lastRunAt?: string;
+  isActive?: boolean;
 }
+
+
+export interface CmsProfileViewProps {
+  user: import("./auth.types.js").AuthUser;
+  currentRole: CmsAppRole;
+  onLogout: () => void;
+}
+
+export interface CmsNotFoundPageProps {
+  currentRole: CmsAppRole;
+  attemptedMenu?: string;
+  currentUser?: import("./auth.types.js").AuthUser | null;
+  onGoHome: () => void;
+  onLogout?: () => void;
+}
+
+export interface CmsAdminPricingManagerProps {
+  isMaximized?: boolean;
+  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
+}
+
+export interface CalendarNote {
+  id: string;
+  date: string; // YYYY-MM-DD
+  content: string;
+  tag: "URGENT" | "INVENTORY" | "STAFF" | "GENERAL";
+  isCompleted: boolean;
+  createdAt: string;
+}
+
+export interface DashboardCalendarWidgetProps {
+  onNavigateTab?: (tab: string) => void;
+}
+
+
+export interface PendingSessionRequest {
+  tableId: string;
+  tableName: string;
+  tableCode: string;
+  zoneName: string;
+  storeId: string;
+  requestedAt: number;
+  guestCount: number;
+}
+
+export interface StaffOrderDishItem {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  image: string;
+  description: string;
+  isPopular?: boolean;
+  modifiers?: string[];
+}
+
 
 

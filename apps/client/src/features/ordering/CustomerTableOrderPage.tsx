@@ -6,64 +6,17 @@ import { orderApi } from "@/services/api/orderApi";
 import { getSocketClient, joinStoreRoom } from "@/lib/socket";
 import { SocketEvents } from "@a2order/shared";
 import { sound } from "@/lib/sound";
-
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  image?: string;
-  isAvailable?: boolean;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  menuItems: MenuItem[];
-}
-
-interface CartItem {
-  menuItem: MenuItem;
-  quantity: number;
-  notes?: string;
-}
-
-export interface CustomerOrderedItem {
-  id: string;
-  dishId?: string;
-  name: string;
-  price: number;
-  quantity: number;
-  status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
-  orderId?: string;
-  orderedAt: string;
-  notes?: string;
-}
-
-interface Voucher {
-  code: string;
-  discountType: "PERCENT" | "FIXED";
-  value: number;
-  description: string;
-  minOrder?: number;
-}
-
-const SAMPLE_VOUCHERS: Voucher[] = [
-  { code: "A2GIAM10", discountType: "PERCENT", value: 10, description: "Giảm 10% tổng hóa đơn gọi món" },
-  { code: "A2GIAM20K", discountType: "FIXED", value: 20000, description: "Giảm trực tiếp 20.000 đ cho đơn từ 80k", minOrder: 80000 },
-  { code: "VIP15", discountType: "PERCENT", value: 15, description: "Ưu đãi 15% cho thành viên thân thiết" },
-  { code: "FREESHIP", discountType: "FIXED", value: 15000, description: "Tặng voucher 15.000 đ trải nghiệm tại bàn" },
-];
-
-const SERVICE_OPTIONS = [
-  { id: "ice", emoji: "🧊", label: "Thêm đá lạnh", desc: "Đem thêm xô hoặc ly đá" },
-  { id: "napkin", emoji: "🧻", label: "Thêm khăn giấy", desc: "Bổ sung hộp khăn giấy" },
-  { id: "clean", emoji: "🧹", label: "Dọn dẹp bàn", desc: "Thu dọn vỏ chai, đĩa dư" },
-  { id: "utensils", emoji: "🥢", label: "Thêm chén đũa", desc: "Thêm bát đĩa, muỗng đũa" },
-  { id: "waiter", emoji: "🙋", label: "Gọi nhân viên", desc: "Nhân viên tới bàn hỗ trợ" },
-  { id: "bill", emoji: "💳", label: "Yêu cầu tính tiền", desc: "In hóa đơn thanh toán" },
-];
+import {
+  CustomerMenuItem as MenuItem,
+  CustomerCategory as Category,
+  CustomerCartItem as CartItem,
+  CustomerOrderedItem,
+  VoucherItem as Voucher,
+} from "@/types";
+import { SAMPLE_VOUCHERS, SERVICE_OPTIONS } from "@/data/serviceConstants";
 
 export const CustomerTableOrderPage: React.FC = () => {
+
   // 1. Phân tích tham số URL: ?store=store-bubble-tea&table=TB-01
   const searchParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const storeId = searchParams.get("store") || "";

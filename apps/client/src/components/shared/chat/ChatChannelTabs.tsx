@@ -1,12 +1,8 @@
 import React from "react";
-
-export interface ChatChannelTabsProps {
-  activeChannel: "ALL" | "KITCHEN" | "CASHIER" | "WAITER";
-  setActiveChannel: (channel: "ALL" | "KITCHEN" | "CASHIER" | "WAITER") => void;
-  variant?: "full" | "compact";
-}
+import { ChatChannelTabsProps } from "@/types";
 
 export const ChatChannelTabs: React.FC<ChatChannelTabsProps> = ({
+
   activeChannel,
   setActiveChannel,
   variant = "full",

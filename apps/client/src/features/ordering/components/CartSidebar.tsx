@@ -1,32 +1,9 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Icon } from "@/components/ui";
-import { MenuDishItem, QUICK_NOTES } from "@/data/mockMenu";
+import { SelectedDishItem, CartSidebarProps, MenuDishItem } from "@/types";
+import { QUICK_NOTES } from "@/data/menuConstants";
 
-export interface SelectedDishItem {
-  id: string; // Unique cart item ID (ví dụ: dishId + variant + options + timestamp)
-  dish: MenuDishItem;
-  quantity: number;
-  notes: string;
-  selectedVariant?: string;
-  selectedOptions?: string[];
-  unitPrice?: number;
-}
-
-interface CartSidebarProps {
-  orderList: SelectedDishItem[];
-  totalQuantity: number;
-  totalAmount: number;
-  onIncreaseQuantity: (itemId: string) => void;
-  onDecreaseQuantity: (itemId: string) => void;
-  onSetNote: (itemId: string, note: string) => void;
-  onClearAll: () => void;
-  activeNoteItemId: string | null;
-  setActiveNoteItemId: (itemId: string | null) => void;
-  onOpenDishDetail?: (dish: MenuDishItem, existingItem?: SelectedDishItem) => void;
-  onGoToReview: () => void;
-  onGoToTableInfo: () => void;
-}
 
 export const CartSidebar: React.FC<CartSidebarProps> = ({
   orderList,

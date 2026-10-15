@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { TenantStoreRecord } from "@/types/cms.types";
+import { TenantStoreRecord, DeleteStoreModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface DeleteStoreModalProps {
-  store: TenantStoreRecord | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (store: TenantStoreRecord) => Promise<void> | void;
-}
+export type { DeleteStoreModalProps };
 
 export const DeleteStoreModal: React.FC<DeleteStoreModalProps> = ({
+
   store,
   isOpen,
   onClose,

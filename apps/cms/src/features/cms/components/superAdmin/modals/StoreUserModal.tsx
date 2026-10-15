@@ -1,26 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Portal, Icon } from "@/components/ui";
-import { PlatformStoreUserRecord, TenantStoreRecord } from "@/types/cms.types";
+import { PlatformStoreUserRecord, TenantStoreRecord, StoreUserModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
+import { STORE_ROLES } from "@/data/superAdminConstants";
 
-export interface StoreUserModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (user: Partial<PlatformStoreUserRecord>, password?: string) => Promise<void>;
-  editingUser: PlatformStoreUserRecord | null;
-  stores: TenantStoreRecord[];
-  defaultStoreId?: string;
-}
-
-export const STORE_ROLES = [
-  { value: "STORE_OWNER", label: "Chủ Quán (Toàn quyền)", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-  { value: "STORE_MANAGER", label: "Quản Lý Điểm Bán", color: "text-blue-700 bg-blue-50 border-blue-200" },
-  { value: "CASHIER", label: "Thu Ngân (POS Bán Hàng)", color: "text-amber-700 bg-amber-50 border-amber-200" },
-  { value: "CHEF", label: "Đầu Bếp (Màn KDS Bếp)", color: "text-purple-700 bg-purple-50 border-purple-200" },
-  { value: "WAITER", label: "Nhân Viên Phục Vụ", color: "text-slate-700 bg-slate-100 border-slate-200" },
-];
+export type { StoreUserModalProps };
+export { STORE_ROLES };
 
 export const StoreUserModal: React.FC<StoreUserModalProps> = ({
+
   isOpen,
   onClose,
   onSave,

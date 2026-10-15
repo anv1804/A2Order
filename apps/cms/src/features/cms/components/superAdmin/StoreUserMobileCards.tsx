@@ -1,18 +1,12 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { PlatformStoreUserRecord } from "@/types/cms.types";
+import { PlatformStoreUserRecord, StoreUserMobileCardsProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface StoreUserMobileCardsProps {
-  paginatedUsers: PlatformStoreUserRecord[];
-  selectedUserIds: string[];
-  onToggleSelectUser: (userId: string) => void;
-  onEditUser: (user: PlatformStoreUserRecord) => void;
-  onResetCredentials: (user: PlatformStoreUserRecord) => void;
-  onToggleUserStatus: (user: PlatformStoreUserRecord) => void;
-}
+export type { StoreUserMobileCardsProps };
 
 export const StoreUserMobileCards: React.FC<StoreUserMobileCardsProps> = ({
+
   paginatedUsers,
   selectedUserIds,
   onToggleSelectUser,

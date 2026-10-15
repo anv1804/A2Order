@@ -7,14 +7,7 @@ import { AuditDetailModal } from "./modals/AuditDetailModal";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface AuditLogViewerProps {
-  auditLogs: SystemAuditLogRecord[];
-  onRefresh?: () => void;
-  isRefreshing?: boolean;
-  downloadCsv?: (filename: string, headers: string[], rows: unknown[][]) => void;
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+import { AuditLogViewerProps } from "@/types";
 
 export const AuditLogViewer: React.FC<AuditLogViewerProps> = ({
   auditLogs,

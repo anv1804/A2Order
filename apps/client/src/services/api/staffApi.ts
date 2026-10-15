@@ -1,25 +1,6 @@
 import { requestApi } from "./apiClient";
-import { PlatformStoreUserRecord } from "@/types";
+import { PlatformStoreUserRecord, CreateStaffPayload, UpdateStaffPayload } from "@/types";
 
-
-export interface CreateStaffPayload {
-  storeId: string;
-  name: string;
-  email?: string;
-  password?: string;
-  pinCode?: string;
-  role: string;
-  isActive?: boolean;
-}
-
-export interface UpdateStaffPayload {
-  name?: string;
-  email?: string;
-  role?: string;
-  pinCode?: string;
-  isActive?: boolean;
-  storeId?: string;
-}
 
 export const staffApi = {
   /**

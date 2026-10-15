@@ -3,17 +3,8 @@ import { Check, Minus } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export interface CheckboxProps {
-  checked: boolean;
-  indeterminate?: boolean;
-  onChange: (checked: boolean) => void;
-  disabled?: boolean;
-  className?: string;
-  id?: string;
-  title?: string;
-  label?: React.ReactNode;
-  size?: "sm" | "md";
-}
+import { CheckboxProps } from "@/types";
+
 
 export const Checkbox: React.FC<CheckboxProps> = ({
   checked,

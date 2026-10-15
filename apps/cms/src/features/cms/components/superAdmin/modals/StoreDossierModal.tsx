@@ -11,23 +11,13 @@ import { APP_MODULE_CATALOG } from "@a2order/shared";
 import { staffApi } from "@/services/api/staffApi";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { StoreUserModal } from "./StoreUserModal";
-import { BUSINESS_TYPE_ICONS } from "./StoreOnboardingModal";
+import { BUSINESS_TYPE_ICONS } from "@/data/superAdminConstants";
+import { StoreDossierModalProps } from "@/types";
 
-export interface StoreDossierModalProps {
-  store: TenantStoreRecord | null;
-  invoices: SoftwareInvoiceRecord[];
-  stores?: TenantStoreRecord[];
-  onClose: () => void;
-  onCopyKey: (key: string) => void;
-  onOpenRenewModal: (store: TenantStoreRecord) => void;
-  onToggleModule: (storeId: string, moduleId: AppModule) => void;
-  onToggleStoreStatus: (store: TenantStoreRecord) => void;
-  onDeleteStore?: (store: TenantStoreRecord) => void;
-  onViewInvoice: (invoice: SoftwareInvoiceRecord) => void;
-  onUpdateStore?: (store: TenantStoreRecord) => void;
-}
+export type { StoreDossierModalProps };
 
 export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
+
   store,
   invoices,
   stores,
@@ -759,7 +749,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                         <span className="font-black text-brand-900">{inv.finalAmount.toLocaleString("vi-VN")} đ</span>
                         <button
                           type="button"
-                          onClick={() => onViewInvoice(inv)}
+                          onClick={() => onViewInvoice?.(inv)}
                           className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-white border border-surface-border text-ink-primary hover:border-brand-300 hover:text-brand-900 shadow-xs transition-colors"
                         >
                           Xem VietQR

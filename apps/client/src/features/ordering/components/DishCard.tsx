@@ -1,20 +1,10 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Icon } from "@/components/ui";
-import { MenuDishItem } from "@/data/mockMenu";
-
-interface DishCardProps {
-  dish: MenuDishItem;
-  totalQuantityInCart: number;
-  distinctCount: number;
-  latestNote?: string;
-  latestVariant?: string;
-  onQuickAdd: (dish: MenuDishItem) => void;
-  onQuickDecrease: (dish: MenuDishItem) => void;
-  onOpenDetail: (dish: MenuDishItem) => void;
-}
+import { DishCardProps } from "@/types";
 
 export const DishCard: React.FC<DishCardProps> = ({
+
   dish,
   totalQuantityInCart,
   distinctCount,

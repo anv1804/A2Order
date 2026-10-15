@@ -1,28 +1,10 @@
 import React, { useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { ModifierOption, DishVariantOption } from "@/types/cms.types";
+import { ModifierOption, DishVariantOption, AddDishModalProps } from "@/types";
 import { SAMPLE_FOOD_IMAGES } from "../menuConstants";
 
-export interface AddDishModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  categories: string[];
-  onSubmit: (dishData: {
-    name: string;
-    category: string;
-    price: number;
-    costPrice: number;
-    station: "KITCHEN" | "BAR" | "DESSERT";
-    image: string;
-    description: string;
-    isBestSeller: boolean;
-    stockCount: number;
-    modifiers: ModifierOption[];
-    variants: DishVariantOption[];
-  }) => void;
-}
-
 export const AddDishModal: React.FC<AddDishModalProps> = ({
+
   isOpen,
   onClose,
   categories,

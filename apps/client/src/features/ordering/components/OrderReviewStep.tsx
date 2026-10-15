@@ -1,19 +1,10 @@
 import React from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Icon } from "@/components/ui";
-import { TableItem } from "@/types";
-import { SelectedDishItem } from "./CartSidebar";
-
-interface OrderReviewStepProps {
-  table: TableItem;
-  orderList: SelectedDishItem[];
-  totalQuantity: number;
-  totalAmount: number;
-  onGoBackToMenu: () => void;
-  onConfirmSubmit: () => void;
-}
+import { TableItem, SelectedDishItem, OrderReviewStepProps } from "@/types";
 
 export const OrderReviewStep: React.FC<OrderReviewStepProps> = ({
+
   table,
   orderList,
   totalQuantity,

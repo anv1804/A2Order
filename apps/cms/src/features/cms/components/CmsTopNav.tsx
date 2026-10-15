@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Icon } from "@/components/ui";
-import { NotificationModal, INITIAL_NOTIFICATIONS, NotificationItem } from "@/components/ui/NotificationModal";
-import { CmsTopNavProps } from "@/types/cms.types";
+import { NotificationModal, INITIAL_NOTIFICATIONS } from "@/components/ui/NotificationModal";
+import { NotificationItem, CmsTopNavProps } from "@/types";
+
 
 export const CmsTopNav: React.FC<CmsTopNavProps> = ({
   userName,

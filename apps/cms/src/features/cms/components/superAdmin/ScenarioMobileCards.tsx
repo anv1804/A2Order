@@ -3,17 +3,7 @@ import { Icon, Checkbox } from "@/components/ui";
 import { FnbDishItem, FnbMajorCategory } from "@a2order/shared";
 import { MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
-export interface ScenarioMobileCardsProps {
-  dishes: FnbDishItem[];
-  selectedDishIds: string[];
-  onToggleSelectDish: (id: string) => void;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-  sentinelRef: React.RefObject<HTMLDivElement | null> | React.MutableRefObject<HTMLDivElement | null>;
-  hasMore: boolean;
-  totalCount: number;
-  visibleCount: number;
-}
+import { ScenarioMobileCardsProps } from "@/types";
 
 const getStationInfo = (station?: "KITCHEN" | "BAR" | "DESSERT") => {
   switch (station) {

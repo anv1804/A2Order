@@ -3,21 +3,12 @@ import { Button, Icon, Portal } from "@/components/ui";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 import { configApi } from "@/services/api/configApi";
 import { PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
+import { CreateLicenseKeyModalProps } from "@/types";
 
-export interface CreateLicenseKeyModalProps {
-  isOpen: boolean;
-  stores: Array<{ id: string; name: string; owner: string; phone: string; licenseKey?: string }>;
-  onClose: () => void;
-  onSubmit: (licenseData: {
-    storeId?: string;
-    storeName?: string;
-    plan: "STARTER" | "GROWTH" | "PRO";
-    durationMonths: number;
-    maxDevices: number;
-  }) => void;
-}
+export type { CreateLicenseKeyModalProps };
 
 export const CreateLicenseKeyModal: React.FC<CreateLicenseKeyModalProps> = ({
+
   isOpen,
   stores,
   onClose,

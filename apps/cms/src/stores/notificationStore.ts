@@ -1,14 +1,6 @@
 import { create } from "zustand";
-import { ToastItem, ToastType, ConfirmOptions, ConfirmState } from "@/types";
+import { ToastItem, ToastType, ConfirmOptions, ConfirmState, NotificationStore } from "@/types";
 
-interface NotificationStore {
-  toasts: ToastItem[];
-  confirmState: ConfirmState;
-  addToast: (type: ToastType, message: string, title?: string, duration?: number) => void;
-  removeToast: (id: string) => void;
-  openConfirm: (options: ConfirmOptions) => Promise<boolean>;
-  closeConfirm: (result: boolean) => void;
-}
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   toasts: [],

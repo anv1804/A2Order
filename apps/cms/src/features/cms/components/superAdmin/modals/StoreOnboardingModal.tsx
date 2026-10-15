@@ -6,38 +6,15 @@ import { StoreScale, PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
 import { configApi } from "@/services/api/configApi";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 
-export interface StoreOnboardSubmitData {
-  name: string;
-  owner: string;
-  ownerEmail: string;
-  ownerPassword: string;
-  ownerPin: string;
-  phone: string;
-  address: string;
-  businessType: BusinessType;
-  scale: StoreScale;
-  modules: AppModule[];
-  tableCount: number;
-  durationMonths: number;
-  plan: "STARTER" | "GROWTH" | "PRO";
-}
+import {
+  StoreOnboardSubmitData,
+  StoreOnboardingModalProps,
+} from "@/types";
+import { BUSINESS_TYPE_ICONS } from "@/data/superAdminConstants";
 
-export interface StoreOnboardingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (storeData: StoreOnboardSubmitData) => Promise<TenantStoreRecord | null>;
-}
+export type { StoreOnboardSubmitData, StoreOnboardingModalProps };
+export { BUSINESS_TYPE_ICONS };
 
-export const BUSINESS_TYPE_ICONS: Record<BusinessType, IconName> = {
-  RESTAURANT: "utensils",
-  BEER_GARDEN: "beer",
-  SNACK_SHOP: "cookie",
-  BUBBLE_TEA: "cup",
-  COFFEE_SHOP: "coffee",
-  SPICY_NOODLE: "soup",
-  JUICE_BAR: "cup",
-  OTHER: "store",
-};
 
 const getDefaultTableCount = (type: BusinessType): number => {
   switch (type) {

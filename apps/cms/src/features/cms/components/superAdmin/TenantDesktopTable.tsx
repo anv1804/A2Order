@@ -1,22 +1,13 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { TenantStoreRecord, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
-import { BUSINESS_TYPE_ICONS } from "./modals/StoreOnboardingModal";
+import { TenantStoreRecord, BUSINESS_TYPE_CONFIG, TenantDesktopTableProps } from "@/types";
+import { BUSINESS_TYPE_ICONS } from "@/data/superAdminConstants";
 import { toast } from "@/stores/notificationStore";
 
-export interface TenantDesktopTableProps {
-  paginatedStores: TenantStoreRecord[];
-  selectedStoreIds: string[];
-  onToggleSelectStore: (storeId: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  setViewingStoreDetails: (store: TenantStoreRecord) => void;
-  setLicenseTargetStore: (store: TenantStoreRecord) => void;
-  handleToggleStoreStatus: (store: TenantStoreRecord) => void;
-}
+export type { TenantDesktopTableProps };
 
 export const TenantDesktopTable: React.FC<TenantDesktopTableProps> = ({
+
   paginatedStores,
   selectedStoreIds,
   onToggleSelectStore,

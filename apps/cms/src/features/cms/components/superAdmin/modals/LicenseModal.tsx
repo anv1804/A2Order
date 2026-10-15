@@ -3,24 +3,12 @@ import { Button, Icon, Portal } from "@/components/ui";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 import { configApi } from "@/services/api/configApi";
 import { PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
+import { LicenseModalProps } from "@/types";
 
-export interface LicenseModalProps {
-  store: {
-    id: string;
-    name: string;
-    licenseKey?: string;
-    plan?: string;
-  } | null;
-  onClose: () => void;
-  onSave: (payload: {
-    storeId: string;
-    plan: "STARTER" | "GROWTH" | "PRO";
-    durationMonths: number;
-    finalAmount: number;
-  }) => void;
-}
+export type { LicenseModalProps };
 
 export const LicenseModal: React.FC<LicenseModalProps> = ({
+
   store,
   onClose,
   onSave,

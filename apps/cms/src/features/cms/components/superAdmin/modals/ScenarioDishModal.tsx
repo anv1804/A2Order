@@ -28,16 +28,12 @@ import {
   Check,
 } from "lucide-react";
 
-export interface ScenarioDishModalProps {
-  isOpen: boolean;
-  majorType: FnbMajorCategory;
-  categories: FnbCategoryTemplate[];
-  initialDish?: FnbDishItem | null;
-  onClose: () => void;
-  onSave: (dishData: Omit<FnbDishItem, "id">, dishId?: string) => Promise<void>;
-}
+import { ScenarioDishModalProps } from "@/types";
+
+export type { ScenarioDishModalProps };
 
 export const ScenarioDishModal: React.FC<ScenarioDishModalProps> = ({
+
   isOpen,
   majorType: initialMajorType,
   categories,

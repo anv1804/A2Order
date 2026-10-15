@@ -1,21 +1,12 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { PlatformStoreUserRecord } from "@/types/cms.types";
+import { PlatformStoreUserRecord, StoreUserDesktopTableProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface StoreUserDesktopTableProps {
-  paginatedUsers: PlatformStoreUserRecord[];
-  selectedUserIds: string[];
-  onToggleSelectUser: (userId: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  onEditUser: (user: PlatformStoreUserRecord) => void;
-  onResetCredentials: (user: PlatformStoreUserRecord) => void;
-  onToggleUserStatus: (user: PlatformStoreUserRecord) => void;
-}
+export type { StoreUserDesktopTableProps };
 
 export const StoreUserDesktopTable: React.FC<StoreUserDesktopTableProps> = ({
+
   paginatedUsers,
   selectedUserIds,
   onToggleSelectUser,

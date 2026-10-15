@@ -1,18 +1,9 @@
 import React from "react";
 import { Button, Icon } from "@/components/ui";
-import { TableItem } from "@/types";
+import { TableItem, TableActionsDialogProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
-
-interface TableActionsDialogProps {
-  table: TableItem;
-  currentStaffRole: string;
-  onClose: () => void;
-  onOrderMore: () => void;
-  onGoToBilling: () => void;
-  onPrintPreBill: () => void;
-}
 
 export const TableActionsDialog: React.FC<TableActionsDialogProps> = ({
   table,

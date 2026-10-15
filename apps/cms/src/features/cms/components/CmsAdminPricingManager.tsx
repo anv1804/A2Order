@@ -15,13 +15,10 @@ import {
   PlanConfig,
   PLAN_CONFIGS,
 } from "@a2order/shared";
-
-export interface CmsAdminPricingManagerProps {
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-}
+import { CmsAdminPricingManagerProps } from "@/types";
 
 export const CmsAdminPricingManager: React.FC<CmsAdminPricingManagerProps> = ({
+
   isMaximized: propIsMaximized,
   setIsMaximized: propSetIsMaximized,
 }) => {

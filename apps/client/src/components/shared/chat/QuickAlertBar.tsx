@@ -1,40 +1,14 @@
 import React from "react";
 import { Icon } from "@/components/ui";
-
-export interface QuickAlertBarProps {
-  activeChannel: "ALL" | "KITCHEN" | "CASHIER" | "WAITER";
-  onSendAlert: (alertText: string, target: "ALL" | "KITCHEN" | "WAITER" | "CASHIER") => void;
-  variant?: "full" | "compact";
-}
-
-const CHANNEL_ALERTS = {
-  ALL: [
-    { text: "Cần hỗ trợ gấp!", icon: "alert", color: "text-rose-700 bg-rose-50 border-rose-200" },
-    { text: "Hết đá & khăn", icon: "alertCircle", color: "text-blue-700 bg-blue-50 border-blue-200" },
-    { text: "Xin dọn bàn", icon: "table", color: "text-purple-700 bg-purple-50 border-purple-200" },
-  ],
-  KITCHEN: [
-    { text: "Bàn giục món!", icon: "flame", color: "text-amber-700 bg-amber-50 border-amber-200" },
-    { text: "Xin hủy món", icon: "x", color: "text-rose-700 bg-rose-50 border-rose-200" },
-    { text: "Món nào sắp ra?", icon: "help", color: "text-blue-700 bg-blue-50 border-blue-200" },
-  ],
-  CASHIER: [
-    { text: "In phiếu tạm tính", icon: "banknote", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-    { text: "Xuất VAT", icon: "fileText", color: "text-blue-700 bg-blue-50 border-blue-200" },
-    { text: "Khách giục TT", icon: "clock", color: "text-amber-700 bg-amber-50 border-amber-200" },
-  ],
-  WAITER: [
-    { text: "Có khách mới", icon: "users", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-    { text: "Dọn chỗ đổ bể", icon: "alert", color: "text-rose-700 bg-rose-50 border-rose-200" },
-    { text: "Tiếp đá bia", icon: "alertCircle", color: "text-blue-700 bg-blue-50 border-blue-200" },
-  ],
-};
+import { QuickAlertBarProps } from "@/types";
+import { CHANNEL_ALERTS } from "@/data/chatConstants";
 
 export const QuickAlertBar: React.FC<QuickAlertBarProps> = ({
   activeChannel,
   onSendAlert,
   variant = "full",
 }) => {
+
   const isFull = variant === "full";
   const alerts = CHANNEL_ALERTS[activeChannel];
 

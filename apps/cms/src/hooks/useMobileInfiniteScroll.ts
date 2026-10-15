@@ -2,11 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 export { MobileInfiniteSentinel } from "@/components/ui/MobileInfiniteSentinel.js";
 export type { MobileInfiniteSentinelProps } from "@/components/ui/MobileInfiniteSentinel.js";
 
-export interface UseMobileInfiniteScrollProps<T> {
-  items: T[];
-  pageSize?: number;
-  mobileBreakpoint?: number;
-}
+import { UseMobileInfiniteScrollProps } from "@/types";
+
 
 export function useMobileInfiniteScroll<T>(
   propsOrItems: UseMobileInfiniteScrollProps<T> | T[],

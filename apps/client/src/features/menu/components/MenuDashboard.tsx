@@ -1,22 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { MenuItemCard } from "@/features/menu/components/MenuItemCard";
-import { MenuItemData } from "@/types";
+import { MenuItemData, MenuDashboardProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { Icon } from "@/components/ui/Icon";
-
-interface MenuDashboardProps {
-  menuItems: (MenuItemData & { category: string })[];
-  onToggleStock: (id: string, available: boolean) => void;
-}
-
-const CATEGORY_NAMES: Record<string, string> = {
-  PHO: "Phở & Bún",
-  COM: "Cơm & Đồ Ăn Kèm",
-  DRINK: "Đồ Uống",
-  LAU: "Lẩu & Nướng",
-  KHAI_VI: "Khai Vị",
-  OTHER: "Khác",
-};
+import { CATEGORY_NAMES } from "@/data/menuConstants";
 
 export const MenuDashboard: React.FC<MenuDashboardProps> = ({ menuItems, onToggleStock }) => {
   const [searchTerm, setSearchTerm] = useState("");

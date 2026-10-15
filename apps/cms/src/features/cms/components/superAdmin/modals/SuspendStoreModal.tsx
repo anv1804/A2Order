@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { TenantStoreRecord } from "@/types/cms.types";
+import { TenantStoreRecord, SuspendStoreModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 
-export interface SuspendStoreModalProps {
-  store: TenantStoreRecord | null;
-  mode: "SUSPEND" | "ACTIVATE";
-  onClose: () => void;
-  onConfirm: (store: TenantStoreRecord) => void;
-}
-
 export const SuspendStoreModal: React.FC<SuspendStoreModalProps> = ({
+
   store,
   mode,
   onClose,

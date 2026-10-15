@@ -1,22 +1,13 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { SoftwareInvoiceRecord } from "@/types/cms.types";
+import { SoftwareInvoiceRecord, InvoiceDesktopTableProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 import { toast } from "@/stores/notificationStore";
 
-export interface InvoiceDesktopTableProps {
-  paginatedInvoices: SoftwareInvoiceRecord[];
-  selectedInvoiceIds: string[];
-  onToggleSelectInvoice: (id: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  setViewingInvoice: (inv: SoftwareInvoiceRecord) => void;
-  handleConfirmInvoice: (inv: SoftwareInvoiceRecord) => void;
-  confirmingInvoiceId: string | null;
-}
+export type { InvoiceDesktopTableProps };
 
 export const InvoiceDesktopTable: React.FC<InvoiceDesktopTableProps> = ({
+
   paginatedInvoices,
   selectedInvoiceIds,
   onToggleSelectInvoice,

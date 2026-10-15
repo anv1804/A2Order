@@ -2,16 +2,7 @@ import React from "react";
 import { Icon, Checkbox } from "@/components/ui";
 import { FnbDishItem, FnbMajorCategory } from "@a2order/shared";
 
-export interface ScenarioDesktopTableProps {
-  paginatedDishes: FnbDishItem[];
-  selectedDishIds: string[];
-  onToggleSelectDish: (id: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-}
+import { ScenarioDesktopTableProps } from "@/types";
 
 const getStationInfo = (station?: "KITCHEN" | "BAR" | "DESSERT") => {
   switch (station) {

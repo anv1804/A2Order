@@ -3,17 +3,10 @@ import { Panel, Button, Badge, Icon } from "@/components/ui";
 import { formatCurrency } from "@/lib/formatters";
 import { sound } from "@/lib/sound";
 import { toast } from "@/stores/notificationStore";
-import { StaffMember, AttendanceRecord } from "@/types";
-
-interface StaffScheduleProfileProps {
-  currentStaff: StaffMember;
-  attendanceRecords: AttendanceRecord[];
-  onClockIn: (staff: StaffMember) => void;
-  onClockOut: (staff: StaffMember) => void;
-  onOpenPinModal: () => void;
-}
+import { StaffMember, AttendanceRecord, StaffScheduleProfileProps } from "@/types";
 
 export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
+
   currentStaff,
   attendanceRecords,
   onClockIn,

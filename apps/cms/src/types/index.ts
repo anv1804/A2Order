@@ -8,3 +8,8 @@ export * from "./ui.types.js";
 export * from "./notification.types.js";
 export * from "./icon.types.js";
 export * from "./cms.types.js";
+export * from "./superAdmin.types.js";
+export * from "./chat.types.js";
+export * from "./commandPalette.types.js";
+export * from "./api.types.js";
+

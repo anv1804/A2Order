@@ -3,29 +3,10 @@ import { ChevronDown, Search, X, Check, LucideIcon } from "lucide-react";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export interface SearchableSelectOption {
-  value: string;
-  label: string;
-  icon?: LucideIcon | React.ComponentType<{ size?: number; className?: string }> | React.ReactNode;
-  badge?: string | number;
-  description?: string;
-}
+import type { SearchableSelectOption, SearchableSelectProps } from "@/types";
+export type { SearchableSelectOption, SearchableSelectProps };
 
-export interface SearchableSelectProps {
-  options: SearchableSelectOption[];
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  searchPlaceholder?: string;
-  labelPrefix?: string;
-  className?: string;
-  triggerClassName?: string;
-  menuClassName?: string;
-  disabled?: boolean;
-  showSearch?: boolean;
-  align?: "left" | "right" | "auto";
-  id?: string;
-}
+
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,

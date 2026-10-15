@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { FnbDishItem } from "@/types/cms.types";
-
-export interface StockEditModalProps {
-  dish: FnbDishItem | null;
-  onClose: () => void;
-  onSave: (dishId: string, newStock: number) => void;
-}
+import { FnbDishItem, StockEditModalProps } from "@/types";
 
 export const StockEditModal: React.FC<StockEditModalProps> = ({
+
   dish,
   onClose,
   onSave,

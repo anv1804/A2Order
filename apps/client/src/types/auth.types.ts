@@ -50,3 +50,17 @@ export interface UnifiedAuthModalProps {
   attendanceRecords?: AttendanceRecord[];
   onClose: () => void;
 }
+
+export interface StaffScheduleProfileProps {
+  currentStaff: StaffMember;
+  attendanceRecords: AttendanceRecord[];
+  onClockIn: (staff: StaffMember) => void;
+  onClockOut: (staff: StaffMember) => void;
+  onOpenPinModal: () => void;
+}
+
+export interface UseAttendanceParams {
+  setAttendanceRecords: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
+}
+
+

@@ -1,12 +1,7 @@
 import React from "react";
 
-export interface CmsPageHeaderProps {
-  title: string;
-  badge?: React.ReactNode;
-  description?: string;
-  actions?: React.ReactNode;
-  className?: string;
-}
+import { CmsPageHeaderProps } from "@/types";
+
 
 export const CmsPageHeader: React.FC<CmsPageHeaderProps> = ({
   title,

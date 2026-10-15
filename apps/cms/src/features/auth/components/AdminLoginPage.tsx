@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { Button, Icon } from "@/components/ui";
-import { AuthUser } from "@/types";
+import { AuthUser, AdminLoginPageProps } from "@/types";
 import { API_BASE_URL } from "@/services/api/apiClient";
 
-interface AdminLoginPageProps {
-  onLoginSuccess: (user: AuthUser, token: string, rememberMe: boolean) => void;
-  onNavigateToOwner?: () => void;
-}
-
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
+
   onLoginSuccess,
   onNavigateToOwner,
 }) => {

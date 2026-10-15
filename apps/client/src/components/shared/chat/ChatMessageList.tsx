@@ -1,16 +1,10 @@
 import React from "react";
 import { Icon } from "@/components/ui";
 import { sound } from "@/lib/sound";
-import { IntercomMessage } from "@/types";
-
-export interface ChatMessageListProps {
-  messages: IntercomMessage[];
-  currentStaffName: string;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
-  variant?: "full" | "compact";
-}
+import { IntercomMessage, ChatMessageListProps } from "@/types";
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
+
   messages,
   currentStaffName,
   messagesEndRef,

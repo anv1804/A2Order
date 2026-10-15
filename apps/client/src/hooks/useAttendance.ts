@@ -1,10 +1,7 @@
-import { StaffMember, AttendanceRecord } from "@/types";
+import { StaffMember, AttendanceRecord, UseAttendanceParams } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 
-interface UseAttendanceParams {
-  setAttendanceRecords: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
-}
 
 /** Hook chung cho chấm công — tái sử dụng ở cả schedule tab và auth modal */
 export function useAttendance({ setAttendanceRecords }: UseAttendanceParams) {

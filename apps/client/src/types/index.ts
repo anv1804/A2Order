@@ -9,3 +9,5 @@ export * from "./notification.types.js";
 export * from "./icon.types.js";
 export * from "./cms.types.js";
 export * from "./chat.types.js";
+export * from "./api.types.js";
+

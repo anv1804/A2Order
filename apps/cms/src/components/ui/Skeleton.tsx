@@ -1,8 +1,7 @@
 import React from "react";
 
-export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
-  className?: string;
-}
+import { SkeletonProps } from "@/types";
+
 
 /**
  * Component Skeleton cơ bản với hiệu ứng nhịp đập mượt mà (Smooth Pulse Shimmer)

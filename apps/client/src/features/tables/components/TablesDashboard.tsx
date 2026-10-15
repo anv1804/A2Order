@@ -2,41 +2,9 @@ import React from "react";
 import { Panel, Badge, Icon } from "@/components/ui";
 import { TableGrid } from "@/features/tables/components/TableGrid";
 import { TableStatus } from "@a2order/shared";
-import { TableItem } from "@/types";
+import { TableItem, TablesDashboardProps } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
-
-interface TablesDashboardProps {
-  tables: TableItem[];
-  tableSearch: string;
-  setTableSearch: (v: string) => void;
-  selectedZone: string;
-  setSelectedZone: (v: string) => void;
-  selectedStatus: string;
-  setSelectedStatus: (v: string) => void;
-  onTableClick: (table: TableItem) => void;
-  myStaffSales: number;
-  myServedTablesCount: number;
-  occupiedCount: number;
-  emptyCount: number;
-  waitingFoodCount: number;
-  currentTotalRevenue: number;
-}
-
-const ZONES = [
-  { id: "ALL", label: "Tất Cả Khu Vực" },
-  { id: "T1", label: "Tầng 1 (Máy Lạnh)" },
-  { id: "T2", label: "Tầng 2 (Sân Vườn)" },
-  { id: "VIP", label: "Phòng VIP" },
-  { id: "SAN_VUON", label: "Khu Ngoài Trời" },
-];
-
-const STATUSES = [
-  { id: "ALL", label: "Tất Cả" },
-  { id: TableStatus.EMPTY, label: "Trống" },
-  { id: TableStatus.WAITING_FOOD, label: "Chờ Món" },
-  { id: TableStatus.OCCUPIED, label: "Đang Dùng" },
-  { id: TableStatus.PAYMENT_PENDING, label: "Chờ Tính Tiền" },
-];
+import { DEFAULT_ZONES, TABLE_FILTER_STATUSES } from "@/data/tableConstants";
 
 export const TablesDashboard: React.FC<TablesDashboardProps> = ({
   tables,
@@ -168,7 +136,7 @@ export const TablesDashboard: React.FC<TablesDashboardProps> = ({
       {/* Zone & Status Filter Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 sm:p-3 rounded-2xl bg-white border border-surface-border">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {ZONES.map((z) => (
+          {DEFAULT_ZONES.map((z) => (
             <button
               key={z.id}
               onClick={() => setSelectedZone(z.id)}
@@ -184,7 +152,7 @@ export const TablesDashboard: React.FC<TablesDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 border-t sm:border-t-0 pt-1.5 sm:pt-0 border-surface-border/50">
-          {STATUSES.map((st) => (
+          {TABLE_FILTER_STATUSES.map((st) => (
             <button
               key={st.id}
               onClick={() => setSelectedStatus(st.id)}

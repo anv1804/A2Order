@@ -1,16 +1,10 @@
 import { NotificationModal } from "@/components/ui/NotificationModal";
 import React, { useState } from "react";
 import { Icon } from "@/components/ui";
-import { AppShellProps } from "@/types";
-
-interface ExtendedAppShellProps extends AppShellProps {
-  configVersion?: string;
-  hasNewVersionNotice?: boolean;
-  onSyncNewVersion?: () => void;
-  enabledModules?: string[];
-}
+import { AppShellProps, ExtendedAppShellProps } from "@/types";
 
 export const AppShell: React.FC<ExtendedAppShellProps> = ({
+
   storeName,
   userName,
   userRole,

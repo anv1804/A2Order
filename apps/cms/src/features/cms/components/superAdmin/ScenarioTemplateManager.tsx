@@ -19,11 +19,7 @@ const STORAGE_KEY_DISHES = "a2order_template_dishes_v2";
 const STORAGE_KEY_CATEGORIES = "a2order_template_categories_v2";
 const PAGE_SIZE = 10;
 
-export interface ScenarioTemplateManagerProps {
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-  downloadCsv?: (filename: string, headers: string[], rows: unknown[][]) => void;
-}
+import { ScenarioTemplateManagerProps } from "@/types";
 
 export const ScenarioTemplateManager: React.FC<ScenarioTemplateManagerProps> = ({
   isMaximized: propIsMaximized,

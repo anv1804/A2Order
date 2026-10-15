@@ -1,11 +1,7 @@
 import { OrderItemStatus } from "@a2order/shared";
-import { KdsTicket } from "@/types";
+import { KdsTicket, UseKdsActionsParams } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
-
-interface UseKdsActionsParams {
-  setKdsTickets: React.Dispatch<React.SetStateAction<KdsTicket[]>>;
-}
 
 export function useKdsActions({ setKdsTickets }: UseKdsActionsParams) {
   // Đổi trạng thái món KDS

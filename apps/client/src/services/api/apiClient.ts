@@ -1,12 +1,7 @@
 export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || "http://localhost:4000/api";
 
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  message?: string;
-  count?: number;
-}
+import { ApiResponse } from "@/types";
+
 
 export async function requestApi<T = any>(
   endpoint: string,

@@ -2,10 +2,7 @@ import React from "react";
 import { Icon } from "@/components/ui";
 import { SystemAuditLogRecord } from "@/types/cms.types";
 
-export interface AuditDesktopTableProps {
-  paginatedLogs: SystemAuditLogRecord[];
-  onViewDetails: (log: SystemAuditLogRecord) => void;
-}
+import { AuditDesktopTableProps } from "@/types";
 
 export const AuditDesktopTable: React.FC<AuditDesktopTableProps> = ({
   paginatedLogs,

@@ -1,19 +1,9 @@
 import React, { useRef, useEffect } from "react";
 import { Icon } from "@/components/ui";
-
-export interface ChatInputBarProps {
-  activeChannel: "ALL" | "KITCHEN" | "CASHIER" | "WAITER";
-  isTalkingPTT: boolean;
-  pttSeconds: number;
-  onStartPTT: (e: React.MouseEvent | React.TouchEvent) => void;
-  onStopPTT: (e: React.MouseEvent | React.TouchEvent) => void;
-  inputText: string;
-  setInputText: (text: string) => void;
-  onSendMessage: (e?: React.FormEvent) => void;
-  variant?: "full" | "compact";
-}
+import { ChatInputBarProps } from "@/types";
 
 export const ChatInputBar: React.FC<ChatInputBarProps> = ({
+
   activeChannel,
   isTalkingPTT,
   pttSeconds,

@@ -2,13 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Icon } from "./Icon";
 import { Button } from "./Button";
 import { Badge } from "./Badge";
-
-interface NotificationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
+import { NotificationModalProps } from "@/types";
 
 export const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose }) => {
+
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 

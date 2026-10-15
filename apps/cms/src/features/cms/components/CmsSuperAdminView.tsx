@@ -15,10 +15,10 @@ import {
 import { APP_MODULE_CATALOG, StoreScale } from "@a2order/shared";
 import { BUSINESS_SCENARIOS } from "@/data/businessScenarios";
 import { storeApi } from "@/services/api/storeApi";
-import { LicenseKeyRecord } from "./superAdmin/superAdminMockData";
+import { LicenseKeyRecord, StoreOnboardSubmitData } from "@/types";
 import { LicenseModal } from "./superAdmin/modals/LicenseModal";
 import { InvoiceModal } from "./superAdmin/modals/InvoiceModal";
-import { StoreOnboardingModal, StoreOnboardSubmitData } from "./superAdmin/modals/StoreOnboardingModal";
+import { StoreOnboardingModal } from "./superAdmin/modals/StoreOnboardingModal";
 import { CreateLicenseKeyModal } from "./superAdmin/modals/CreateLicenseKeyModal";
 import { StoreDossierModal } from "./superAdmin/modals/StoreDossierModal";
 import { SuspendStoreModal } from "./superAdmin/modals/SuspendStoreModal";
@@ -947,7 +947,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         store={viewingStoreDetails}
         invoices={invoices}
         stores={stores}
-        onUpdateStore={(updatedStore) => {
+        onUpdateStore={(updatedStore: TenantStoreRecord) => {
           setStores((prev) => prev.map((s) => (s.id === updatedStore.id ? updatedStore : s)));
           setViewingStoreDetails(updatedStore);
         }}
@@ -960,7 +960,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         onToggleModule={handleToggleStoreModule}
         onToggleStoreStatus={handleToggleStoreStatus}
         onDeleteStore={(store) => setDeleteTargetStore(store)}
-        onViewInvoice={(inv) => setViewingInvoice(inv)}
+        onViewInvoice={(inv: SoftwareInvoiceRecord) => setViewingInvoice(inv)}
       />
 
       {/* 6. Modal Cảnh Báo & Xác Nhận Khóa/Mở Quán Bằng Mã Hợp Đồng */}

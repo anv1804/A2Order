@@ -1,16 +1,11 @@
 import React, { useState } from "react";
 import { Icon, Modal } from "@/components/ui";
-import { AuthUser } from "@/types";
+import { AuthUser, CmsProfileViewProps } from "@/types";
 import { CmsAppRole } from "@/types/cms.types";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 
-interface CmsProfileViewProps {
-  user: AuthUser;
-  currentRole: CmsAppRole;
-  onLogout: () => void;
-}
-
 export const CmsProfileView: React.FC<CmsProfileViewProps> = ({ user, currentRole, onLogout }) => {
+
   const isSuperAdmin = currentRole === "SUPER_ADMIN";
   const getRoleTitle = (role: CmsAppRole) => {
     switch (role) {

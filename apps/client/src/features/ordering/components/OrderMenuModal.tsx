@@ -1,20 +1,22 @@
 import React, { useState } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Badge, Icon } from "@/components/ui";
-import { TableItem, CartItem } from "@/types";
-import { MenuDishItem, MENU_DATABASE } from "@/data/mockMenu";
+import {
+  TableItem,
+  CartItem,
+  MenuDishItem,
+  SelectedDishItem,
+  OrderStepType,
+  OrderMenuModalProps,
+  OrderMenuDetailContext,
+} from "@/types";
+import { MENU_DATABASE } from "@/data/mockMenu";
+import { ORDER_MODAL_CATEGORIES } from "@/data/menuConstants";
 import { OrderStepNav } from "./OrderStepNav";
 import { DishCard } from "./DishCard";
-import { CartSidebar, SelectedDishItem } from "./CartSidebar";
+import { CartSidebar } from "./CartSidebar";
 import { OrderReviewStep } from "./OrderReviewStep";
 import { DishDetailModal } from "./DishDetailModal";
-
-interface OrderMenuModalProps {
-  isOpen: boolean;
-  table: TableItem | null;
-  onClose: () => void;
-  onSubmitOrder: (tableName: string, items: CartItem[]) => void;
-}
 
 export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   isOpen,
@@ -22,7 +24,7 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   onClose,
   onSubmitOrder,
 }) => {
-  const [orderStep, setOrderStep] = useState<"TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART">("SELECT_MENU");
+  const [orderStep, setOrderStep] = useState<OrderStepType>("SELECT_MENU");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   // Quản lý giỏ hàng theo unique ID (hỗ trợ 1 món nhiều biến thể khác nhau)
@@ -30,20 +32,12 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   const [activeNoteItemId, setActiveNoteItemId] = useState<string | null>(null);
   
   // State mở modal chi tiết món
-  const [detailContext, setDetailContext] = useState<{
-    dish: MenuDishItem;
-    editingItemId?: string;
-  } | null>(null);
+  const [detailContext, setDetailContext] = useState<OrderMenuDetailContext | null>(null);
 
   if (!isOpen || !table) return null;
 
-  const categories = [
-    { id: "ALL", label: "Tất Cả Món" },
-    { id: "PHO_BUN", label: "🍜 Phở & Bún" },
-    { id: "NUONG_LAU", label: "🍲 Lẩu & Nướng" },
-    { id: "KHAI_VI", label: "🥟 Khai Vị" },
-    { id: "DOUONG", label: "🍹 Đồ Uống" },
-  ];
+  const categories = ORDER_MODAL_CATEGORIES;
+
 
   const filteredDishes = MENU_DATABASE.filter((d) => {
     if (selectedCategory !== "ALL" && d.category !== selectedCategory) return false;

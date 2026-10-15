@@ -1,16 +1,11 @@
 import React, { useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { BusinessType, BUSINESS_TYPE_CONFIG } from "@/types/cms.types";
-import { BUSINESS_TYPE_ICONS } from "../../superAdmin/modals/StoreOnboardingModal";
+import { BusinessType, BUSINESS_TYPE_CONFIG, ScenarioPickerModalProps } from "@/types";
+import { BUSINESS_TYPE_ICONS } from "@/data/superAdminConstants";
 import { BUSINESS_SCENARIOS } from "@/data/businessScenarios";
 
-export interface ScenarioPickerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onApply: (type: BusinessType, mode: "REPLACE" | "APPEND") => void;
-}
-
 export const ScenarioPickerModal: React.FC<ScenarioPickerModalProps> = ({
+
   isOpen,
   onClose,
   onApply,

@@ -1,21 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Icon, Panel } from "@/components/ui";
 import { TenantStoreRecord, SoftwareInvoiceRecord, SystemAuditLogRecord } from "@/types/cms.types";
-import { LicenseKeyRecord } from "./superAdminMockData";
+import { LicenseKeyRecord } from "@/types";
 import { formatCurrency } from "@/lib/formatters";
 
-interface SaasDashboardProps {
-  stores: TenantStoreRecord[];
-  invoices: SoftwareInvoiceRecord[];
-  licenses: LicenseKeyRecord[];
-  auditLogs: SystemAuditLogRecord[];
-  connectedSources: string[];
-  isRefreshing: boolean;
-  onRefresh: () => void;
-  onOpenNewStoreModal: () => void;
-  onSwitchTab: (tab: any) => void;
-  onViewStoreDetails: (store: TenantStoreRecord) => void;
-}
+import { SaasDashboardProps } from "@/types";
 
 export const SaasDashboard: React.FC<SaasDashboardProps> = ({
   stores,

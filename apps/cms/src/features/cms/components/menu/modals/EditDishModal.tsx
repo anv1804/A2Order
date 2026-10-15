@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { FnbDishItem, ModifierOption, DishVariantOption, DishCustomizationGroup } from "@/types/cms.types";
+import { FnbDishItem, ModifierOption, DishVariantOption, DishCustomizationGroup, EditDishModalProps } from "@/types";
 import { SAMPLE_FOOD_IMAGES } from "../menuConstants";
 
-export interface EditDishModalProps {
-  dish: FnbDishItem | null;
-  categories: string[];
-  onClose: () => void;
-  onSave: (updatedDish: FnbDishItem) => void;
-}
-
 export const EditDishModal: React.FC<EditDishModalProps> = ({
+
   dish,
   categories,
   onClose,

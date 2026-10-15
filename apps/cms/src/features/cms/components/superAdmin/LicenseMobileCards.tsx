@@ -1,16 +1,11 @@
 import React, { useState } from "react";
 import { Icon, Checkbox } from "@/components/ui";
-import { LicenseKeyRecord } from "./superAdminMockData";
+import { LicenseKeyRecord, LicenseMobileCardsProps } from "@/types";
 
-export interface LicenseMobileCardsProps {
-  paginatedLicenses: LicenseKeyRecord[];
-  selectedLicenseIds: string[];
-  onToggleSelectLicense: (id: string) => void;
-  handleCopyKey: (key: string) => void;
-  handleRevokeKey: (lic: LicenseKeyRecord) => void;
-}
+export type { LicenseMobileCardsProps };
 
 export const LicenseMobileCards: React.FC<LicenseMobileCardsProps> = ({
+
   paginatedLicenses,
   selectedLicenseIds,
   onToggleSelectLicense,

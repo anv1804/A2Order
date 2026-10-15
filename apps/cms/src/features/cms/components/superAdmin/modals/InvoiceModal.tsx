@@ -1,14 +1,11 @@
 import React from "react";
 import { Button, Icon, Portal } from "@/components/ui";
-import { SoftwareInvoiceRecord } from "@/types/cms.types";
+import { SoftwareInvoiceRecord, InvoiceModalProps } from "@/types";
 
-export interface InvoiceModalProps {
-  invoice: SoftwareInvoiceRecord | null;
-  onClose: () => void;
-  onConfirmPayment: (invoice: SoftwareInvoiceRecord) => void;
-}
+export type { InvoiceModalProps };
 
 export const InvoiceModal: React.FC<InvoiceModalProps> = ({
+
   invoice,
   onClose,
   onConfirmPayment,
