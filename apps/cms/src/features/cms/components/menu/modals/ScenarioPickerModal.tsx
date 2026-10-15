@@ -212,7 +212,8 @@ export const ScenarioPickerModal: React.FC<ScenarioPickerModalProps> = ({
                 className="rounded-xl bg-brand-900 text-white text-xs px-5 font-bold shadow-sm flex-1 sm:flex-initial"
                 onClick={() => onApply(selectedScenarioType, "REPLACE")}
               >
-                ✓ Nạp Mới (Ghi Đè Thực Đơn)
+                <Icon name="refresh" size={13} className="mr-1.5 inline" />
+                <span>Nạp Mới (Ghi Đè Thực Đơn)</span>
               </Button>
             </div>
           </div>

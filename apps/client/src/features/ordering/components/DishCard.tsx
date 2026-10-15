@@ -51,8 +51,9 @@ export const DishCard: React.FC<DishCardProps> = ({
             </div>
           )}
           {dish.isPopular && (
-            <span className="absolute top-1 left-1 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-sm">
-              ★ HOT
+            <span className="absolute top-1 left-1 text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs inline-flex items-center gap-0.5">
+              <Icon name="flame" size={10} />
+              <span>HOT</span>
             </span>
           )}
         </div>
@@ -80,8 +81,9 @@ export const DishCard: React.FC<DishCardProps> = ({
                       </span>
                     )}
                     {latestNote && (
-                      <span className="text-[10px] font-semibold text-amber-800 truncate max-w-[130px]">
-                        📝 {latestNote}
+                      <span className="text-[10px] font-semibold text-amber-800 truncate max-w-[130px] inline-flex items-center gap-1">
+                        <Icon name="edit" size={10} />
+                        <span>{latestNote}</span>
                       </span>
                     )}
                   </>

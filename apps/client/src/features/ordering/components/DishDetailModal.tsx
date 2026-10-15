@@ -202,10 +202,10 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <div className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] shrink-0 ${
-                            isChecked ? "bg-brand-900 text-white font-bold" : "border border-surface-border bg-white"
+                          <div className={`w-4 h-4 rounded-md flex items-center justify-center shrink-0 ${
+                            isChecked ? "bg-brand-900 text-white" : "border border-surface-border bg-white"
                           }`}>
-                            {isChecked ? "✓" : ""}
+                            {isChecked && <Icon name="check" size={11} className="stroke-[3]" />}
                           </div>
                           <span className="text-xs truncate">{opt.name}</span>
                         </div>

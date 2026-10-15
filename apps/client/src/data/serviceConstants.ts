@@ -15,10 +15,10 @@ export const SAMPLE_VOUCHERS: VoucherItem[] = [
  * Các yêu cầu phục vụ nhanh tại bàn
  */
 export const SERVICE_OPTIONS: ServiceOptionItem[] = [
-  { id: "ice", emoji: "🧊", label: "Thêm đá lạnh", desc: "Đem thêm xô hoặc ly đá" },
-  { id: "napkin", emoji: "🧻", label: "Thêm khăn giấy", desc: "Bổ sung hộp khăn giấy" },
-  { id: "clean", emoji: "🧹", label: "Dọn dẹp bàn", desc: "Thu dọn vỏ chai, đĩa dư" },
-  { id: "utensils", emoji: "🥢", label: "Thêm chén đũa", desc: "Thêm bát đĩa, muỗng đũa" },
-  { id: "waiter", emoji: "🙋", label: "Gọi nhân viên", desc: "Nhân viên tới bàn hỗ trợ" },
-  { id: "bill", emoji: "💳", label: "Yêu cầu tính tiền", desc: "In hóa đơn thanh toán" },
+  { id: "ice", icon: "snowflake", label: "Thêm đá lạnh", desc: "Đem thêm xô hoặc ly đá" },
+  { id: "napkin", icon: "fileText", label: "Thêm khăn giấy", desc: "Bổ sung hộp khăn giấy" },
+  { id: "clean", icon: "trash", label: "Dọn dẹp bàn", desc: "Thu dọn vỏ chai, đĩa dư" },
+  { id: "utensils", icon: "utensils", label: "Thêm chén đũa", desc: "Thêm bát đĩa, muỗng đũa" },
+  { id: "waiter", icon: "bell", label: "Gọi nhân viên", desc: "Nhân viên tới bàn hỗ trợ" },
+  { id: "bill", icon: "creditCard", label: "Yêu cầu tính tiền", desc: "In hóa đơn thanh toán" },
 ];

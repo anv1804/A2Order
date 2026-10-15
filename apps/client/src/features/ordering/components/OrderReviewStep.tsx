@@ -69,7 +69,10 @@ export const OrderReviewStep: React.FC<OrderReviewStepProps> = ({
 
                       {/* Ghi chú chi tiết bếp */}
                       {item.notes ? (
-                        <p className="text-[11px] font-bold text-amber-800 mt-1">📝 Ghi chú bếp: {item.notes}</p>
+                        <p className="text-[11px] font-bold text-amber-800 mt-1 flex items-center gap-1">
+                          <Icon name="edit" size={12} />
+                          <span>Ghi chú bếp: {item.notes}</span>
+                        </p>
                       ) : (
                         <p className="text-[10px] text-ink-subtle mt-0.5 italic">Không có ghi chú đặc biệt</p>
                       )}

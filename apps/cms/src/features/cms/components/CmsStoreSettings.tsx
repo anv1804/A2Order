@@ -416,7 +416,7 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
                 </Button>
 
                 <p className="text-[10px] text-ink-muted text-center leading-tight">
-                  💡 Các tính năng chưa chọn sẽ tự động ẩn khỏi Menu để tinh gọn giao diện cho quán của bạn.
+                  Các tính năng chưa chọn sẽ tự động ẩn khỏi Menu để tinh gọn giao diện cho quán của bạn.
                 </p>
               </Panel>
             </div>

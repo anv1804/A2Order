@@ -153,7 +153,7 @@ export const CartSidebar: React.FC<CartSidebarProps> = ({
                           className="text-[10px] text-ink-muted hover:text-brand-900 cursor-pointer flex-1 flex items-center justify-between"
                         >
                           <span className={item.notes ? "font-bold text-amber-700 truncate max-w-[170px]" : "italic"}>
-                            {item.notes ? `📝 ${item.notes}` : "+ Thêm ghi chú bếp..."}
+                            {item.notes ? item.notes : "+ Thêm ghi chú bếp..."}
                           </span>
                           <Icon name="edit" className="w-3 h-3 text-ink-subtle" />
                         </div>

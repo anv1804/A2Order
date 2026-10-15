@@ -230,7 +230,7 @@ export const CustomerTableOrderPage: React.FC = () => {
         setOrderedItems((prev) =>
           prev.map((it) => (it.status === "PENDING_APPROVAL" ? { ...it, status: "COOKING" } : it))
         );
-        toast.success("🍳 Quán đã duyệt đơn của bạn! Bếp đang tiến hành chế biến.");
+        toast.success("Quán đã duyệt đơn của bạn! Bếp đang tiến hành chế biến.");
       }
     };
 
@@ -340,7 +340,7 @@ export const CustomerTableOrderPage: React.FC = () => {
           sessionStorage.setItem(`lockout_until_${storeId}_${tableCode}`, String(lockUntil));
           setLockoutRemaining(30);
           setPinError("Nhập sai quá 10 lần! Hệ thống tạm khóa 30 giây để bảo vệ bảo mật bàn.");
-          toast.error("🔒 Nhập sai quá 10 lần! Tạm khóa 30 giây.");
+          toast.error("Nhập sai quá 10 lần! Tạm khóa 30 giây.");
         } else {
           const remaining = 10 - nextCount;
           setPinError(`Mã PIN không đúng. Bạn còn ${remaining} lần thử trước khi bị tạm khóa 30s.`);
@@ -550,8 +550,8 @@ export const CustomerTableOrderPage: React.FC = () => {
   if (isInvalidUrl) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-rose-900 text-rose-300 flex items-center justify-center text-3xl mb-4">
-          ⚠️
+        <div className="w-16 h-16 rounded-3xl bg-rose-900 text-rose-300 flex items-center justify-center mb-4">
+          <Icon name="alert" size={28} />
         </div>
         <h1 className="text-lg font-black text-white mb-2">Link Không Hợp Lệ</h1>
         <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
@@ -605,7 +605,7 @@ export const CustomerTableOrderPage: React.FC = () => {
                 onClick={() => setShowServiceModal(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-sm active:scale-95 transition"
               >
-                <span>⚡</span>
+                <Icon name="bell" size={13} />
                 <span>Hỗ Trợ</span>
               </button>
             ) : (
@@ -644,7 +644,10 @@ export const CustomerTableOrderPage: React.FC = () => {
 
             {/* Chọn số khách */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <label className="text-xs font-bold text-gray-600 block mb-2.5">👥 Số người tại bàn:</label>
+              <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5 mb-2.5">
+                <Icon name="users" size={14} />
+                <span>Số người tại bàn:</span>
+              </label>
               <div className="grid grid-cols-4 gap-2">
                 {[1, 2, 4, 6].map((num) => (
                   <button
@@ -691,7 +694,7 @@ export const CustomerTableOrderPage: React.FC = () => {
             </button>
 
             <div className="bg-amber-50 rounded-xl px-4 py-3 border border-amber-200/60 flex items-start gap-2.5">
-              <span className="text-amber-500 text-base shrink-0 mt-0.5">🔒</span>
+              <Icon name="lock" size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-amber-800 leading-relaxed">
                 <strong>Mã PIN động:</strong> Mã thay đổi sau mỗi lượt khách để bảo vệ bàn của bạn. Không lưu mã cho lần sau.
               </p>
@@ -990,12 +993,14 @@ export const CustomerTableOrderPage: React.FC = () => {
                             )}
                             {item.status === "COOKING" && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-800 text-[11px] font-black">
-                                🍳 Bếp Đang Nấu
+                                <Icon name="flame" size={12} />
+                                <span>Bếp Đang Nấu</span>
                               </span>
                             )}
                             {item.status === "SERVED" && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-black">
-                                🍽️ Đã Phục Vụ
+                                <Icon name="check" size={12} />
+                                <span>Đã Phục Vụ</span>
                               </span>
                             )}
                             {item.status === "CANCELLED" && (
@@ -1023,12 +1028,14 @@ export const CustomerTableOrderPage: React.FC = () => {
                               </button>
                             </div>
                           ) : item.status === "COOKING" ? (
-                            <span className="text-[11px] text-slate-400 italic">
-                              🔒 Bếp đã nấu món này, không thể hủy
+                            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 italic">
+                              <Icon name="lock" size={12} />
+                              <span>Bếp đã nấu món này, không thể hủy</span>
                             </span>
                           ) : item.status === "SERVED" ? (
-                            <span className="text-[11px] text-emerald-700 font-medium">
-                              ✓ Chúc quý khách ngon miệng!
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
+                              <Icon name="check" size={12} />
+                              <span>Chúc quý khách ngon miệng!</span>
                             </span>
                           ) : null}
                         </div>
@@ -1074,8 +1081,9 @@ export const CustomerTableOrderPage: React.FC = () => {
                   {appliedVoucher && (
                     <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-black text-emerald-900">
-                          🎟️ Mã {appliedVoucher.code} đã áp dụng
+                        <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-900">
+                          <Icon name="tag" size={13} />
+                          <span>Mã {appliedVoucher.code} đã áp dụng</span>
                         </span>
                         <p className="text-[10px] text-emerald-700">{appliedVoucher.description}</p>
                       </div>
@@ -1117,7 +1125,7 @@ export const CustomerTableOrderPage: React.FC = () => {
                               ? "bg-emerald-700 text-white"
                               : "bg-white text-emerald-800 border border-emerald-200"
                           }`}>
-                            {appliedVoucher?.code === v.code ? "✓ Đã chọn" : "+ Dùng"}
+                            {appliedVoucher?.code === v.code ? "Đã chọn" : "+ Dùng"}
                           </span>
                         </div>
                       ))}
@@ -1537,7 +1545,7 @@ export const CustomerTableOrderPage: React.FC = () => {
                   ) : (
                     <>
                       <Icon name="check" size={14} />
-                      <span>Xác Nhận Đặt Món 🚀</span>
+                      <span>Xác Nhận Đặt Món</span>
                     </>
                   )}
                 </button>
@@ -1555,7 +1563,7 @@ export const CustomerTableOrderPage: React.FC = () => {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                    <span className="text-base">⚡</span>
+                    <Icon name="bell" size={16} />
                   </div>
                   <div>
                     <h3 className="text-sm font-black text-slate-900">Hỗ Trợ Nhanh Tại Bàn</h3>
@@ -1579,13 +1587,15 @@ export const CustomerTableOrderPage: React.FC = () => {
                     type="button"
                     disabled={isSendingService}
                     onClick={() => handleSendService(srv)}
-                    className="p-3 rounded-2xl border border-slate-200/90 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-left transition active:scale-95 space-y-1 shadow-2xs group"
+                    className="p-3 rounded-2xl border border-slate-200/90 bg-white hover:bg-brand-50 hover:border-brand-300 text-left transition active:scale-95 space-y-1.5 shadow-2xs group"
                   >
-                    <span className="text-xl block">{srv.emoji}</span>
-                    <span className="font-black text-xs text-slate-900 group-hover:text-emerald-900 block truncate">
+                    <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-900 group-hover:bg-brand-900 group-hover:text-white transition-colors">
+                      <Icon name={srv.icon} size={18} />
+                    </div>
+                    <span className="font-bold text-xs text-slate-900 group-hover:text-brand-900 block truncate">
                       {srv.label}
                     </span>
-                    <span className="text-[9.5px] text-slate-400 block truncate">{srv.desc}</span>
+                    <span className="text-[10px] text-slate-500 block truncate">{srv.desc}</span>
                   </button>
                 ))}
               </div>

@@ -39,7 +39,7 @@ export const CmsHardwareSettings: React.FC = () => {
 
   // Kiểm tra in thử nghiệm
   const handleTestPrint = (printer: PrinterConfigRecord) => {
-    toast.success(`🖨️ Đã gửi lệnh in thử nghiệm tới [${printer.name}] (${printer.ipAddress || printer.interfaceType})!`);
+    toast.success(`Đã gửi lệnh in thử nghiệm tới [${printer.name}] (${printer.ipAddress || printer.interfaceType})!`);
   };
 
   // Mở modal tạo mới

@@ -21,9 +21,9 @@ export const QUICK_NOTES: string[] = [
 
 export const ORDER_MODAL_CATEGORIES = [
   { id: "ALL", label: "Tất Cả Món" },
-  { id: "PHO_BUN", label: "🍜 Phở & Bún" },
-  { id: "NUONG_LAU", label: "🍲 Lẩu & Nướng" },
-  { id: "KHAI_VI", label: "🥟 Khai Vị" },
-  { id: "DOUONG", label: "🍹 Đồ Uống" },
+  { id: "PHO_BUN", label: "Phở & Bún" },
+  { id: "NUONG_LAU", label: "Lẩu & Nướng" },
+  { id: "KHAI_VI", label: "Khai Vị" },
+  { id: "DOUONG", label: "Đồ Uống" },
 ] as const;
 

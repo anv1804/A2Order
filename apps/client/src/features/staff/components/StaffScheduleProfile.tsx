@@ -71,10 +71,11 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
               <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
                 {currentStaff.name}
               </h2>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold ${
-                isClockedIn ? "bg-blue-100 text-blue-800 border border-blue-200" : "bg-surface-muted text-ink-muted"
+              <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold inline-flex items-center gap-1.5 ${
+                isClockedIn ? "bg-brand-100 text-brand-900 border border-brand-200" : "bg-surface-muted text-ink-muted"
               }`}>
-                {isClockedIn ? "🔵 Đang Trong Ca" : "⚪ Chưa Vào Ca"}
+                <span className={`w-2 h-2 rounded-full ${isClockedIn ? "bg-brand-800 animate-pulse" : "bg-slate-400"}`} />
+                <span>{isClockedIn ? "Đang Trong Ca" : "Chưa Vào Ca"}</span>
               </span>
             </div>
             <p className="text-xs text-ink-muted mt-0.5">
@@ -161,7 +162,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
           <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">Đánh Giá Phục Vụ</span>
           <div className="my-1 sm:my-1.5 flex items-baseline gap-1">
             <span className="text-2xl sm:text-3xl font-black text-amber-600">4.9</span>
-            <span className="text-amber-500 text-sm">★</span>
+            <Icon name="sparkles" size={16} className="text-amber-500" />
           </div>
           <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
             Top nhân viên

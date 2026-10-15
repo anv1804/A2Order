@@ -350,10 +350,10 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
                       onChange={(e) => setAdminForm({ ...adminForm, category: e.target.value })}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:border-amber-600 focus:outline-none"
                     >
-                      <option value="INCIDENT">⚡ Báo sự cố gián đoạn ca bán</option>
-                      <option value="TECH_SUPPORT">🛠️ Hỗ trợ kỹ thuật / Máy in bill</option>
-                      <option value="LICENSE_UPGRADE">💳 Gia hạn gói phần mềm / Két</option>
-                      <option value="FEATURE_REQUEST">💡 Đề xuất tính năng mới</option>
+                      <option value="INCIDENT">Báo sự cố gián đoạn ca bán</option>
+                      <option value="TECH_SUPPORT">Hỗ trợ kỹ thuật / Máy in bill</option>
+                      <option value="LICENSE_UPGRADE">Gia hạn gói phần mềm / Két</option>
+                      <option value="FEATURE_REQUEST">Đề xuất tính năng mới</option>
                     </select>
                   </div>
 
@@ -366,7 +366,7 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
                       onChange={(e) => setAdminForm({ ...adminForm, priority: e.target.value })}
                       className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:border-amber-600 focus:outline-none"
                     >
-                      <option value="CRITICAL">🚨 Khẩn cấp (Đang trong ca bán)</option>
+                      <option value="CRITICAL">Khẩn cấp (Đang trong ca bán)</option>
                       <option value="URGENT">Cần hỗ trợ sớm trong ngày</option>
                       <option value="NORMAL">Bình thường</option>
                     </select>

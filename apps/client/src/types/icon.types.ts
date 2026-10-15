@@ -74,7 +74,10 @@ export type IconName =
   | "messageSquare"
   | "chevronDown"
   | "chevronLeft"
-  | "chevronRight";
+  | "chevronRight"
+  | "snowflake"
+  | "utensils"
+  | "cupSoda";
 
 export interface IconProps {
   name: IconName;

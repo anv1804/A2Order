@@ -563,9 +563,10 @@ TÀI KHOẢN CHỦ QUÁN (QUẢN TRỊ CMS & POS):
                     {form.modules.map((mod) => (
                       <span
                         key={mod}
-                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-slate-200 text-slate-700 shadow-2xs"
+                        className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white border border-slate-200 text-slate-700 shadow-2xs inline-flex items-center gap-1"
                       >
-                        ✓ {MODULE_NAMES_VI[mod] || mod}
+                        <Icon name="check" size={10} className="text-brand-900" />
+                        <span>{MODULE_NAMES_VI[mod] || mod}</span>
                       </span>
                     ))}
                   </div>

@@ -1,5 +1,6 @@
 import { TableItem } from "./table.types.js";
 import { MenuItemData, MenuDishItem } from "./menu.types.js";
+import { IconName } from "./icon.types.js";
 
 export type OrderStepType = "TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART";
 
@@ -149,7 +150,7 @@ export interface VoucherItem {
 
 export interface ServiceOptionItem {
   id: string;
-  emoji: string;
+  icon: IconName;
   label: string;
   desc: string;
 }

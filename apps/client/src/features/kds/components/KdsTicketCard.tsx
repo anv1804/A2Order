@@ -48,7 +48,10 @@ export const KdsTicketCard: React.FC<KdsTicketCardProps> = ({
               </span>
               <span className="font-bold text-base">{item.name}</span>
               {item.notes && (
-                <p className="text-xs text-rose-400 font-medium mt-0.5">⚠️ {item.notes}</p>
+                <p className="text-xs text-rose-400 font-medium mt-0.5 flex items-center gap-1">
+                  <Icon name="alert" size={12} />
+                  <span>{item.notes}</span>
+                </p>
               )}
             </div>
             {item.status === OrderItemStatus.DONE && <Icon name="check" className="w-5 h-5 text-emerald-400" size={20} />}

@@ -188,7 +188,7 @@ export const CmsKdsView: React.FC = () => {
               onClick={() => handleDone(ticket)}
             >
               <Icon name="check" size={15} />
-              <span>Hoàn Thành ➔ Đưa Ra Bàn</span>
+              <span>Hoàn Thành & Đưa Ra Bàn</span>
             </button>
           )}
           {col === "DONE" && (

@@ -3482,10 +3482,10 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {[
-                        { name: "Phí mở rượu ngoài (Corkage)", amount: 150000, emoji: "🍷" },
-                        { name: "Phí mang bánh sinh nhật ngoài", amount: 50000, emoji: "🎂" },
-                        { name: "Phụ phí phòng VIP riêng", amount: 100000, emoji: "🎪" },
-                        { name: "Phí phục vụ mang đồ ngoài", amount: 50000, emoji: "🍱" },
+                        { name: "Phí mở rượu ngoài (Corkage)", amount: 150000, icon: "tag" as const },
+                        { name: "Phí mang bánh sinh nhật ngoài", amount: 50000, icon: "sparkles" as const },
+                        { name: "Phụ phí phòng VIP riêng", amount: 100000, icon: "store" as const },
+                        { name: "Phí phục vụ mang đồ ngoài", amount: 50000, icon: "plus" as const },
                       ].map((sc) => (
                         <button
                           key={sc.name}
@@ -3493,12 +3493,17 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
                           onClick={() => handleAddSurcharge(sc.name, sc.amount)}
                           className="p-2.5 rounded-xl border border-surface-border bg-surface-canvas hover:bg-brand-50 hover:border-brand-300 text-left transition-all flex items-center justify-between gap-2"
                         >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-extrabold text-ink-primary truncate">
-                              {sc.emoji} {sc.name}
+                          <div className="min-w-0 flex-1 flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-brand-100 text-brand-900 flex items-center justify-center shrink-0">
+                              <Icon name={sc.icon} size={14} />
                             </div>
-                            <div className="text-[11px] font-bold text-brand-900">
-                              +{sc.amount.toLocaleString("vi-VN")} đ
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-extrabold text-ink-primary truncate">
+                                {sc.name}
+                              </div>
+                              <div className="text-[11px] font-bold text-brand-900">
+                                +{sc.amount.toLocaleString("vi-VN")} đ
+                              </div>
                             </div>
                           </div>
                           <span className="text-[11px] font-black text-brand-800 bg-white px-2 py-0.5 rounded-lg border border-surface-border">
@@ -3755,7 +3760,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
               <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
-                    <span className="text-base animate-pulse">⚡</span>
+                    <Icon name="activity" size={18} className="animate-pulse" />
                   </div>
                   <div>
                     <h3 className="text-base font-black text-amber-300">
@@ -3873,10 +3878,11 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs px-5 shadow-lg font-black"
+                  className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs px-5 shadow-lg font-black flex items-center gap-1.5"
                   onClick={handleConfirmOfflinePaid}
                 >
-                  ✅ Xác Nhận Đã Thu (Lưu Sổ Offline)
+                  <Icon name="check" size={14} />
+                  <span>Xác Nhận Đã Thu (Lưu Sổ Offline)</span>
                 </Button>
               </div>
             </div>
@@ -3889,8 +3895,8 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setOpenTableModal(null)}>
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xs p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
               <div className="text-center">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-3 text-2xl">
-                  🔓
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-3">
+                  <Icon name="key" size={24} />
                 </div>
                 <h3 className="text-base font-black text-slate-900">Mở Bàn Thủ Công</h3>
                 <p className="text-xs text-slate-500 mt-1">{openTableModal.tableName}</p>

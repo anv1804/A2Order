@@ -74,6 +74,9 @@ import {
   MicOff,
   Volume2,
   MessageSquare,
+  Snowflake,
+  Utensils,
+  CupSoda,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -155,6 +158,9 @@ const iconMap: Record<IconName, LucideIcon> = {
   chevronDown: ChevronDown,
   chevronLeft: ChevronLeft,
   chevronRight: ChevronRight,
+  snowflake: Snowflake,
+  utensils: Utensils,
+  cupSoda: CupSoda,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

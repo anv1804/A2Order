@@ -1557,7 +1557,7 @@ export const CmsTableManagement: React.FC<CmsTableManagementProps> = ({
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-black text-white bg-emerald-800 hover:bg-emerald-900 shadow-xs flex items-center justify-center gap-2 transition active:scale-95 disabled:opacity-50"
                 >
                   <Icon name="cart" size={14} />
-                  <span>Mở Bàn & Gọi Món Ngay 🚀</span>
+                  <span>Mở Bàn & Gọi Món Ngay</span>
                 </button>
                 <button
                   type="button"
