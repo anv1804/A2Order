@@ -8,11 +8,27 @@ description: >-
 
 # A2Order Fullstack Feature Development Workflow
 
-Kỹ năng này hướng dẫn quy trình phát triển tính năng mới từ đầu đến cuối theo triết lý **Docs-First & Type-Safe** trong Monorepo A2Order.
+Kỹ năng này hướng dẫn quy trình phát triển tính năng mới từ đầu đến cuối theo triết lý **Tư duy phản biện (Critical Thinking) & Docs-First & Type-Safe** trong Monorepo A2Order.
 
 ---
 
-## 1. Quy Trình 5 Bước Tiêu Chuẩn
+## 🧠 0. BỘ NGUYÊN TẮC TƯ DUY BẮT BIẾN KHI LÀM TÍNH NĂNG MỚI
+
+Khi người dùng yêu cầu làm bất kỳ tính năng, màn hình hoặc logic mới nào, AI Agent **BẮT BUỘC** thực hiện chu trình:
+
+1. 🔍 **TÌM HIỂU**: Quét codebase xem tính năng này đã có sẵn chưa, có logic/component nào tái sử dụng được không.
+2. 📖 **ĐỌC KĨ**: Đọc thấu đáo specs trong `docs/` và yêu cầu người dùng, nắm trọn luồng tương tác giữa các vai trò (Chủ quán, Thu ngân, Bếp, Khách).
+3. ⚖️ **PHẢN BIỆN**:
+   * Chỉ ra ngay nếu giải pháp vi phạm tính toàn vẹn đa thuê (`storeId`).
+   * Phản biện nếu tính năng tạo thêm gánh nặng thao tác cho nhân viên chạy bàn trong giờ cao điểm.
+   * Cảnh báo nếu có nguy cơ tính tiền/chiết khấu ở Client.
+4. 💡 **ĐƯA RA QUAN ĐIỂM**: Đề xuất kiến trúc chuẩn (Hexagonal, Zustand store, Fastify module) và so sánh các phương án Đánh đổi (Trade-offs).
+5. ✍️ **GÓP Ý**: Hiến kế cải tiến trải nghiệm F&B (âm thanh KDS, phím tắt POS, QR động gạch nợ tự động, giao diện Donezo Forest Green chuẩn mực).
+6. 🚀 **UPDATE**: Viết code chuẩn TypeScript, cập nhật docs, và chạy `npm run build` xác nhận 0 lỗi.
+
+---
+
+## 1. Quy Trình 5 Bước Triển Khai Kỹ Thuật
 
 ```
 1. Đặc tả (Docs-First)  ──►  2. Hợp đồng dữ liệu (@a2order/shared)
