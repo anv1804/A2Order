@@ -10,6 +10,13 @@ export interface TableItem {
   totalAmount?: number;
 }
 
+export interface TableZoneData {
+  id: string;
+  name: string;
+  tables: TableItem[];
+}
+
+
 export interface TableCardProps {
   table: TableItem;
   onClick: (table: TableItem) => void;

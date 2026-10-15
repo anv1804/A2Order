@@ -4,6 +4,22 @@ export interface StaffMember {
   role: string;
 }
 
+export interface PlatformStoreUserRecord {
+  id: string;
+  name: string;
+  email: string;
+  pinCode: string;
+  role: string;
+  isActive: boolean;
+  createdAt: string;
+  storeId: string;
+  storeName: string;
+  storeStatus?: string;
+  storePlan?: string;
+  hasPassword?: boolean;
+}
+
+
 export interface AttendanceRecord {
   id: string;
   staffId: string;

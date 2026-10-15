@@ -17,6 +17,7 @@ import { INITIAL_MENU } from "@/data/mockMenu";
 import { StaffIntercomWidget } from "@/components/shared/StaffIntercomWidget";
 import { StaffScheduleProfile } from "@/features/staff/components/StaffScheduleProfile";
 import { MenuDashboard } from "@/features/menu/components/MenuDashboard";
+import { CustomerTableOrderPage } from "@/features/ordering/CustomerTableOrderPage";
 
 const INITIAL_TABLES: (TableItem & { zone?: string })[] = [
   { id: "1", name: "Bàn 01", status: TableStatus.EMPTY, zone: "T1" },
@@ -69,10 +70,35 @@ const MOCK_STAFF: StaffMember[] = [
 ];
 
 export const App: React.FC = () => {
+  const [currentPath, setCurrentPath] = useState(() =>
+    typeof window !== "undefined" ? window.location.pathname : "/"
+  );
+
+  useEffect(() => {
+    const handleLocationChange = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handleLocationChange);
+    return () => window.removeEventListener("popstate", handleLocationChange);
+  }, []);
+
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings">("tables");
+
+  const getInitialTab = (): "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings" => {
+    if (typeof window === "undefined") return "tables";
+    const path = window.location.pathname;
+    if (path.startsWith("/kds")) return "kds";
+    if (path.startsWith("/pos") || path.startsWith("/billing") || path.startsWith("/cashier")) return "billing";
+    if (path.startsWith("/menu")) return "menu";
+    if (path.startsWith("/chat")) return "chat";
+    if (path.startsWith("/schedule")) return "schedule";
+    return "tables";
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [currentStaff, setCurrentStaff] = useState<StaffMember>(MOCK_STAFF[0]);
+
 
   // Data states
   const [tables, setTables] = useState<TableItem[]>(INITIAL_TABLES);
@@ -218,7 +244,13 @@ export const App: React.FC = () => {
     return null;
   }
 
+  // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
+  if (currentPath.startsWith("/order")) {
+    return <CustomerTableOrderPage />;
+  }
+
   // RBAC checks
+
   const isWaiter = currentStaff.role.toLowerCase().includes("phục vụ");
 
   // Lọc bàn ăn

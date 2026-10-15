@@ -93,9 +93,6 @@ const CmsEInvoiceManagement = safeLazy(() =>
 const CmsProfileView = safeLazy(() =>
   import("@/features/cms/components/CmsProfileView").then((m) => ({ default: m.CmsProfileView }))
 );
-const CustomerTableOrderPage = safeLazy(() =>
-  import("@/features/ordering/CustomerTableOrderPage").then((m) => ({ default: m.CustomerTableOrderPage }))
-);
 
 const AUTH_TOKEN_KEY = "a2order_auth_token";
 const AUTH_USER_KEY = "a2order_auth_user";
@@ -454,14 +451,20 @@ export const App: React.FC = () => {
   const isPort3002 = typeof window !== "undefined" && window.location.port === "3002";
   const isPort3001 = typeof window !== "undefined" && window.location.port === "3001";
 
-  // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
+  // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order) -> Chuyển hướng sang Cổng Vận Hành POS (Port 3000)
   if (currentPath.startsWith("/order")) {
+    if (typeof window !== "undefined") {
+      const targetUrl = `http://localhost:3000${currentPath}${window.location.search}`;
+      window.location.href = targetUrl;
+    }
     return (
-      <Suspense fallback={<LoadingScreen message="Đang kết nối bàn ăn..." subMessage="Xác thực bảo mật phiên bàn" />}>
-        <CustomerTableOrderPage />
-      </Suspense>
+      <LoadingScreen
+        message="Đang chuyển sang Cổng Gọi Món Bàn Ăn..."
+        subMessage="Hệ thống đang kết nối phiên bàn trên cổng vận hành"
+      />
     );
   }
+
 
   // 2. Nếu chưa đăng nhập: Phân nhánh hiển thị riêng biệt theo Port hoặc URL
   if (!currentUser) {
