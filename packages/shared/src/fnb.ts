@@ -15,11 +15,11 @@ export type BusinessType =
 
 export const BUSINESS_TYPE_CONFIG: Record<
   BusinessType,
-  { label: string; emoji: string; description: string; suggestedModules: AppModule[] }
+  { label: string; icon: string; emoji?: string; description: string; suggestedModules: AppModule[] }
 > = {
   RESTAURANT: {
     label: "Nhà Hàng Lớn",
-    emoji: "🍽️",
+    icon: "utensils",
     description: "Phục vụ tại bàn, đặt trước, nhiều phòng VIP",
     suggestedModules: [
       AppModule.CORE_POS,
@@ -32,25 +32,25 @@ export const BUSINESS_TYPE_CONFIG: Record<
   },
   BEER_GARDEN: {
     label: "Quán Nhậu / Bia Hơi",
-    emoji: "🍺",
+    icon: "beer",
     description: "Bàn đông, gọi món nhanh, vòng quay cao",
     suggestedModules: [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
   },
   SNACK_SHOP: {
     label: "Quán Ăn Vặt",
-    emoji: "🧆",
+    icon: "sparkles",
     description: "Phục vụ nhanh, ít bàn, menu đơn giản",
     suggestedModules: [AppModule.CORE_POS, AppModule.MODULE_QR_ORDER],
   },
   BUBBLE_TEA: {
     label: "Trà Sữa / Topping",
-    emoji: "🧋",
+    icon: "cupSoda",
     description: "Bán theo ly, nhiều topping, take-away",
     suggestedModules: [AppModule.CORE_POS, AppModule.MODULE_QR_ORDER, AppModule.MODULE_LANDING_PAGE],
   },
   COFFEE_SHOP: {
     label: "Quán Cà Phê",
-    emoji: "☕",
+    icon: "coffee",
     description: "Không gian, làm việc, check-in, khách quen",
     suggestedModules: [
       AppModule.CORE_POS,
@@ -61,19 +61,19 @@ export const BUSINESS_TYPE_CONFIG: Record<
   },
   SPICY_NOODLE: {
     label: "Mì Cay / Bún / Phở",
-    emoji: "🍜",
+    icon: "flame",
     description: "Bếp bận, cần KDS, phục vụ nhanh",
     suggestedModules: [AppModule.CORE_POS, AppModule.MODULE_KDS, AppModule.MODULE_QR_ORDER],
   },
   JUICE_BAR: {
     label: "Nước Ép / Sinh Tố",
-    emoji: "🥤",
+    icon: "cupSoda",
     description: "Đơn giản, take-away, mùa vụ",
     suggestedModules: [AppModule.CORE_POS, AppModule.MODULE_QR_ORDER],
   },
   OTHER: {
     label: "Loại Hình Khác",
-    emoji: "🏪",
+    icon: "store",
     description: "Tự cấu hình module phù hợp",
     suggestedModules: [AppModule.CORE_POS],
   },
@@ -171,39 +171,6 @@ export const FNB_MAJOR_CONFIG: Record<
     description: "Bánh ngọt, chè truyền thống, kem tươi, pudding & trái cây đĩa",
   },
 };
-
-// ==========================================
-// 4. KỊCH BẢN MÔ HÌNH (SCENARIO TEMPLATES)
-// ==========================================
-export interface BusinessScenarioCategory {
-  id: string;
-  name: string;
-  emoji?: string;
-  icon?: string;
-}
-
-export interface BusinessScenarioTable {
-  id: string;
-  name: string;
-  capacity: number;
-  zone: string;
-}
-
-export interface BusinessScenarioTemplate {
-  type: BusinessType;
-  businessType?: BusinessType;
-  label: string;
-  businessName?: string;
-  emoji: string;
-  tagline: string;
-  description: string;
-  suggestedModules: AppModule[];
-  categories: BusinessScenarioCategory[];
-  suggestedCategories?: BusinessScenarioCategory[];
-  defaultTables: BusinessScenarioTable[];
-  suggestedTables?: BusinessScenarioTable[];
-  dishes: FnbDishItem[];
-}
 
 // ==========================================
 // 4. QUẢN TRỊ NỀN TẢNG (PLATFORM RECORDS)

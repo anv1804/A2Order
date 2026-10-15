@@ -13,11 +13,11 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   attendanceRecords = [],
   onClose,
 }) => {
-  const [authMode, setAuthMode] = useState<"pin" | "admin">("admin");
+  const [authMode, setAuthMode] = useState<"pin" | "admin">("pin");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState<string>("");
-  const [email, setEmail] = useState<string>("admin@a2order.vn");
-  const [password, setPassword] = useState<string>("••••••••");
+  const [email, setEmail] = useState<string>("chuquan@gmail.com");
+  const [password, setPassword] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -28,6 +28,7 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
       setPin(nextPin);
       if (nextPin.length === 4 && selectedStaff) {
         onPinSubmit(selectedStaff.id, nextPin);
+        setPin("");
       }
     }
   };

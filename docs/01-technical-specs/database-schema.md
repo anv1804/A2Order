@@ -40,10 +40,10 @@ erDiagram
 
 ### 3.1. Bảng `Store` (Nhà hàng / Quán ăn)
 * `id`: String (UUID/CUID) - Khóa chính.
-* `name`: String - Tên quán (VD: Phở Bò Gia Truyền Nam Định).
-* `slug`: String (Unique) - Định danh URL (VD: `pho-nam-dinh`).
-* `phone`: String - Số điện thoại chủ quán.
-* `address`: String - Địa chỉ thực tế.
+* `name`: String - Tên quán (VD: A2 Roastery & Kitchen).
+* `slug`: String (Unique) - Định danh URL (VD: `a2-kitchen`).
+* `phone`: String - Số điện thoại liên hệ nhà hàng.
+* `address`: String - Địa chỉ thực tế nhà hàng.
 * `bankAccount`: String? - Số tài khoản ngân hàng nhận tiền VietQR.
 * `bankBin`: String? - Mã ngân hàng Napas (VD: 970415 - VietinBank).
 * `bankOwnerName`: String? - Tên chủ tài khoản ngân hàng.
@@ -53,7 +53,7 @@ erDiagram
 ### 3.2. Bảng `Staff` (Nhân sự & Phân quyền)
 * `id`: String - Khóa chính.
 * `storeId`: String - Thuộc nhà hàng nào.
-* `name`: String - Tên nhân viên (VD: Hùng Phục Vụ, Chị Lan Thu Ngân).
+* `name`: String - Tên nhân viên (VD: Nguyễn Văn A, Trần Thị B).
 * `email`: String? - Dành cho Quản lý / Kế toán đăng nhập từ xa.
 * `passwordHash`: String? - Dùng khi đăng nhập email.
 * `pinCode`: String? (4 số, vd: `1234`) - Dành cho nhân viên bàn/bếp đăng nhập siêu tốc tại quán.
@@ -64,7 +64,7 @@ erDiagram
 * `id`: String - Khóa chính.
 * `storeId`: String - Thuộc nhà hàng nào.
 * `name`: String - Tên bàn (VD: Bàn 01, Bàn Ngoài Sân 03).
-* `zoneId`: String - Khu vực (Tầng 1, Tầng 2, Ngoài trời).
+* `zoneId`: String - Khu vực (Tầng 1, Tầng 2, Sân vườn).
 * `status`: Enum (`EMPTY`, `OCCUPIED`, `WAITING_FOOD`, `SERVED`, `PAYMENT_PENDING`).
 * `qrSecret`: String - Mã bảo mật sinh QR động theo phiên chống phá hoại từ xa.
 * `currentSessionId`: String? - ID phiên ăn hiện tại đang diễn ra.
@@ -73,7 +73,7 @@ erDiagram
 * `id`: String - Khóa chính.
 * `storeId`: String.
 * `categoryId`: String.
-* `name`: String - Tên món (VD: Phở Tái Nạm, Trà Đào Cam Sả).
+* `name`: String - Tên món ăn hoặc thức uống.
 * `price`: Int - Đơn giá (VND).
 * `image`: String? - Link ảnh món (tối ưu WebP).
 * `isAvailable`: Boolean (Default: true) - Nút gạt 86 (Bếp bấm hết món thì chuyển false).

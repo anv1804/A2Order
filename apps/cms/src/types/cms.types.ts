@@ -9,9 +9,6 @@ import {
   DishCustomizationOption,
   DishCustomizationGroup,
   FnbDishItem,
-  BusinessScenarioCategory,
-  BusinessScenarioTable,
-  BusinessScenarioTemplate,
 } from "@a2order/shared";
 
 export { AppModule };
@@ -23,9 +20,6 @@ export type {
   DishCustomizationOption,
   DishCustomizationGroup,
   FnbDishItem,
-  BusinessScenarioCategory,
-  BusinessScenarioTable,
-  BusinessScenarioTemplate,
 };
 
 export interface CmsMetric {
@@ -277,7 +271,7 @@ export interface CmsStoreSettingsProps {
 }
 
 export interface CmsSuperAdminViewProps {
-  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config" | "scenarios" | "store_users";
+  subView?: "telemetry" | "tenants" | "license_manager" | "software_invoices" | "audit_logs" | "pricing_config" | "store_users";
   onTabChange?: (tab: string) => void;
 }
 

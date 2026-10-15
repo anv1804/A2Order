@@ -13,8 +13,8 @@ import { CHANNELS, INITIAL_MESSAGES, ROLE_BADGES } from "@/data/chatConstants";
 
 
 export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
-  storeName = "Tiệm Trà Sữa Đài Loan",
-  storeId = "store-bubble-tea",
+  storeName = "A2 Roastery & Kitchen",
+  storeId = "store-a2-kitchen",
   currentUser,
 }) => {
   // 1. Back to Top state

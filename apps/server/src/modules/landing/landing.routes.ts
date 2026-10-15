@@ -1,4 +1,4 @@
-﻿import { FastifyInstance } from "fastify";
+import { FastifyInstance } from "fastify";
 import { prisma } from "../../core/database/prismaClient.js";
 
 export async function landingRoutes(fastify: FastifyInstance) {
@@ -37,37 +37,21 @@ export async function landingRoutes(fastify: FastifyInstance) {
     if (!landingPage) {
       // Dữ liệu mẫu hoàn chỉnh nếu quán chưa cấu hình riêng
       return {
-        storeId: "store-demo",
-        storeName: "Phở Bò Nam Định - Gia Truyền",
-        customDomain: "phobonamdinh.vn",
+        storeId: "store-a2-kitchen",
+        storeName: "A2 Roastery & Kitchen",
+        customDomain: "",
         slug: slugOrDomain,
-        heroTitle: "Phở Bò Nam Định - Hương Vị Gia Truyền 30 Năm",
-        heroSubtitle: "Nước dùng ninh xương bò tươi 18 tiếng theo bí quyết truyền thống",
-        heroBannerUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?q=80&w=1200&auto=format&fit=crop",
-        storyContent: "Khởi nguồn từ gánh phở rong phố cổ năm 1995, Phở Bò Nam Định gìn giữ trọn vẹn hương vị nước dùng trong, ngọt thanh từ tủy bò tự nhiên cùng bánh phở tươi tráng tay mỗi sáng.",
-        openingHours: "06:00 - 14:00 & 17:00 - 22:30",
-        hotline: "0912 345 678",
-        address: "Số 88 Phố Trần Thái Tông, Cầu Giấy, Hà Nội",
-        googleMapsUrl: "https://maps.google.com",
+        heroTitle: "A2 Roastery & Kitchen",
+        heroSubtitle: "Không gian ẩm thực & trải nghiệm F&B hiện đại",
+        heroBannerUrl: "",
+        storyContent: "Chào mừng quý khách đến với hệ thống đặt bàn và gọi món trực tuyến của A2 Roastery & Kitchen.",
+        openingHours: "07:00 - 22:30",
+        hotline: "",
+        address: "",
+        googleMapsUrl: "",
         isBookingOpen: true,
         isPublished: true,
-        publicMenuCategories: [
-          {
-            name: "Phở Bò Truyền Thống",
-            items: [
-              { id: "m1", name: "Phở Bò Tái Nạm", price: 65000, description: "Bò tái mềm mọng kèm nạm giòn thơm nức" },
-              { id: "m2", name: "Phở Bò Tái Lăn", price: 75000, description: "Thịt bò xào lăn tỏi lửa lớn dậy mùi" },
-              { id: "m3", name: "Phở Đặc Biệt (Tái, Nạm, Gầu, Gân)", price: 90000, description: "Đầy đặn tinh hoa bát phở truyền thống" },
-            ],
-          },
-          {
-            name: "Đồ Uống & Tráng Miệng",
-            items: [
-              { id: "d1", name: "Trà Đào Cam Sả", price: 35000, description: "Trà ủ lạnh trái cây thanh mát" },
-              { id: "d2", name: "Trứng Trần Nước Béo", price: 15000, description: "Trứng trần lòng đào béo ngậy" },
-            ],
-          },
-        ],
+        publicMenuCategories: [],
       };
     }
 

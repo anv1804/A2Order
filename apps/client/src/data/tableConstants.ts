@@ -7,10 +7,6 @@ import { ZoneFilterOption, StatusFilterOption } from "@/types";
  */
 export const DEFAULT_ZONES: ZoneFilterOption[] = [
   { id: "ALL", label: "Tất Cả Khu Vực" },
-  { id: "T1", label: "Tầng 1 (Máy Lạnh)" },
-  { id: "T2", label: "Tầng 2 (Sân Vườn)" },
-  { id: "VIP", label: "Phòng VIP" },
-  { id: "SAN_VUON", label: "Khu Ngoài Trời" },
 ];
 
 /**

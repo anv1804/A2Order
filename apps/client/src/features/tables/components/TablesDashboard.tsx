@@ -15,6 +15,20 @@ export const TablesDashboard: React.FC<TablesDashboardProps> = ({
   myStaffSales, myServedTablesCount,
   occupiedCount, emptyCount, waitingFoodCount, currentTotalRevenue,
 }) => {
+  // Trích xuất khu vực thực tế từ dữ liệu bàn
+  const dynamicZones = React.useMemo(() => {
+    const zoneMap = new Map<string, string>();
+    tables.forEach((t: any) => {
+      if (t.zone) {
+        zoneMap.set(t.zone, t.zoneName || t.zone);
+      }
+    });
+    return [
+      { id: "ALL", label: "Tất Cả Khu Vực" },
+      ...Array.from(zoneMap.entries()).map(([id, label]) => ({ id, label })),
+    ];
+  }, [tables]);
+
   // Lọc bàn ăn
   const filteredTables = tables.filter((t: any) => {
     if (selectedZone !== "ALL" && t.zone !== selectedZone) return false;
@@ -136,7 +150,7 @@ export const TablesDashboard: React.FC<TablesDashboardProps> = ({
       {/* Zone & Status Filter Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 sm:p-3 rounded-2xl bg-white border border-surface-border">
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {DEFAULT_ZONES.map((z) => (
+          {dynamicZones.map((z) => (
             <button
               key={z.id}
               onClick={() => setSelectedZone(z.id)}

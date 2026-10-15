@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { TableItem, KdsTicket, MenuItemData, StaffMember, AttendanceRecord } from "@/types";
-import { INITIAL_TABLES, INITIAL_KDS_TICKETS, INITIAL_MENU, MOCK_STAFF, INITIAL_ATTENDANCE } from "@/data";
+import { MOCK_STAFF, INITIAL_ATTENDANCE } from "@/data";
 
 export function useAppState() {
   // Auth & Staff
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [currentStaff, setCurrentStaff] = useState<StaffMember>(MOCK_STAFF[0]);
+  const [currentStaff, setCurrentStaff] = useState<StaffMember>({
+    id: "",
+    name: "Nhân viên",
+    role: "Phục vụ",
+    pinCode: "",
+  });
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
 
   // Navigation
   const [activeTab, setActiveTab] = useState<"tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings">("tables");
 
   // Data states
-  const [tables, setTables] = useState<TableItem[]>(INITIAL_TABLES);
-  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(INITIAL_KDS_TICKETS);
-  const [menuItems, setMenuItems] = useState(INITIAL_MENU);
+  const [tables, setTables] = useState<TableItem[]>([]);
+  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItemData[]>([]);
 
   // Table filters
   const [tableSearch, setTableSearch] = useState("");
@@ -22,8 +27,8 @@ export function useAppState() {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
 
   // Doanh số cá nhân của nhân viên phục vụ ca trực hiện tại
-  const [myStaffSales, setMyStaffSales] = useState<number>(2450000);
-  const [myServedTablesCount, setMyServedTablesCount] = useState<number>(8);
+  const [myStaffSales, setMyStaffSales] = useState<number>(0);
+  const [myServedTablesCount, setMyServedTablesCount] = useState<number>(0);
 
   // Active table interaction modals
   const [activeTableForOrder, setActiveTableForOrder] = useState<TableItem | null>(null);

@@ -57,7 +57,7 @@ export function isOperationalRole(role: string): boolean {
 export function getRoleTargetApp(role: string): { app: "cms" | "pos"; port: number; defaultPath: string } {
   switch (role) {
     case UserRole.SUPER_ADMIN:
-      return { app: "cms", port: 3002, defaultPath: "/admin" };
+      return { app: "cms", port: 3001, defaultPath: "/admin" };
     case UserRole.STORE_OWNER:
       return { app: "cms", port: 3001, defaultPath: "/dashboard" };
     case UserRole.ACCOUNTANT:

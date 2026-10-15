@@ -2,14 +2,9 @@ import { VoucherItem, ServiceOptionItem } from "@/types";
 
 
 /**
- * Danh sách Voucher mẫu chuẩn hóa
+ * Danh sách Voucher hệ thống
  */
-export const SAMPLE_VOUCHERS: VoucherItem[] = [
-  { code: "A2GIAM10", discountType: "PERCENT", value: 10, description: "Giảm 10% tổng hóa đơn gọi món" },
-  { code: "A2GIAM20K", discountType: "FIXED", value: 20000, description: "Giảm trực tiếp 20.000 đ cho đơn từ 80k", minOrder: 80000 },
-  { code: "VIP15", discountType: "PERCENT", value: 15, description: "Ưu đãi 15% cho thành viên thân thiết" },
-  { code: "FREESHIP", discountType: "FIXED", value: 15000, description: "Tặng voucher 15.000 đ trải nghiệm tại bàn" },
-];
+export const SAMPLE_VOUCHERS: VoucherItem[] = [];
 
 /**
  * Các yêu cầu phục vụ nhanh tại bàn

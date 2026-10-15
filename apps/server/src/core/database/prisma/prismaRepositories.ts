@@ -1,6 +1,4 @@
 import {
-  BusinessType,
-  BusinessScenarioTemplate,
   FnbDishItem,
   AppModule,
   TenantStoreRecord,
@@ -8,7 +6,6 @@ import {
   SoftwareInvoiceRecord,
 } from "@a2order/shared";
 import {
-  IScenarioRepository,
   IStoreRepository,
   IMenuRepository,
   ILicenseRepository,
@@ -18,7 +15,6 @@ import {
   StaffRecord,
 } from "../IRepository.js";
 import { prisma } from "../prismaClient.js";
-import { DEFAULT_BUSINESS_SCENARIOS } from "../../../mockData/businessScenariosData.js";
 import bcrypt from "bcryptjs";
 
 const getStoreAdminStatus = (
@@ -34,57 +30,7 @@ const getStoreAdminStatus = (
 };
 
 // ==========================================
-// 1. PRISMA SCENARIO REPOSITORY
-// ==========================================
-const activeScenarios: Record<BusinessType, BusinessScenarioTemplate> = { ...DEFAULT_BUSINESS_SCENARIOS };
-
-export class PrismaScenarioRepository implements IScenarioRepository {
-  async getAll(): Promise<BusinessScenarioTemplate[]> {
-    return Object.values(activeScenarios);
-  }
-
-  async getByType(type: BusinessType): Promise<BusinessScenarioTemplate | null> {
-    return activeScenarios[type] || null;
-  }
-
-  async addDishTemplate(type: BusinessType, dish: Omit<FnbDishItem, "id">): Promise<FnbDishItem> {
-    const scenario = activeScenarios[type];
-    if (!scenario) {
-      throw new Error(`Kịch bản ${type} không tồn tại`);
-    }
-    const newDish: FnbDishItem = {
-      ...dish,
-      id: `tmpl-${type.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    };
-    scenario.dishes.unshift(newDish);
-    return newDish;
-  }
-
-  async updateDishTemplate(type: BusinessType, dishId: string, dish: Partial<FnbDishItem>): Promise<FnbDishItem | null> {
-    const scenario = activeScenarios[type];
-    if (!scenario) return null;
-    const index = scenario.dishes.findIndex((d) => d.id === dishId);
-    if (index === -1) return null;
-    scenario.dishes[index] = {
-      ...scenario.dishes[index],
-      ...dish,
-      id: dishId,
-    };
-    return scenario.dishes[index];
-  }
-
-  async deleteDishTemplate(type: BusinessType, dishId: string): Promise<boolean> {
-    const scenario = activeScenarios[type];
-    if (!scenario) return false;
-    const index = scenario.dishes.findIndex((d) => d.id === dishId);
-    if (index === -1) return false;
-    scenario.dishes.splice(index, 1);
-    return true;
-  }
-}
-
-// ==========================================
-// 2. PRISMA STORE REPOSITORY
+// 1. PRISMA STORE REPOSITORY
 // ==========================================
 export class PrismaStoreRepository implements IStoreRepository {
   async getAll(): Promise<TenantStoreRecord[]> {
@@ -302,16 +248,6 @@ export class PrismaStoreRepository implements IStoreRepository {
       return { store: storeRecord, staff: staffRecord };
     });
 
-    // 6. Nạp thực đơn mẫu theo mô hình F&B trực tiếp vào CSDL PostgreSQL
-    if (data.businessType) {
-      const menuRepo = new PrismaMenuRepository();
-      try {
-        await menuRepo.applyScenarioToStore(store.id, data.businessType, "REPLACE");
-      } catch (err) {
-        console.warn(`[StoreRepo] Seeding scenario dishes failed for store ${store.id}:`, err);
-      }
-    }
-
     return {
       id: store.id,
       name: store.name,
@@ -510,26 +446,6 @@ export class PrismaMenuRepository implements IMenuRepository {
   async deleteDish(storeId: string, dishId: string): Promise<boolean> {
     await prisma.menuItem.delete({ where: { id: dishId } });
     return true;
-  }
-
-  async applyScenarioToStore(
-    storeId: string,
-    scenarioType: BusinessType,
-    mode: "REPLACE" | "APPEND"
-  ): Promise<{ dishes: FnbDishItem[]; appliedCount: number }> {
-    const scenario = DEFAULT_BUSINESS_SCENARIOS[scenarioType];
-    if (!scenario) throw new Error("Scenario not found");
-
-    if (mode === "REPLACE") {
-      await prisma.menuItem.deleteMany({ where: { storeId } });
-    }
-
-    for (const d of scenario.dishes) {
-      await this.createDish(storeId, d);
-    }
-
-    const dishes = await this.getDishesByStoreId(storeId);
-    return { dishes, appliedCount: scenario.dishes.length };
   }
 }
 

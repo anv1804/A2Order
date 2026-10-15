@@ -48,9 +48,3 @@ export interface AddDishModalProps {
   }) => void;
 }
 
-export interface ScenarioPickerModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onApply: (type: BusinessType, mode: "REPLACE" | "APPEND") => void;
-}
-

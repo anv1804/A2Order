@@ -14,7 +14,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
   onOpenPinModal,
 }) => {
   const currentRecord = attendanceRecords.find(
-    (r) => r.staffId === currentStaff.id && r.status === "ACTIVE"
+    (r) => r.staffId === currentStaff?.id && r.status === "ACTIVE"
   );
   const isClockedIn = !!currentRecord;
 
@@ -56,7 +56,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
   });
 
   // Lọc nhật ký chấm công của nhân viên này
-  const myLogs = attendanceRecords.filter((r) => r.staffId === currentStaff.id);
+  const myLogs = attendanceRecords.filter((r) => r.staffId === currentStaff?.id);
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-4xl mx-auto animate-fadeIn pb-12">
@@ -64,12 +64,12 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
       <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-white border border-surface-border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-brand-900 text-white flex items-center justify-center text-lg sm:text-xl font-black shadow-md ring-4 ring-brand-100 shrink-0">
-            {currentStaff.name.slice(0, 2).toUpperCase()}
+            {(currentStaff?.name || "NV").slice(0, 2).toUpperCase()}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-2xl font-black text-ink-primary tracking-tight">
-                {currentStaff.name}
+                {currentStaff?.name || "Nhân Viên"}
               </h2>
               <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold inline-flex items-center gap-1.5 ${
                 isClockedIn ? "bg-brand-100 text-brand-900 border border-brand-200" : "bg-surface-muted text-ink-muted"
@@ -79,8 +79,8 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
               </span>
             </div>
             <p className="text-xs text-ink-muted mt-0.5">
-              Mã NV: <span className="font-mono font-bold text-ink-primary">{currentStaff.id.toUpperCase()}</span> • Vai trò:{" "}
-              <strong className="text-brand-800">{currentStaff.role}</strong>
+              Mã NV: <span className="font-mono font-bold text-ink-primary">{(currentStaff?.id || "").toUpperCase()}</span> • Vai trò:{" "}
+              <strong className="text-brand-800">{currentStaff?.role || "Phục vụ"}</strong>
             </p>
             {isClockedIn && (
               <p className="text-[11px] text-blue-700 font-bold mt-1 flex items-center gap-1">

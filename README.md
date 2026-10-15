@@ -101,3 +101,6 @@ Hệ thống hỗ trợ 2 chế độ cơ sở dữ liệu linh hoạt thông qu
 * [Bảng màu & Design Tokens](./docs/01-technical-specs/design-tokens-palette.md)
 * [Đặc tả Cơ sở dữ liệu](./docs/01-technical-specs/database-schema.md)
 * [Bảo mật, Idempotency & Phân quyền](./docs/01-technical-specs/security-and-rbac.md)
+* [Giao thức Realtime WebSocket](./docs/01-technical-specs/realtime-websocket.md)
+* [Tiêu chuẩn Hiệu năng & Code-Splitting](./docs/01-technical-specs/performance-and-optimization.md)
+* [Hướng dẫn chuyển đổi PostgreSQL](./MOCK_TO_REAL_DB_MIGRATION_GUIDE.md)

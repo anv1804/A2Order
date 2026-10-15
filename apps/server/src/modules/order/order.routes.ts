@@ -31,6 +31,18 @@ interface PendingOrder {
 
 const pendingOrders = new Map<string, PendingOrder>();
 
+// Tự động dọn dẹp các đơn chờ bị bỏ quên quá 12 tiếng để tránh tích lũy RAM server
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Mỗi 1 giờ
+const ORDER_TTL_MS = 12 * 60 * 60 * 1000; // 12 tiếng
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, order] of pendingOrders.entries()) {
+    if (now - order.submittedAt > ORDER_TTL_MS) {
+      pendingOrders.delete(id);
+    }
+  }
+}, CLEANUP_INTERVAL_MS).unref?.();
+
 export const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   /**
    * 1. KHÁCH GỬI ĐƠN GỌI MÓN (Chờ quán duyệt trước khi vào bếp)

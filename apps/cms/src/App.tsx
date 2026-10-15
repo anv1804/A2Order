@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { CmsLayout } from "@/features/cms/components/CmsLayout";
-import { CmsNotFoundPage } from "@/features/cms/components/CmsNotFoundPage";
+import React, { useState, useEffect, useRef } from "react";
+import { CmsLayout } from "@/components/layout/CmsLayout";
+import { CmsRouteRenderer } from "@/components/layout/CmsRouteRenderer";
 import { AdminLoginPage, OwnerLoginPage } from "@/features/auth";
 import { GlobalFeedback } from "@/components/feedback";
-import { LoadingScreen, CmsPageSkeleton, ErrorBoundary, Icon } from "@/components/ui";
+import { LoadingScreen } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { hasUnsavedChanges, useUnsavedChangesStore } from "@/stores/unsavedChangesStore";
 import { AuthUser } from "@/types";
@@ -11,235 +11,17 @@ import { CmsAppRole } from "@/types/cms.types";
 import { AppModule } from "@a2order/shared";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { API_BASE_URL } from "@/services/api/apiClient";
+import { runStorageCleanup } from "@/lib/cleanupStorage";
+import {
+  AUTH_TOKEN_KEY,
+  AUTH_USER_KEY,
+  ROLE_ALLOWED_MENUS,
+  ROLE_DEFAULT_MENUS,
+  normalizeAppRole,
+} from "@/data/roleConfig";
 
-// Hàm bọc lazy load chống lỗi chunk/module 404 sau khi build hoặc HMR
-function safeLazy<T extends React.ComponentType<any>>(
-  factory: () => Promise<{ default: T }>,
-  retries = 2
-): React.LazyExoticComponent<T> {
-  return lazy(() => {
-    const execute = (attemptsLeft: number): Promise<{ default: T }> => {
-      return factory().catch((error) => {
-        if (attemptsLeft > 0) {
-          return new Promise<{ default: T }>((resolve) => setTimeout(resolve, 350)).then(() =>
-            execute(attemptsLeft - 1)
-          );
-        }
-        throw error;
-      });
-    };
-    return execute(retries);
-  });
-}
-
-// Tải bất đồng bộ (Lazy-load & Code-splitting) các phân hệ CMS để giảm tải bundle và hiển thị Skeleton tức thì
-const CmsDashboard = safeLazy(() => import("@/features/cms").then((m) => ({ default: m.CmsDashboard })));
-const CmsSuperAdminView = safeLazy(() =>
-  import("@/features/cms/components/CmsSuperAdminView").then((m) => ({ default: m.CmsSuperAdminView }))
-);
-const CmsAdminPricingManager = safeLazy(() =>
-  import("@/features/cms/components/CmsAdminPricingManager").then((m) => ({ default: m.CmsAdminPricingManager }))
-);
-const ScenarioTemplateManager = safeLazy(() =>
-  import("@/features/cms/components/superAdmin/ScenarioTemplateManager").then((m) => ({
-    default: m.ScenarioTemplateManager,
-  }))
-);
-const CmsDeepAnalyticsView = safeLazy(() =>
-  import("@/features/cms/components/CmsDeepAnalyticsView").then((m) => ({ default: m.CmsDeepAnalyticsView }))
-);
-const CmsLandingPageEditor = safeLazy(() =>
-  import("@/features/cms/components/CmsLandingPageEditor").then((m) => ({ default: m.CmsLandingPageEditor }))
-);
-const CmsTableManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsTableManagement").then((m) => ({ default: m.CmsTableManagement }))
-);
-const CmsMenuManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsMenuManagement").then((m) => ({ default: m.CmsMenuManagement }))
-);
-const CmsReservationsManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsReservationsManagement").then((m) => ({ default: m.CmsReservationsManagement }))
-);
-const CmsStaffManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsStaffManagement").then((m) => ({ default: m.CmsStaffManagement }))
-);
-const CmsStoreSettings = safeLazy(() =>
-  import("@/features/cms/components/CmsStoreSettings").then((m) => ({ default: m.CmsStoreSettings }))
-);
-const CmsInventoryManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsInventoryManagement").then((m) => ({ default: m.CmsInventoryManagement }))
-);
-const CmsKdsView = safeLazy(() =>
-  import("@/features/cms/components/CmsKdsView").then((m) => ({ default: m.CmsKdsView }))
-);
-const CmsStaffOrderView = safeLazy(() =>
-  import("@/features/cms/components/CmsStaffOrderView").then((m) => ({ default: m.CmsStaffOrderView }))
-);
-const CmsCustomerManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsCustomerManagement").then((m) => ({ default: m.CmsCustomerManagement }))
-);
-const CmsPromotionsManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsPromotionsManagement").then((m) => ({ default: m.CmsPromotionsManagement }))
-);
-const CmsHardwareSettings = safeLazy(() =>
-  import("@/features/cms/components/CmsHardwareSettings").then((m) => ({ default: m.CmsHardwareSettings }))
-);
-const CmsDeliveryIntegrations = safeLazy(() =>
-  import("@/features/cms/components/CmsDeliveryIntegrations").then((m) => ({ default: m.CmsDeliveryIntegrations }))
-);
-const CmsEInvoiceManagement = safeLazy(() =>
-  import("@/features/cms/components/CmsEInvoiceManagement").then((m) => ({ default: m.CmsEInvoiceManagement }))
-);
-const CmsProfileView = safeLazy(() =>
-  import("@/features/cms/components/CmsProfileView").then((m) => ({ default: m.CmsProfileView }))
-);
-
-const AUTH_TOKEN_KEY = "a2order_auth_token";
-const AUTH_USER_KEY = "a2order_auth_user";
-
-const ROLE_ALLOWED_MENUS: Record<CmsAppRole, string[]> = {
-  SUPER_ADMIN: [
-    "telemetry",
-    "tenants",
-    "store_users",
-    "license_manager",
-    "software_invoices",
-    "pricing_config",
-    "scenarios",
-    "audit_logs",
-    "profile",
-  ],
-  STORE_OWNER: [
-    "dashboard",
-    "staff_order",
-    "tables",
-    "delivery_integrations",
-    "kds",
-    "reservations",
-    "menu",
-    "inventory",
-    "customers",
-    "promotions",
-    "analytics",
-    "einvoice",
-    "team",
-    "hardware",
-    "landing_page",
-    "settings",
-    "profile",
-  ],
-  ACCOUNTANT: ["analytics", "inventory", "einvoice", "dashboard", "profile"],
-  CASHIER: ["staff_order", "tables", "delivery_integrations", "dashboard", "reservations", "customers", "einvoice", "profile"],
-  CHEF: ["kds", "menu", "profile"],
-  WAITER: ["tables", "staff_order", "reservations", "profile"],
-};
-
-const ROLE_DEFAULT_MENUS: Record<CmsAppRole, string> = {
-  SUPER_ADMIN: "telemetry",
-  STORE_OWNER: "dashboard",
-  ACCOUNTANT: "analytics",
-  CASHIER: "staff_order",
-  CHEF: "kds",
-  WAITER: "tables",
-};
-
-export const normalizeAppRole = (role?: string | null): CmsAppRole => {
-  if (!role) return "STORE_OWNER";
-  const upper = role.toUpperCase();
-  if (upper === "SUPER_ADMIN") return "SUPER_ADMIN";
-  if (upper === "ACCOUNTANT") return "ACCOUNTANT";
-  if (upper === "CASHIER") return "CASHIER";
-  if (upper === "CHEF") return "CHEF";
-  if (upper === "WAITER") return "WAITER";
-  if (upper === "ADMIN" || upper === "OWNER" || upper === "STORE_OWNER") return "STORE_OWNER";
-  return "STORE_OWNER";
-};
-
-// Tự động quét và dọn sạch TOÀN BỘ dữ liệu mock / fake cũ còn sót lại trong localStorage của trình duyệt
-if (typeof window !== "undefined") {
-  const storeFakeKeys = [
-    "a2order_customers_data",
-    "a2order_delivery_orders",
-    "a2order_einvoice_records",
-    "a2order_tables_zones_data",
-    "a2order_staff_order_tables_data",
-    "a2order_staff_order_active_table",
-    "a2order_kds_tickets_data",
-    "a2order_reservations_data",
-    "a2order_reservations_filter_date",
-    "a2order_reservations_filter_status",
-    "a2order_inventory_data",
-    "a2order_inventory_ingredients",
-    "a2order_inventory_receipts",
-    "a2order_inventory_recipes",
-    "a2order_staff_users_data",
-    "a2order_staff_list",
-    "a2order_attendance_logs",
-    "a2order_staff_attendance_logs",
-    "a2order_menu_dishes_data",
-    "a2order_sales_bills_data",
-    "a2order_analytics_bills",
-    "a2order_void_audit_canceled_items",
-    "a2order_analytics_canceled_items",
-    "a2order_hardware_printers",
-    "a2order_promotions_data",
-    "a2order_promotions_list",
-    "a2order_calendar_notes",
-    "a2order_a2order_calendar_notes",
-    "a2order_crm_campaigns",
-    "a2order_notifications",
-  ];
-
-  // 1. Quét kiểm tra bất kỳ key nào chứa dấu hiệu dữ liệu fake cũ
-  const MOCK_PATTERNS = [
-    "Khu Máy Lạnh",
-    "Sân Vườn Thoáng Mát",
-    "Phòng Tiệc VIP",
-    "Bác Hùng",
-    "Cô Hương Lan",
-    "QUẨY BAR",
-    "Quẩy Bar",
-    "B12-004",
-    "B03-005",
-    "Coca Cola Tươi",
-    "Bia Tiger Lon Bạc",
-    "Sinh Tố Bơ Đắk Lắk",
-    "Phở Bò Tái Nạm",
-    "Bún Chả Hà Nội",
-    "HD-2026",
-    "Anh Hoàng Tuấn",
-    "Chị Thảo Mai",
-    "note-init-1",
-    "Kiểm tra số lượng nguyên liệu",
-    "Chúc Mừng Sinh Nhật Hội Viên (Tự Động)",
-    "Kéo Khách Quen 30 Ngày Chưa Quay Lại",
-    "INV-2026-0091",
-    "Trà Sữa Topping Đô Đô",
-    "Quán Cà Phê Muối Chú Long",
-  ];
-
-  try {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith("a2order_")) {
-        const val = localStorage.getItem(key) || "";
-        if (MOCK_PATTERNS.some((p) => val.includes(p))) {
-          keysToRemove.push(key);
-        }
-      }
-    }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
-  } catch {
-    // Ignore storage iteration error
-  }
-
-  // 2. Chạy đợt dọn dẹp triệt để nếu chưa chạy v7
-  if (!localStorage.getItem("a2order_store_fake_cleared_v7")) {
-    storeFakeKeys.forEach((key) => localStorage.removeItem(key));
-    localStorage.setItem("a2order_store_fake_cleared_v7", "true");
-  }
-}
+// Dọn dẹp dữ liệu mock cũ trong bộ nhớ trình duyệt
+runStorageCleanup();
 
 export const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
@@ -255,11 +37,9 @@ export const App: React.FC = () => {
   ]);
   const confirmingNavigation = useRef(false);
 
-  // Quản lý đường dẫn URL hiện tại cho các phân hệ (/admin/login vs /login)
+  // Quản lý URL nội bộ cho SPA
   const [currentPath, setCurrentPath] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return window.location.pathname || "/";
-    }
+    if (typeof window !== "undefined") return window.location.pathname || "/";
     return "/";
   });
 
@@ -271,9 +51,7 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentPath(window.location.pathname || "/");
-    };
+    const handlePopState = () => setCurrentPath(window.location.pathname || "/");
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
@@ -288,7 +66,17 @@ export const App: React.FC = () => {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, []);
 
-  // Kiểm tra phiên đăng nhập đã lưu (Remember Me)
+  // Tự động đồng bộ menu hợp lệ khi vai trò thay đổi (tránh kẹt menu quán cho Super Admin)
+  useEffect(() => {
+    if (currentUser) {
+      const allowed = ROLE_ALLOWED_MENUS[currentRole] || ROLE_ALLOWED_MENUS.STORE_OWNER;
+      if (!allowed.includes(activeMenu)) {
+        setActiveMenu(ROLE_DEFAULT_MENUS[currentRole] || "dashboard");
+      }
+    }
+  }, [currentRole, currentUser, activeMenu, setActiveMenu]);
+
+  // Kiểm tra phiên đăng nhập đã lưu
   useEffect(() => {
     const verifySavedAuth = async () => {
       const savedToken = localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
@@ -307,11 +95,8 @@ export const App: React.FC = () => {
           setCurrentRole(mappedRole);
         }
 
-        // Xác thực token qua backend thật
         const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${savedToken}`,
-          },
+          headers: { Authorization: `Bearer ${savedToken}` },
         });
 
         if (res.ok) {
@@ -322,7 +107,6 @@ export const App: React.FC = () => {
             setCurrentRole(mappedRole);
           }
         } else {
-          // Token không còn hợp lệ -> Xóa bộ nhớ
           localStorage.removeItem(AUTH_TOKEN_KEY);
           localStorage.removeItem(AUTH_USER_KEY);
           sessionStorage.removeItem(AUTH_TOKEN_KEY);
@@ -354,9 +138,7 @@ export const App: React.FC = () => {
 
     const resolvedRole = normalizeAppRole(user.role);
     setCurrentRole(resolvedRole);
-
-    const defaultMenu = ROLE_DEFAULT_MENUS[resolvedRole] || "dashboard";
-    setActiveMenu(defaultMenu);
+    setActiveMenu(ROLE_DEFAULT_MENUS[resolvedRole] || "dashboard");
 
     if (resolvedRole === "SUPER_ADMIN") {
       toast.success(`Chào mừng Super Admin ${user.name}! Đã kết nối trung tâm điều hành SaaS A2Order.`);
@@ -414,16 +196,17 @@ export const App: React.FC = () => {
     if (confirmingNavigation.current) return;
     confirmingNavigation.current = true;
     const confirmed = await confirmDialog({
-      title: "Đăng xuất khỏi A2Order?",
+      title: "Đăng Xuất Khỏi Hệ Thống?",
       message: hasUnsavedChanges()
-        ? "Bạn đang có thay đổi chưa lưu. Đăng xuất sẽ bỏ các thay đổi này."
-        : "Phiên quản trị trên thiết bị này sẽ kết thúc.",
-      confirmText: "Đăng xuất",
+        ? "Bạn đang có thay đổi chưa lưu. Đăng xuất sẽ hủy bỏ các thay đổi này."
+        : "Bạn có chắc muốn kết thúc phiên làm việc hiện tại trên thiết bị này?",
+      confirmText: "Đăng Xuất",
       cancelText: "Ở lại",
-      variant: "warning",
+      variant: "danger",
     });
     confirmingNavigation.current = false;
     if (!confirmed) return;
+
     const wasAdmin = currentRole === "SUPER_ADMIN";
     useUnsavedChangesStore.getState().clearAll();
     localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -448,14 +231,10 @@ export const App: React.FC = () => {
     );
   }
 
-  const isPort3002 = typeof window !== "undefined" && window.location.port === "3002";
-  const isPort3001 = typeof window !== "undefined" && window.location.port === "3001";
-
-  // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order) -> Chuyển hướng sang Cổng Vận Hành POS (Port 3000)
+  // Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
   if (currentPath.startsWith("/order")) {
     if (typeof window !== "undefined") {
-      const targetUrl = `http://localhost:3000${currentPath}${window.location.search}`;
-      window.location.href = targetUrl;
+      window.location.href = `http://localhost:3000${currentPath}${window.location.search}`;
     }
     return (
       <LoadingScreen
@@ -465,129 +244,30 @@ export const App: React.FC = () => {
     );
   }
 
-
-  // 2. Nếu chưa đăng nhập: Phân nhánh hiển thị riêng biệt theo Port hoặc URL
+  // Nếu chưa đăng nhập: Phân nhánh theo URL
   if (!currentUser) {
-    const isAdminRoute =
-      isPort3002 ||
-      currentPath.startsWith("/admin") ||
-      currentPath.startsWith("/saas-admin");
-
+    const isAdminRoute = currentPath.startsWith("/admin") || currentPath.startsWith("/saas-admin");
     return (
       <>
         <GlobalFeedback />
         {isAdminRoute ? (
           <AdminLoginPage
             onLoginSuccess={handleLoginSuccess}
-            onNavigateToOwner={() => {
-              if (isPort3002) {
-                window.location.href = "http://localhost:3001";
-              } else {
-                navigateTo("/login");
-              }
-            }}
+            onNavigateToOwner={() => navigateTo("/login")}
           />
         ) : (
           <OwnerLoginPage
             onLoginSuccess={handleLoginSuccess}
-            onNavigateToAdmin={() => {
-              if (isPort3001) {
-                window.location.href = "http://localhost:3002";
-              } else {
-                navigateTo("/admin/login");
-              }
-            }}
+            onNavigateToAdmin={() => navigateTo("/admin/login")}
           />
         )}
       </>
     );
   }
 
-  // Tự động phân tách cổng khi đã đăng nhập:
-  // Nếu đang mở Cổng Admin (3002) nhưng tài khoản là Chủ Quán/Nhân Viên:
-  if (isPort3002 && currentRole !== "SUPER_ADMIN") {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-2xl">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
-            <Icon name="shield" size={28} />
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              Cổng Admin Nền Tảng (Port 3002)
-            </span>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2">Tài Khoản Không Có Quyền Admin</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> ({currentRole === "STORE_OWNER" ? "Chủ Quán" : currentRole}). Vui lòng chuyển sang Cổng Quán (Port 3001) để quản lý quán.
-            </p>
-          </div>
-          <div className="pt-2 flex flex-col gap-2">
-            <a
-              href="http://localhost:3001"
-              className="w-full py-3 px-4 rounded-xl bg-emerald-600 text-white font-black text-xs hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-sm"
-            >
-              <span>Mở Cổng Chủ Quán (Port 3001)</span>
-              <Icon name="arrowRight" size={14} />
-            </a>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
-            >
-              Đăng Nhập Tài Khoản Admin Khác
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Nếu đang mở Cổng Quán (3001) nhưng tài khoản là Super Admin:
-  if (isPort3001 && currentRole === "SUPER_ADMIN") {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-xl border border-slate-200">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto border border-emerald-200">
-            <Icon name="store" size={28} />
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-              Cổng Quán & Bán Hàng (Port 3001)
-            </span>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 mt-2">Bạn Là Quản Trị Viên Nền Tảng</h3>
-            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-              Bạn đang đăng nhập bằng tài khoản <strong>{currentUser.name}</strong> (Super Admin). Vui lòng chuyển sang Cổng Admin Nền Tảng (Port 3002) để quản trị đối tác, license và cấu hình SaaS.
-            </p>
-          </div>
-          <div className="pt-2 flex flex-col gap-2">
-            <a
-              href="http://localhost:3002"
-              className="w-full py-3 px-4 rounded-xl bg-slate-950 text-white font-black text-xs hover:bg-slate-800 transition flex items-center justify-center gap-2 shadow-sm"
-            >
-              <span>Mở Cổng Admin Nền Tảng (Port 3002)</span>
-              <Icon name="arrowRight" size={14} />
-            </a>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full py-2.5 px-4 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition"
-            >
-              Đăng Xuất Để Đăng Nhập Tài Khoản Quán
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const isLandingPageUnlocked = enabledModules.includes(AppModule.MODULE_LANDING_PAGE);
-  const allowedMenus = ROLE_ALLOWED_MENUS[currentRole] || ROLE_ALLOWED_MENUS.STORE_OWNER;
-  const isMenuAllowed = allowedMenus.includes(activeMenu);
-
   return (
     <>
       <GlobalFeedback />
-
       <CmsLayout
         activeMenu={activeMenu}
         onSelectMenu={navigateMenu}
@@ -596,149 +276,16 @@ export const App: React.FC = () => {
         enabledModules={enabledModules}
         currentUser={currentUser}
       >
-        <ErrorBoundary>
-          <Suspense fallback={<CmsPageSkeleton />}>
-            {!isMenuAllowed ? (
-              <CmsNotFoundPage
-                currentRole={currentRole}
-                attemptedMenu={activeMenu}
-                currentUser={currentUser}
-                onGoHome={() => {
-                  const defaultMenu = ROLE_DEFAULT_MENUS[currentRole] || "dashboard";
-                  navigateMenu(defaultMenu);
-                }}
-                onLogout={handleLogout}
-              />
-            ) : activeMenu === "profile" ? (
-              <CmsProfileView user={currentUser} currentRole={currentRole} onLogout={handleLogout} />
-            ) : currentRole === "SUPER_ADMIN" ? (
-              /* Phân hệ Super Admin Nền Tảng */
-              activeMenu === "scenarios" ? (
-                <ScenarioTemplateManager />
-              ) : (
-                <CmsSuperAdminView
-                  subView={
-                    activeMenu === "tenants"
-                      ? "tenants"
-                      : activeMenu === "store_users"
-                      ? "store_users"
-                      : activeMenu === "license_manager"
-                      ? "license_manager"
-                      : activeMenu === "software_invoices"
-                      ? "software_invoices"
-                      : activeMenu === "audit_logs"
-                      ? "audit_logs"
-                      : activeMenu === "pricing_config"
-                      ? "pricing_config"
-                      : "telemetry"
-                  }
-                  onTabChange={(tab) => {
-                    if (tab === "telemetry") navigateMenu("telemetry");
-                    else if (tab === "tenants") navigateMenu("tenants");
-                    else if (tab === "store_users") navigateMenu("store_users");
-                    else if (tab === "licenses") navigateMenu("license_manager");
-                    else if (tab === "invoices") navigateMenu("software_invoices");
-                    else if (tab === "pricing") navigateMenu("pricing_config");
-                    else if (tab === "audit") navigateMenu("audit_logs");
-                    else if (tab === "scenarios") navigateMenu("scenarios");
-                  }}
-                />
-              )
-            ) : currentRole === "CHEF" ? (
-              /* Phân hệ Bếp Nấu & Pha Chế (KDS & Báo Hết) - Tách riêng biệt 100% */
-              <>
-                {activeMenu === "kds" && <CmsKdsView />}
-                {activeMenu === "menu" && <CmsMenuManagement currentRole="CHEF" />}
-              </>
-            ) : currentRole === "WAITER" ? (
-              /* Phân hệ Phục Vụ Bàn & Order Cầm Tay - Tách riêng biệt 100% */
-              <>
-                {activeMenu === "tables" && (
-                  <CmsTableManagement
-                    currentRole="WAITER"
-                    onNavigateToOrder={handleNavigateToOrderWithTable}
-                  />
-                )}
-                {activeMenu === "staff_order" && (
-                  <CmsStaffOrderView
-                    currentRole="WAITER"
-                    onNavigateTab={navigateMenu}
-                  />
-                )}
-                {activeMenu === "reservations" && <CmsReservationsManagement />}
-              </>
-            ) : currentRole === "CASHIER" ? (
-              /* Phân hệ Thu Ngân & Điểm Thanh Toán - Tách riêng biệt 100% */
-              <>
-                {activeMenu === "staff_order" && (
-                  <CmsStaffOrderView
-                    currentRole="CASHIER"
-                    onNavigateTab={navigateMenu}
-                  />
-                )}
-                {activeMenu === "tables" && (
-                  <CmsTableManagement
-                    currentRole="CASHIER"
-                    onNavigateToOrder={handleNavigateToOrderWithTable}
-                  />
-                )}
-                {activeMenu === "delivery_integrations" && <CmsDeliveryIntegrations />}
-                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="CASHIER" />}
-                {activeMenu === "reservations" && <CmsReservationsManagement />}
-                {activeMenu === "customers" && <CmsCustomerManagement />}
-                {activeMenu === "einvoice" && <CmsEInvoiceManagement />}
-              </>
-            ) : currentRole === "ACCOUNTANT" ? (
-              /* Phân hệ Kế Toán & Dòng Tiền P&L - Tách riêng biệt 100% */
-              <>
-                {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
-                {activeMenu === "inventory" && <CmsInventoryManagement />}
-                {activeMenu === "einvoice" && <CmsEInvoiceManagement />}
-                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="ACCOUNTANT" />}
-              </>
-            ) : (
-              /* Phân hệ Chủ Quán (Toàn quyền quản trị cửa hàng) */
-              <>
-                {activeMenu === "dashboard" && <CmsDashboard onNavigateTab={navigateMenu} currentRole="STORE_OWNER" />}
-                {activeMenu === "staff_order" && (
-                  <CmsStaffOrderView
-                    currentRole="STORE_OWNER"
-                    onNavigateTab={navigateMenu}
-                  />
-                )}
-                {activeMenu === "tables" && (
-                  <CmsTableManagement
-                    currentRole="STORE_OWNER"
-                    onNavigateToOrder={handleNavigateToOrderWithTable}
-                  />
-                )}
-                {activeMenu === "delivery_integrations" && <CmsDeliveryIntegrations />}
-                {activeMenu === "menu" && <CmsMenuManagement currentRole="STORE_OWNER" />}
-                {activeMenu === "inventory" && <CmsInventoryManagement />}
-                {activeMenu === "customers" && <CmsCustomerManagement />}
-                {activeMenu === "promotions" && <CmsPromotionsManagement />}
-                {activeMenu === "reservations" && <CmsReservationsManagement />}
-                {activeMenu === "kds" && <CmsKdsView />}
-                {activeMenu === "analytics" && <CmsDeepAnalyticsView />}
-                {activeMenu === "einvoice" && <CmsEInvoiceManagement />}
-                {activeMenu === "landing_page" && (
-                  <CmsLandingPageEditor
-                    isUnlocked={isLandingPageUnlocked}
-                    onUpgradeClick={() => navigateMenu("settings")}
-                  />
-                )}
-                {(activeMenu === "team" || activeMenu === "staff") && <CmsStaffManagement />}
-                {activeMenu === "hardware" && <CmsHardwareSettings />}
-                {activeMenu === "settings" && (
-                  <CmsStoreSettings
-                    enabledModules={enabledModules}
-                    onSaveModules={setEnabledModules}
-                  />
-                )}
-              </>
-            )}
-          </Suspense>
-        </ErrorBoundary>
+        <CmsRouteRenderer
+          currentRole={currentRole}
+          activeMenu={activeMenu}
+          currentUser={currentUser}
+          enabledModules={enabledModules}
+          navigateMenu={navigateMenu}
+          handleNavigateToOrderWithTable={handleNavigateToOrderWithTable}
+          handleLogout={handleLogout}
+          setEnabledModules={setEnabledModules}
+        />
       </CmsLayout>
     </>
   );

@@ -83,9 +83,17 @@ export const AppShell: React.FC<ExtendedAppShellProps> = ({
                 {configVersion}
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-ink-muted font-medium truncate mt-0.5 whitespace-nowrap">
-              {userName} • <span className="text-brand-700 font-bold">{userRole}</span>
-            </p>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="text-[10px] sm:text-[11px] text-ink-muted font-medium truncate mt-0.5 whitespace-nowrap text-left hover:text-brand-900 transition-colors flex items-center gap-1 group cursor-pointer"
+              title="Nhấn để đổi ca / đăng xuất nhân viên"
+            >
+              <span>{userName}</span>
+              <span>•</span>
+              <span className="text-brand-700 font-bold group-hover:underline">{userRole}</span>
+              <Icon name="arrowRight" size={10} className="text-ink-muted group-hover:text-brand-900 transition-transform group-hover:translate-x-0.5" />
+            </button>
           </div>
         </div>
 
@@ -176,9 +184,19 @@ export const AppShell: React.FC<ExtendedAppShellProps> = ({
 
         {/* Right side: Quản trị CMS link (nếu là quản lý) & Đổi nhân viên / Đăng xuất */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-surface-border bg-white text-ink-primary hover:bg-surface-canvas hover:border-brand-300 transition-all text-xs font-bold shrink-0 shadow-2xs active:scale-95"
+            title="Đổi ca làm việc / Đăng xuất nhân viên"
+          >
+            <Icon name="logout" className="w-3.5 h-3.5 text-brand-800" size={14} />
+            <span className="hidden sm:inline">Đổi Ca</span>
+          </button>
+
           {isManager && (
             <a
-              href="http://localhost:3002"
+              href="http://localhost:3001"
               target="_blank"
               rel="noopener noreferrer"
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-900 text-xs font-black hover:bg-brand-100 transition-all shadow-sm"

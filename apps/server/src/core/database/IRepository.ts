@@ -1,6 +1,4 @@
 import {
-  BusinessType,
-  BusinessScenarioTemplate,
   FnbDishItem,
   TenantStoreRecord,
   CreateStoreInput,
@@ -8,18 +6,7 @@ import {
 } from "@a2order/shared";
 
 // ==========================================
-// 1. SCENARIO REPOSITORY INTERFACE
-// ==========================================
-export interface IScenarioRepository {
-  getAll(): Promise<BusinessScenarioTemplate[]>;
-  getByType(type: BusinessType): Promise<BusinessScenarioTemplate | null>;
-  addDishTemplate(type: BusinessType, dish: Omit<FnbDishItem, "id">): Promise<FnbDishItem>;
-  updateDishTemplate(type: BusinessType, dishId: string, dish: Partial<FnbDishItem>): Promise<FnbDishItem | null>;
-  deleteDishTemplate(type: BusinessType, dishId: string): Promise<boolean>;
-}
-
-// ==========================================
-// 2. STORE REPOSITORY INTERFACE
+// 1. STORE REPOSITORY INTERFACE
 // ==========================================
 export interface IStoreRepository {
   getAll(): Promise<TenantStoreRecord[]>;
@@ -30,7 +17,7 @@ export interface IStoreRepository {
 }
 
 // ==========================================
-// 3. MENU REPOSITORY INTERFACE
+// 2. MENU REPOSITORY INTERFACE
 // ==========================================
 export interface IMenuRepository {
   getDishesByStoreId(storeId: string): Promise<FnbDishItem[]>;
@@ -38,11 +25,6 @@ export interface IMenuRepository {
   createDish(storeId: string, dish: Omit<FnbDishItem, "id">): Promise<FnbDishItem>;
   updateDish(storeId: string, dishId: string, data: Partial<FnbDishItem>): Promise<FnbDishItem | null>;
   deleteDish(storeId: string, dishId: string): Promise<boolean>;
-  applyScenarioToStore(
-    storeId: string,
-    scenarioType: BusinessType,
-    mode: "REPLACE" | "APPEND"
-  ): Promise<{ dishes: FnbDishItem[]; appliedCount: number }>;
 }
 
 // ==========================================

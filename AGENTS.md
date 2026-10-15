@@ -132,5 +132,7 @@ Mọi controller và route gọi qua Repository Layer (`apps/server/src/core/dat
 * [Kiến trúc Đa thuê & Phân quyền RBAC](file:///home/anv/Documents/A2Order/docs/01-technical-specs/security-and-rbac.md)
 * [Đặc tả Cơ sở dữ liệu Prisma](file:///home/anv/Documents/A2Order/docs/01-technical-specs/database-schema.md)
 * [Giao thức Realtime WebSocket](file:///home/anv/Documents/A2Order/docs/01-technical-specs/realtime-websocket.md)
+* [Tiêu chuẩn Hiệu năng & Code-Splitting](file:///home/anv/Documents/A2Order/docs/01-technical-specs/performance-and-optimization.md)
+* [Quyết định Công nghệ Fastify & Vite](file:///home/anv/Documents/A2Order/docs/01-technical-specs/tech-stack-decision.md)
 * [Hướng dẫn chuyển đổi PostgreSQL](file:///home/anv/Documents/A2Order/MOCK_TO_REAL_DB_MIGRATION_GUIDE.md)
 * [Quy chuẩn viết Feature mới](file:///home/anv/Documents/A2Order/docs/02-features/TEMPLATE_FEATURE.md)

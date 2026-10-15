@@ -32,63 +32,10 @@ export const CHANNELS: ChannelDef[] = [
 ];
 
 export const INITIAL_MESSAGES: Record<StoreChannelId, StaffChatMessage[]> = {
-  ALL: [
-    {
-      id: "all-1",
-      senderName: "Nguyễn Văn Chiến",
-      senderRole: "Chủ Quán",
-      text: "Chào cả ca sáng! Hôm nay thời tiết đẹp dự kiến khách đông, các bạn chuẩn bị sẵn nguyên liệu và két tiền nhé.",
-      time: "06:30",
-    },
-    {
-      id: "all-2",
-      senderName: "Trần Thu Hà",
-      senderRole: "Thu Ngân",
-      text: "Dạ két tiền sáng nay đã kiểm đếm xong và sẵn sàng tiền lẻ thối lại rồi ạ!",
-      time: "06:45",
-    },
-  ],
-  CASHIER_BAR: [
-    {
-      id: "bar-1",
-      senderName: "Lê Hoàng Long",
-      senderRole: "Pha Chế",
-      text: "Cam tươi hôm nay nhập ít hơn dự kiến, thu ngân để ý tư vấn khách sang Trà Sữa hoặc Trà Đào nhé.",
-      time: "07:10",
-    },
-    {
-      id: "bar-2",
-      senderName: "Trần Thu Hà",
-      senderRole: "Thu Ngân",
-      text: "Đã rõ anh Long ơi, em sẽ chủ động tư vấn khách.",
-      time: "07:15",
-    },
-  ],
-  KITCHEN: [
-    {
-      id: "kit-1",
-      senderName: "Phạm Minh Tuấn",
-      senderRole: "Bếp Trưởng",
-      text: "Bếp vừa hoàn thành xong 2 phần Mì Cay bàn 02, phục vụ qua bưng ra giúp nhé.",
-      time: "07:30",
-    },
-    {
-      id: "kit-2",
-      senderName: "Vũ Thị Mai",
-      senderRole: "Phục Vụ",
-      text: "Em bưng ra bàn cho khách ngay đây ạ!",
-      time: "07:31",
-    },
-  ],
-  SERVICE: [
-    {
-      id: "srv-1",
-      senderName: "Vũ Thị Mai",
-      senderRole: "Phục Vụ",
-      text: "Bàn 06 khách vừa vào có 4 người, em đã chuyển order vào POS rồi ạ.",
-      time: "07:40",
-    },
-  ],
+  ALL: [],
+  CASHIER_BAR: [],
+  KITCHEN: [],
+  SERVICE: [],
 };
 
 export const ROLE_BADGES: Record<string, { bg: string; text: string }> = {

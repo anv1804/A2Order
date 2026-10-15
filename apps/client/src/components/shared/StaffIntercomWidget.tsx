@@ -34,6 +34,15 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
     }
   }, [isOpen, messages]);
 
+  // Dọn dẹp timer khi component unmount
+  useEffect(() => {
+    return () => {
+      if (pttTimerRef.current) {
+        clearInterval(pttTimerRef.current);
+      }
+    };
+  }, []);
+
   // Push to talk start
   const handleStartPTT = () => {
     setIsTalkingPTT(true);

@@ -105,6 +105,7 @@ export interface OrderMenuModalProps {
   table: TableItem | null;
   onClose: () => void;
   onSubmitOrder: (tableName: string, items: CartItem[]) => void;
+  storeDishes?: MenuDishItem[];
 }
 
 

@@ -11,7 +11,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   onFinishPayment,
 }) => {
   const activeTables = tables.filter((t) => t.status !== "EMPTY");
-  const [selectedTableId, setSelectedTableId] = useState<string>(activeTables[0]?.id || "5");
+  const [selectedTableId, setSelectedTableId] = useState<string>(activeTables[0]?.id || "");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PAYMENT_PENDING" | "OCCUPIED">("ALL");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [includeVat, setIncludeVat] = useState<boolean>(false);
@@ -19,12 +19,9 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   const [cashTendered, setCashTendered] = useState<number>(0);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId) || activeTables[0];
+  const selectedTable = tables.find((t) => t.id === selectedTableId) || activeTables[0] || null;
   const items: CashierBillItem[] = selectedTable
-    ? SAMPLE_BILLS[selectedTable.id] || [
-        { id: "fallback-1", name: "Phở Bò Tái Nạm", quantity: 2, price: 65000 },
-        { id: "fallback-2", name: "Nước Suối Lavie", quantity: 2, price: 15000 },
-      ]
+    ? SAMPLE_BILLS[selectedTable.id] || []
     : [];
 
   const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -33,7 +30,9 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   const finalTotal = subTotal - discountAmount + vatAmount;
   const changeDue = Math.max(0, cashTendered - finalTotal);
 
-  const billCode = `HD-${selectedTable?.name.replace(/\s+/g, "")}-${new Date().getHours()}${new Date().getMinutes()}`;
+  const billCode = selectedTable
+    ? `HD-${selectedTable.name.replace(/\s+/g, "")}-${new Date().getHours()}${new Date().getMinutes()}`
+    : "HD-001";
   const vietQrUrl = `https://api.vietqr.io/image/970422-0912345678-qM0v76X.jpg?amount=${finalTotal}&addInfo=${encodeURIComponent(
     billCode
   )}&accountName=A2ORDER%20FNB`;
@@ -179,7 +178,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
 
                     <div className="text-right">
                       <div className="font-black text-sm text-brand-900">
-                        {formatCurrency(tSum || t.totalAmount || 185000)}
+                        {formatCurrency(tSum || t.totalAmount || 0)}
                       </div>
                       <span className="text-[10px] text-ink-subtle">Chạm để chọn</span>
                     </div>
@@ -240,17 +239,23 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     Danh Sách Món Ăn ({items.length})
                   </span>
                   <div className="border border-surface-border rounded-2xl overflow-hidden divide-y divide-surface-border max-h-56 overflow-y-auto">
-                    {items.map((i) => (
-                      <div key={i.id} className="p-2.5 flex items-center justify-between text-xs bg-white hover:bg-surface-canvas/50">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="font-extrabold text-ink-primary truncate">{i.name}</div>
-                          <div className="text-[10px] text-ink-muted">{formatCurrency(i.price)} x {i.quantity}</div>
-                        </div>
-                        <span className="font-black text-brand-900 shrink-0">
-                          {formatCurrency(i.price * i.quantity)}
-                        </span>
+                    {items.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-ink-muted">
+                        Chưa có món nào trong hóa đơn của bàn này
                       </div>
-                    ))}
+                    ) : (
+                      items.map((i) => (
+                        <div key={i.id} className="p-2.5 flex items-center justify-between text-xs bg-white hover:bg-surface-canvas/50">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <div className="font-extrabold text-ink-primary truncate">{i.name}</div>
+                            <div className="text-[10px] text-ink-muted">{formatCurrency(i.price)} x {i.quantity}</div>
+                          </div>
+                          <span className="font-black text-brand-900 shrink-0">
+                            {formatCurrency(i.price * i.quantity)}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
 
                   {/* Discount & Tax Options */}
@@ -409,9 +414,9 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           <div className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 border border-surface-border space-y-4 animate-scaleUp font-mono text-xs">
             <div className="flex items-center justify-between border-b border-dashed border-ink-subtle pb-3 text-center">
               <div className="w-full">
-                <h3 className="text-base font-black text-ink-primary">PHỞ BÒ NAM ĐỊNH</h3>
-                <p className="text-[10px] text-ink-muted">128 Phố Huế, Q. Hai Bà Trưng, Hà Nội</p>
-                <p className="text-[10px] text-ink-muted">Hotline: 0912 345 678</p>
+                <h3 className="text-base font-black text-ink-primary">A2ORDER RESTAURANT</h3>
+                <p className="text-[10px] text-ink-muted">Hệ Thống Quản Lý Gọi Món F&B</p>
+                <p className="text-[10px] text-ink-muted">Hỗ trợ / CSKH: 0908 889 999</p>
                 <div className="mt-2 text-xs font-black uppercase text-ink-primary tracking-wider">
                   PHIẾU THANH TOÁN
                 </div>

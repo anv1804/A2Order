@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Badge, Icon } from "@/components/ui";
 import {
@@ -10,8 +10,7 @@ import {
   OrderMenuModalProps,
   OrderMenuDetailContext,
 } from "@/types";
-import { MENU_DATABASE } from "@/data/mockMenu";
-import { ORDER_MODAL_CATEGORIES } from "@/data/menuConstants";
+import { CATEGORY_NAMES } from "@/data/menuConstants";
 import { OrderStepNav } from "./OrderStepNav";
 import { DishCard } from "./DishCard";
 import { CartSidebar } from "./CartSidebar";
@@ -23,6 +22,7 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   table,
   onClose,
   onSubmitOrder,
+  storeDishes,
 }) => {
   const [orderStep, setOrderStep] = useState<OrderStepType>("SELECT_MENU");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
@@ -34,12 +34,27 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   // State mở modal chi tiết món
   const [detailContext, setDetailContext] = useState<OrderMenuDetailContext | null>(null);
 
+  const activeDishes: MenuDishItem[] = (storeDishes && storeDishes.length > 0)
+    ? (storeDishes as MenuDishItem[])
+    : [];
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    activeDishes.forEach((d) => {
+      if (d.category) set.add(d.category);
+    });
+    return [
+      { id: "ALL", label: "Tất Cả Món" },
+      ...Array.from(set).map((cat) => ({
+        id: cat,
+        label: CATEGORY_NAMES[cat] || cat,
+      })),
+    ];
+  }, [activeDishes]);
+
   if (!isOpen || !table) return null;
 
-  const categories = ORDER_MODAL_CATEGORIES;
-
-
-  const filteredDishes = MENU_DATABASE.filter((d) => {
+  const filteredDishes = activeDishes.filter((d) => {
     if (selectedCategory !== "ALL" && d.category !== selectedCategory) return false;
     if (searchQuery.trim() && !d.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
@@ -387,24 +402,36 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
         {orderStep === "SELECT_MENU" && (
           <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden relative">
             <div className="flex-1 p-3 sm:p-4 overflow-y-auto bg-surface-canvas/50 pb-20 md:pb-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
-                {filteredDishes.map((dish) => {
-                  const meta = getDishCartMeta(dish.id);
-                  return (
-                    <DishCard
-                      key={dish.id}
-                      dish={dish}
-                      totalQuantityInCart={meta.totalQuantityInCart}
-                      distinctCount={meta.distinctCount}
-                      latestNote={meta.latestNote}
-                      latestVariant={meta.latestVariant}
-                      onQuickAdd={handleQuickAdd}
-                      onQuickDecrease={handleQuickDecrease}
-                      onOpenDetail={(d) => setDetailContext({ dish: d })}
-                    />
-                  );
-                })}
-              </div>
+              {filteredDishes.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center text-center p-6">
+                  <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-100 flex items-center justify-center text-brand-800 mb-2.5">
+                    <Icon name="search" className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-bold text-ink-primary">Không tìm thấy món ăn nào</p>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    {searchQuery ? "Thử tìm kiếm với từ khóa khác" : "Chưa có món ăn nào trong danh mục này"}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+                  {filteredDishes.map((dish) => {
+                    const meta = getDishCartMeta(dish.id);
+                    return (
+                      <DishCard
+                        key={dish.id}
+                        dish={dish}
+                        totalQuantityInCart={meta.totalQuantityInCart}
+                        distinctCount={meta.distinctCount}
+                        latestNote={meta.latestNote}
+                        latestVariant={meta.latestVariant}
+                        onQuickAdd={handleQuickAdd}
+                        onQuickDecrease={handleQuickDecrease}
+                        onOpenDetail={(d) => setDetailContext({ dish: d })}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <CartSidebar

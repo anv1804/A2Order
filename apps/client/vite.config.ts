@@ -13,8 +13,8 @@ export default defineConfig({
         name: "A2Order - Vận hành Nhà hàng",
         short_name: "A2Order",
         description: "Hệ thống gọi món và quản lý bàn ăn thông minh",
-        theme_color: "#0f172a",
-        background_color: "#ffffff",
+        theme_color: "#12372A",
+        background_color: "#F4F5F6",
         display: "standalone", // Chạy toàn màn hình như native app
         orientation: "portrait",
         icons: [
@@ -35,6 +35,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-icons": ["lucide-react"],
+        },
+      },
     },
   },
   server: {

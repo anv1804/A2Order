@@ -2,6 +2,8 @@ export interface StaffMember {
   id: string;
   name: string;
   role: string;
+  pinCode?: string;
+  avatar?: string;
 }
 
 export interface PlatformStoreUserRecord {

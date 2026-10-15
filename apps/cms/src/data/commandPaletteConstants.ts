@@ -81,23 +81,6 @@ export const SUPER_ADMIN_MODULES: ModuleItem[] = [
     ],
   },
   {
-    id: "scenarios",
-    label: "Kịch Bản F&B (Kho Mẫu)",
-    hint: "Kho thực đơn mẫu, nhóm phân loại, biến thể & topping",
-    icon: "clipboard",
-    category: "menu",
-    categoryLabel: "Thực Đơn",
-    color: "text-emerald-800",
-    bg: "bg-emerald-50 border-emerald-200/80",
-    badgeColor: "bg-emerald-100 text-emerald-900",
-    subActions: [
-      { id: "scenario_food", label: "Kho thực đơn mẫu Đồ Ăn (Food)", desc: "Món chính, khai vị, lẩu nướng, cơm trưa và món ăn kèm", icon: "utensils" },
-      { id: "scenario_drink", label: "Kho thực đơn mẫu Đồ Uống (Drink)", desc: "Cà phê, trà trái cây, trà sữa, sinh tố và nước đóng chai", icon: "coffee" },
-      { id: "scenario_dessert", label: "Kho thực đơn mẫu Tráng Miệng (Dessert)", desc: "Bánh ngọt, chè, kem, sữa chua và món tráng miệng", icon: "cake" },
-      { id: "scenario_presets", label: "Bộ Size & Tùy chọn đề xuất", desc: "Cấu hình nhóm tùy chọn đường đá, size M-L và topping chuẩn", icon: "grid" },
-    ],
-  },
-  {
     id: "audit_logs",
     label: "Kiểm Toán & Giám Sát",
     hint: "Ghi vết thao tác Admin, bảo mật & lịch sử đăng nhập",

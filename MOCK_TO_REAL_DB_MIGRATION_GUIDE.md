@@ -48,7 +48,7 @@ Dưới đây là bảng đối chiếu giữa Domain Model chia sẻ (`@a2order
 | **Gói bản quyền thuê** | `LicenseRecord` | `StoreLicense` | 1-1 với `Store`. Quản lý thời hạn (`endDate`), số bàn tối đa (`maxTables`), số nhân viên |
 | **Hóa đơn SaaS** | `SoftwareInvoiceRecord` | `SoftwareInvoice` | Lưu giao dịch thanh toán VietQR giữa chủ quán và A2Order platform |
 | **Danh mục món** | `CategoryTemplate` | `Category` | Nhóm món (Cà phê, Trà sữa, Lẩu bò,...) |
-| **Món ăn & Đồ uống** | `FnbDishItem` | `MenuItem` | Tên, đơn giá, ảnh Unsplash, tồn kho. `variantsJson` & `customizationsJson` lưu dưới dạng JSON text |
+| **Món ăn & Đồ uống** | `FnbDishItem` | `MenuItem` | Tên, đơn giá, ảnh món ăn WebP/URL, tồn kho. `variantsJson` & `customizationsJson` lưu dưới dạng JSON text |
 | **Khu vực & Bàn ăn** | `TableTemplate` | `TableZone` & `DiningTable` | Chia theo tầng/khu vực (Tầng 1, Tầng 2, Sân vườn) và trạng thái bàn |
 
 ---
@@ -126,11 +126,6 @@ Khi thấy biểu tượng `🐘 [A2Order Database] Running in REAL DATABASE mod
 ## 4. DANH SÁCH REST API ĐÃ CHUẨN HÓA SẴN SÀNG CHO DATABASE THẬT
 
 Tất cả các endpoint dưới đây đều gọi thông qua `repositoryFactory`:
-
-### Kịch bản kinh doanh F&B (Scenarios):
-- `GET /api/scenarios` : Lấy danh sách 8 gói kịch bản mẫu.
-- `GET /api/scenarios/:type` : Lấy chi tiết kịch bản (dishes, categories, tables).
-- `POST /api/scenarios/:type/apply/:storeId` : Ghi đè hoặc thêm món mẫu vào menu của quán (`{ mode: "REPLACE" | "APPEND" }`).
 
 ### Quản lý Thực đơn & Món (Menu & Dishes):
 - `GET /api/menu/:storeId` : Lấy toàn bộ thực đơn theo store.

@@ -1,40 +1,58 @@
-# Hướng Dẫn Thiết Kế Giao Diện (UI/UX Guidelines)
-Dự án: **A2Order Platform (B2B SaaS F&B)**
+# 🎨 HƯỚNG DẪN THIẾT KẾ GIAO DIỆN & CÔNG THÁI HỌC (UI/UX GUIDELINES v7.0.0)
 
-Tài liệu này quy định các tiêu chuẩn thiết kế UI/UX đặc trưng của hệ thống A2Order. Bất kỳ Agent hay Lập trình viên nào khi phát triển tính năng mới ĐỀU PHẢI tuân thủ nghiêm ngặt để đảm bảo tính nhất quán (Consistency) và tránh sinh ra mã thừa.
+> **Dự án**: A2Order Platform (B2B SaaS F&B Ecosystem)  
+> **Phong cách**: Donezo Forest Green & Warm Sage
 
-## 1. Bảng Màu Đặc Trưng (Color Palette)
-Hệ thống sử dụng các biến màu Semantic (ý nghĩa) được định nghĩa sẵn trong Tailwind:
+Tài liệu này chuẩn hóa toàn bộ ngôn ngữ thiết kế, token màu sắc, typography và quy chuẩn công thái học di động (Mobile Ergonomics) cho hai ứng dụng `apps/client` và `apps/cms`.
 
-- **Brand (Màu thương hiệu - Xanh rêu/Xanh ngọc tối):**
-  - `bg-brand-900`: Nút bấm chính (Primary Button), Header đặc biệt.
-  - `text-brand-800`: Text nhấn mạnh, tiêu đề phần.
-  - `bg-brand-50`: Nền làm nổi bật nhẹ.
-- **Ink (Màu văn bản):**
-  - `text-ink-primary`: Tiêu đề, text chính (Slate-900).
-  - `text-ink-secondary`: Đoạn văn thông thường.
-  - `text-ink-muted`: Chú thích, phụ đề (Slate-500).
-- **Surface (Màu bề mặt & Nền):**
-  - `bg-surface-canvas`: Nền trang tổng thể (thường là xám rất sáng).
-  - `bg-white`: Nền thẻ (Card), Panel.
-  - `border-surface-border`: Viền thẻ, viền input (Slate-200/Slate-100).
-- **Semantic/Trạng thái (Tones):**
-  - `emerald-600` / `emerald-50`: Thành công (Thanh toán xong, Hoạt động).
-  - `amber-600` / `amber-50`: Cảnh báo (Đang chờ, Sắp hết hạn).
-  - `rose-600` / `rose-50`: Lỗi, Hủy (Quá hạn, Hủy bỏ, Xóa).
-  - `indigo-600` / `indigo-50`: Hành động đặc biệt, Thông tin bổ sung.
+---
 
-## 2. Các Thành Phần (UI Components) Cốt Lõi
-Toàn bộ UI Component được tái sử dụng từ `apps/cms/src/components/ui/`. KHÔNG tạo component trùng lặp.
-- **Panel (`<Panel>`):** Khung chứa nội dung chính, luôn có `rounded-2xl` hoặc `rounded-3xl` và đổ bóng nhẹ `shadow-sm` hoặc `shadow-elevated`. Không dùng `div` cứng.
-- **Button (`<Button>`):** Dùng cho mọi nút bấm. Hỗ trợ các variant (`primary`, `outline`, `danger`) và size (`sm`, `md`, `lg`). Các nút chính thường bo tròn hoàn toàn `rounded-full`.
-- **Badge (`<Badge>`):** Dùng để hiển thị trạng thái (Thành công, Thất bại, Cảnh báo).
-- **Icon (`<Icon>`):** Import từ bộ icon chung `iconMap`. Không chèn ảnh SVG trực tiếp vào component để tránh rác code.
-- **Pagination (`<Pagination>`):** Dùng chung cho mọi bảng dữ liệu.
+## 1. BẢNG MÀU CHỦ ĐẠO (DONEZO FOREST GREEN PALETTE)
 
-## 3. Phong Cách Thiết Kế Đặc Trưng (Signature Style)
-1. **Bo góc lớn (Large Radius):** Rất chuộng các viền bo tròn mềm mại (`rounded-2xl`, `rounded-xl` cho Panel/Card và `rounded-full` cho Button/Tag).
-2. **Đổ bóng mượt (Soft Shadows):** Không dùng bóng đen gắt. Dùng bóng có độ nhòe lớn và opacity thấp (VD: `shadow-[0_4px_18px_rgba(15,23,42,.035)]`).
-3. **Typography:** Dùng font sans-serif, tiêu đề thường có font-weight lớn (`font-black`, `font-extrabold`) để tạo sự rõ ràng.
-4. **Viền thẻ đứt nét (Ticket Style):** Thường áp dụng cho Mã khuyến mại (Voucher) hoặc Hóa đơn để tạo cảm giác thương mại điện tử.
-5. **Mini-dashboard:** Mọi trang quản trị danh sách (List View) đều nên có một dải thẻ KPI (Mini-dashboard) ở trên cùng để tóm tắt số liệu trước khi hiển thị bảng.
+Toàn bộ UI sử dụng hệ thống token chuẩn hóa trong Tailwind:
+
+* **Tông Màu Thương Hiệu (Forest Green & Sage)**:
+  * `bg-brand-950` (`#0B241B`): Đen xanh rêu đậm nhất.
+  * `bg-brand-900` (`#12372A`): Xanh rừng trầm, thẻ chỉ số KPI nổi bật (Featured Card), Header.
+  * `bg-brand-800` (`#194B3A`): Nút hành động chính (Primary Button), Active Sidebar.
+  * `bg-brand-700` (`#22604B`): Trạng thái Hover của nút chính.
+  * `bg-brand-100 text-brand-800` (`#E8F5EE`): Nền nhãn Tag / Badge, Active pill.
+  * `bg-brand-50` (`#F2F9F5`): Nền hover nhẹ nhàng của hàng danh sách.
+* **Màu Bề Mặt & Nền (Surface & Canvas)**:
+  * `bg-surface-canvas` (`#F4F5F6`): Nền tổng thể toàn trang (ghi ấm dịu mắt, chống mỏi mắt cho nhân viên ca 10 tiếng).
+  * `bg-surface-card` (`#FFFFFF`): Nền thẻ Panel, Card, Dialog.
+  * `border-surface-border` (`#E3E5E5`): Viền siêu mảnh tinh tế.
+* **Màu Chữ (Typography Ink)**:
+  * `text-ink-primary` (`#161918`): Chữ chính, tiêu đề (Charcoal mềm, không dùng đen tuyền gắt).
+  * `text-ink-secondary` (`#37413D`): Nội dung đoạn văn.
+  * `text-ink-muted` (`#69706D`): Phụ đề, ghi chú thời gian, icon phụ.
+
+---
+
+## 2. QUY CHUẨN CÔNG THÁI HỌC DI ĐỘNG (MOBILE ERGONOMICS)
+
+1. **Kích thước Điểm Chạm (Touch Targets)**:
+   * Tất cả nút bấm, ô chọn, tab, icon tương tác tối thiểu `h-11` (44px), lý tưởng `h-13` (52px) để thao tác dễ dàng bằng một ngón cái.
+2. **Khoảng Đệm An Toàn Đáy (Safe Bottom Padding)**:
+   * Mọi danh sách cuộn trên mobile bắt buộc có đệm đáy `pb-28` để nội dung không bị che khuất bởi Bottom Navigation Bar hoặc Cart Bar.
+3. **Chống Nháy Màn Hình Di Động**:
+   * Áp dụng `-webkit-tap-highlight-color: transparent;` và `touch-action: manipulation;` để triệt tiêu hiệu ứng nháy xanh khó chịu khi chạm nhanh trên iOS Safari và Android Chrome.
+4. **Thanh Cuộn Mảnh hoặc Ẩn (No-Scrollbar)**:
+   * Sử dụng class `.no-scrollbar` cho các thanh danh mục cuộn ngang.
+5. **Hệ thống Phản hồi Chuẩn hóa (Zero Native Alerts)**:
+   * **Tuyệt đối cấm** `alert()`, `confirm()`, `prompt()` mặc định của trình duyệt.
+   * Thông báo: `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`.
+   * Hộp thoại xác nhận: `await confirmDialog({ title, message, confirmText, cancelText, variant })`.
+
+---
+
+## 3. QUY CHUẨN COMPONENT CỐT LÕI
+
+* **Panel (`<Panel>` hoặc `div.bg-white`)**: Luôn có `rounded-3xl` (24px) hoặc `rounded-2xl` (16px), viền `border border-surface-border`, đổ bóng cực nhẹ `shadow-sm`.
+* **Button (`<Button>`)**:
+  * Nút chính: `bg-brand-900 hover:bg-brand-800 text-white font-bold rounded-2xl` hoặc `rounded-full`.
+  * Nút phụ: `variant="outline"` viền `border-surface-border` nền `bg-white`.
+* **Icon (`<Icon name="..." />`)**:
+  * Sử dụng bộ Lucide Icons đồng bộ qua component `<Icon>`. Cấm nhúng SVG thô hoặc cài thêm bộ icon ngoài.
+* **Empty State**:
+  * Khi danh sách dữ liệu rỗng (chưa có món, chưa có bàn, chưa có thông báo), bắt buộc hiển thị Empty State với icon trong vòng tròn `w-16 h-16 rounded-full bg-brand-50 border border-brand-100 text-brand-800` kèm dòng giải thích rõ ràng và nút hành động thêm mới.

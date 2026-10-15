@@ -3,9 +3,6 @@ import {
   AppModule,
   BusinessType,
   StoreScale,
-  FnbMajorCategory,
-  FnbCategoryTemplate,
-  FnbDishItem,
 } from "@a2order/shared";
 import {
   TenantStoreRecord,
@@ -93,12 +90,6 @@ export interface CreateLicenseKeyModalProps {
   }) => void;
 }
 
-export interface AddCategoryModalProps {
-  isOpen: boolean;
-  initialMajorType?: FnbMajorCategory;
-  onClose: () => void;
-  onSave: (category: Omit<FnbCategoryTemplate, "id">) => void;
-}
 
 export interface InvoiceModalProps {
   invoice: SoftwareInvoiceRecord | null;
@@ -112,14 +103,6 @@ export interface ResetUserCredentialsModalProps {
   onReset: (userId: string, payload: { password?: string; pinCode?: string }) => Promise<void>;
 }
 
-export interface ScenarioDishModalProps {
-  isOpen: boolean;
-  majorType: FnbMajorCategory;
-  categories: FnbCategoryTemplate[];
-  initialDish?: FnbDishItem | null;
-  onClose: () => void;
-  onSave: (dishData: Omit<FnbDishItem, "id">, dishId?: string) => Promise<void>;
-}
 
 export interface LicenseModalProps {
   store: {
@@ -320,34 +303,6 @@ export interface AuditMobileCardsProps {
   onViewDetails: (log: SystemAuditLogRecord) => void;
 }
 
-export interface ScenarioTemplateManagerProps {
-  isMaximized?: boolean;
-  setIsMaximized?: (val: boolean | ((prev: boolean) => boolean)) => void;
-  downloadCsv?: (filename: string, headers: string[], rows: unknown[][]) => void;
-}
-
-export interface ScenarioDesktopTableProps {
-  paginatedDishes: FnbDishItem[];
-  selectedDishIds: string[];
-  onToggleSelectDish: (id: string) => void;
-  onToggleSelectAll: () => void;
-  isAllSelected: boolean;
-  isIndeterminate: boolean;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-}
-
-export interface ScenarioMobileCardsProps {
-  dishes: FnbDishItem[];
-  selectedDishIds: string[];
-  onToggleSelectDish: (id: string) => void;
-  handleEditDish: (dish: FnbDishItem) => void;
-  handleDeleteDish: (dish: FnbDishItem) => void;
-  sentinelRef: React.RefObject<HTMLDivElement | null> | React.MutableRefObject<HTMLDivElement | null>;
-  hasMore: boolean;
-  totalCount: number;
-  visibleCount: number;
-}
 
 export interface SaasDashboardProps {
   stores: TenantStoreRecord[];

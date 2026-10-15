@@ -14,6 +14,13 @@ import {
   VoucherItem as Voucher,
 } from "@/types";
 import { SAMPLE_VOUCHERS, SERVICE_OPTIONS } from "@/data/serviceConstants";
+import {
+  CustomerPinUnlockModal,
+  CustomerOrderConfirmModal,
+  CustomerQuickServiceModal,
+  CustomerOrderedTab,
+  CustomerOffersTab,
+} from "./components/customer";
 
 export const CustomerTableOrderPage: React.FC = () => {
 
@@ -587,7 +594,7 @@ export const CustomerTableOrderPage: React.FC = () => {
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="text-sm font-extrabold text-gray-900 truncate leading-tight">
-                {storeInfo?.name || "Tiệm Trà Sữa A2Order"}
+                {storeInfo?.name || "A2 Roastery & Kitchen"}
               </h1>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[11px] font-black font-mono px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
@@ -917,274 +924,32 @@ export const CustomerTableOrderPage: React.FC = () => {
 
             {/* TAB 2: ĐỒ ĐÃ ĐẶT (ORDERED ITEMS HISTORY & CANCELLATION) */}
             {activeTab === "ORDERED" && (
-              <div className="space-y-3 animate-fadeIn">
-                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">Món Đã Đặt Tại Bàn</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
-                        {orderedItems.length} món trong phiên này
-                      </p>
-                    </div>
-                    <span className="text-sm font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-2xl border border-emerald-100 shadow-2xs">
-                      {orderedItems
-                        .filter((it) => it.status !== "CANCELLED")
-                        .reduce((s, it) => s + it.price * it.quantity, 0)
-                        .toLocaleString("vi-VN")}{" "}
-                      đ
-                    </span>
-                  </div>
-                </div>
-
-                {orderedItems.length === 0 ? (
-                  <div className="py-16 bg-white rounded-3xl border border-slate-100 text-center space-y-3 p-6 shadow-xs">
-                    <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                      <Icon name="clipboard" size={28} />
-                    </div>
-                    <p className="text-sm font-bold text-slate-700">Bàn chưa gửi món nào vào bếp</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto">Chọn các món yêu thích trong thực đơn và gửi vào bếp nhé!</p>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("MENU")}
-                      className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-900/20 transition active:scale-95"
-                    >
-                      Xem Thực Đơn Để Chọn Món
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {orderedItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className={`p-3.5 bg-white rounded-3xl border shadow-xs space-y-2.5 transition-all ${
-                          item.status === "CANCELLED"
-                            ? "opacity-50 border-slate-200 bg-slate-50/50"
-                            : item.status === "PENDING_APPROVAL"
-                            ? "border-amber-300 ring-1 ring-amber-200"
-                            : "border-slate-100"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-extrabold text-sm text-slate-900 truncate">
-                                {item.quantity}x {item.name}
-                              </span>
-                              {item.orderedAt && (
-                                <span className="text-[10px] text-slate-400 font-medium">({item.orderedAt})</span>
-                              )}
-                            </div>
-                            <p className="text-xs font-black text-emerald-700 mt-0.5">
-                              {(item.price * item.quantity).toLocaleString("vi-VN")} đ
-                            </p>
-                            {item.notes && (
-                              <p className="text-[11px] text-amber-800 italic mt-0.5 bg-amber-50 px-2 py-0.5 rounded-md inline-block">
-                                Ghi chú: {item.notes}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="shrink-0">
-                            {item.status === "PENDING_APPROVAL" && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-300 text-amber-800 text-[11px] font-black animate-pulse">
-                                ⏳ Chờ Quán Duyệt
-                              </span>
-                            )}
-                            {item.status === "COOKING" && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-800 text-[11px] font-black">
-                                <Icon name="flame" size={12} />
-                                <span>Bếp Đang Nấu</span>
-                              </span>
-                            )}
-                            {item.status === "SERVED" && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-black">
-                                <Icon name="check" size={12} />
-                                <span>Đã Phục Vụ</span>
-                              </span>
-                            )}
-                            {item.status === "CANCELLED" && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 border border-slate-300 text-slate-500 text-[11px] font-bold line-through">
-                                Đã Hủy
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Nút Hủy Món nếu quán chưa duyệt */}
-                        <div className="flex items-center justify-between border-t border-slate-100 pt-2.5">
-                          {item.status === "PENDING_APPROVAL" ? (
-                            <div className="flex items-center justify-between w-full">
-                              <span className="text-[11px] text-amber-800 font-semibold">
-                                Quán chưa duyệt, bạn có thể hủy:
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleCancelOrderItem(item)}
-                                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center gap-1 active:scale-95"
-                              >
-                                <Icon name="trash" size={12} />
-                                <span>Hủy Món</span>
-                              </button>
-                            </div>
-                          ) : item.status === "COOKING" ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 italic">
-                              <Icon name="lock" size={12} />
-                              <span>Bếp đã nấu món này, không thể hủy</span>
-                            </span>
-                          ) : item.status === "SERVED" ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
-                              <Icon name="check" size={12} />
-                              <span>Chúc quý khách ngon miệng!</span>
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <CustomerOrderedTab
+                orderedItems={orderedItems}
+                onViewMenu={() => setActiveTab("MENU")}
+                onCancelItem={handleCancelOrderItem}
+              />
             )}
 
             {/* TAB 3: ƯU ĐÃI & TÍCH ĐIỂM (VOUCHER & LOYALTY) */}
             {activeTab === "OFFERS" && (
-              <div className="space-y-3 animate-fadeIn">
-                {/* 1. Nhập Voucher */}
-                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xs space-y-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center shadow-2xs">
-                      <Icon name="tag" size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900">Voucher & Mã Giảm Giá</h3>
-                      <p className="text-[11px] text-slate-400">Áp dụng trực tiếp vào tổng hóa đơn</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={voucherInput}
-                      onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
-                      placeholder="Nhập mã voucher (VD: A2GIAM10)"
-                      className="flex-1 h-11 px-3.5 rounded-2xl border border-slate-200 bg-slate-50 text-xs font-black uppercase text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white transition"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleApplyVoucher()}
-                      className="px-5 rounded-2xl bg-emerald-700 text-white font-black text-xs hover:bg-emerald-800 transition active:scale-95 shadow-sm"
-                    >
-                      Áp Dụng
-                    </button>
-                  </div>
-
-                  {appliedVoucher && (
-                    <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                      <div>
-                        <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-900">
-                          <Icon name="tag" size={13} />
-                          <span>Mã {appliedVoucher.code} đã áp dụng</span>
-                        </span>
-                        <p className="text-[10px] text-emerald-700">{appliedVoucher.description}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAppliedVoucher(null);
-                          toast.info("Đã bỏ áp dụng voucher");
-                        }}
-                        className="text-xs font-bold text-rose-600 hover:text-rose-800 px-2 py-1 rounded-lg hover:bg-rose-50"
-                      >
-                        Bỏ chọn
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Danh sách voucher gợi ý */}
-                  <div className="space-y-2 pt-1">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mã ưu đãi đang có:</p>
-                    <div className="grid grid-cols-1 gap-2">
-                      {SAMPLE_VOUCHERS.map((v) => (
-                        <div
-                          key={v.code}
-                          onClick={() => handleApplyVoucher(v.code)}
-                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                            appliedVoucher?.code === v.code
-                              ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-200"
-                              : "bg-slate-50/70 hover:bg-emerald-50/40 border-slate-200/80"
-                          }`}
-                        >
-                          <div>
-                            <span className="text-xs font-black font-mono text-emerald-800 bg-white px-2.5 py-0.5 rounded-lg border border-emerald-200 shadow-2xs">
-                              {v.code}
-                            </span>
-                            <p className="text-xs text-slate-700 font-semibold mt-1">{v.description}</p>
-                          </div>
-                          <span className={`text-xs font-black px-3 py-1 rounded-xl transition ${
-                            appliedVoucher?.code === v.code
-                              ? "bg-emerald-700 text-white"
-                              : "bg-white text-emerald-800 border border-emerald-200"
-                          }`}>
-                            {appliedVoucher?.code === v.code ? "Đã chọn" : "+ Dùng"}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 2. Nhập SĐT Tích Điểm */}
-                <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-xs space-y-3.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-2xl bg-cyan-100 text-cyan-800 flex items-center justify-center shadow-2xs">
-                      <Icon name="phone" size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900">Tích Điểm Thành Viên</h3>
-                      <p className="text-[11px] text-slate-400">10.000 đ = 1 điểm thưởng đổi quà</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleSavePhone} className="flex gap-2">
-                    <input
-                      type="tel"
-                      maxLength={11}
-                      value={customerPhone}
-                      onChange={(e) => {
-                        setCustomerPhone(e.target.value.replace(/[^0-9]/g, ""));
-                        setIsPhoneSaved(false);
-                      }}
-                      placeholder="Nhập số điện thoại (10 số)"
-                      className="flex-1 h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-900 focus:outline-none focus:border-cyan-600 focus:bg-white"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 rounded-xl bg-cyan-700 text-white font-black text-xs hover:bg-cyan-800 transition active:scale-95"
-                    >
-                      {isPhoneSaved ? "Đã Lưu" : "Lưu SĐT"}
-                    </button>
-                  </form>
-
-                  {isPhoneSaved && customerPhone && (
-                    <div className="p-3 bg-gradient-to-r from-cyan-900 to-slate-900 text-white rounded-xl shadow-xs space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-cyan-300 uppercase">Thẻ Thành Viên A2</span>
-                        <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-bold">Standard</span>
-                      </div>
-                      <p className="text-sm font-black tracking-wider font-mono">{customerPhone}</p>
-                      <p className="text-[10px] text-cyan-200">
-                        Số điểm tích lũy dự kiến: +
-                        {Math.floor(
-                          orderedItems
-                            .filter((it) => it.status !== "CANCELLED")
-                            .reduce((s, it) => s + it.price * it.quantity, 0) / 10000
-                        )}{" "}
-                        điểm
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <CustomerOffersTab
+                voucherInput={voucherInput}
+                setVoucherInput={setVoucherInput}
+                appliedVoucher={appliedVoucher}
+                onApplyVoucher={handleApplyVoucher}
+                onRemoveVoucher={() => {
+                  setAppliedVoucher(null);
+                  toast.info("Đã bỏ áp dụng voucher");
+                }}
+                sampleVouchers={SAMPLE_VOUCHERS}
+                customerPhone={customerPhone}
+                setCustomerPhone={setCustomerPhone}
+                isPhoneSaved={isPhoneSaved}
+                setIsPhoneSaved={setIsPhoneSaved}
+                onSavePhone={handleSavePhone}
+                orderedItems={orderedItems}
+              />
             )}
           </div>
         )}
@@ -1326,298 +1091,48 @@ export const CustomerTableOrderPage: React.FC = () => {
       )}
 
       {/* Modal 1: Nhập Mã PIN Mở Bàn Thủ Công (Kèm Brute-Force Lockout 30s) */}
-      {showPinModal && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200/80 space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center shadow-2xs">
-                    <Icon name="key" size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">Mở Bàn Bằng Mã PIN</h3>
-                    <p className="text-[10.5px] text-slate-400 font-bold">{tableInfo?.name || "Bàn ăn"} ({tableCode})</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPinModal(false)}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
-                >
-                  <Icon name="x" size={16} />
-                </button>
-              </div>
-
-              <div className="p-3 bg-emerald-50/60 rounded-2xl border border-emerald-100 text-left space-y-1">
-                <p className="text-xs font-bold text-emerald-950">
-                  Nhập mã PIN 4 chữ số trên thẻ bàn:
-                </p>
-                <p className="text-[10.5px] text-emerald-800/80 leading-relaxed">
-                  Mã PIN được in kèm thẻ để bàn hoặc do nhân viên phục vụ gửi. Nhập đúng mã sẽ mở khóa menu ngay tức thì.
-                </p>
-              </div>
-
-              {/* Thông báo khóa tạm thời nếu nhập sai quá 10 lần */}
-              {lockoutRemaining > 0 ? (
-                <div className="p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl text-center space-y-2 animate-shake">
-                  <div className="w-10 h-10 mx-auto rounded-full bg-rose-100 text-rose-700 flex items-center justify-center">
-                    <Icon name="lock" size={20} />
-                  </div>
-                  <h4 className="text-xs font-black text-rose-900">Tạm Khóa Bảo Mật Bàn</h4>
-                  <p className="text-[11px] text-rose-700 leading-relaxed">
-                    Bạn đã nhập sai mã PIN quá 10 lần. Vui lòng đợi hết thời gian khóa hoặc nhờ nhân viên quầy mở bàn:
-                  </p>
-                  <div className="text-2xl font-black font-mono text-rose-600 tracking-wider">
-                    00:{String(lockoutRemaining).padStart(2, "0")}s
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleUnlockWithPin} className="space-y-4">
-                  <div>
-                    <input
-                      type="tel"
-                      maxLength={6}
-                      autoFocus
-                      disabled={lockoutRemaining > 0}
-                      value={pinInput}
-                      onChange={(e) => {
-                        const v = e.target.value.replace(/[^0-9]/g, "");
-                        setPinInput(v);
-                        setPinError(null);
-                        if (v.length === 4) {
-                          handleUnlockWithPin(undefined, v);
-                        }
-                      }}
-                      placeholder="• • • •"
-                      className="w-full text-center tracking-[0.5em] font-mono font-black text-2xl h-14 rounded-2xl border-2 border-emerald-600/30 focus:border-emerald-600 bg-slate-50 focus:bg-white text-slate-900 focus:outline-none transition shadow-inner disabled:opacity-50"
-                    />
-                    {pinError && (
-                      <div className="p-2.5 mt-2 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-bold text-center flex items-center justify-center gap-1.5 animate-shake">
-                        <Icon name="alert" size={14} className="shrink-0" />
-                        <span>{pinError}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                    * Mã PIN bàn là mã động bảo mật, tự động thay đổi sau mỗi lượt khách để chống lưu mã từ xa.
-                  </p>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setShowPinModal(false)}
-                      className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition"
-                    >
-                      Hủy bỏ
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmittingPin || !pinInput.trim() || lockoutRemaining > 0}
-                      className="flex-1 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-900/20 active:scale-95 transition disabled:opacity-50"
-                    >
-                      {isSubmittingPin ? (
-                        <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      ) : (
-                        <>
-                          <Icon name="key" size={14} />
-                          <span>Mở Bàn Ngay</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-          </div>
-        </Portal>
-      )}
+      <CustomerPinUnlockModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        tableName={tableInfo?.name || "Bàn ăn"}
+        tableCode={tableCode}
+        lockoutRemaining={lockoutRemaining}
+        pinInput={pinInput}
+        setPinInput={setPinInput}
+        pinError={pinError}
+        setPinError={setPinError}
+        isSubmittingPin={isSubmittingPin}
+        onUnlockWithPin={handleUnlockWithPin}
+      />
 
       {/* Modal 2: Xác Nhận Đặt Món Trước Khi Gửi Bếp (Order Confirmation Gate) */}
-      {showConfirmModal && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-                    <Icon name="clipboard" size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">Xác Nhận Đặt Món</h3>
-                    <p className="text-[10.5px] text-slate-400">{tableInfo?.name || "Bàn"} • {totalCartCount} món</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmModal(false)}
-                  className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700"
-                >
-                  <Icon name="x" size={15} />
-                </button>
-              </div>
-
-              {/* Danh sách món trong giỏ */}
-              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {cart.map((c) => (
-                  <div
-                    key={c.menuItem.id}
-                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between text-xs"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <span className="font-extrabold text-slate-900 truncate block">
-                        {c.quantity}x {c.menuItem.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        {c.menuItem.price.toLocaleString("vi-VN")} đ / phần
-                      </span>
-                    </div>
-                    <span className="font-black text-emerald-800 shrink-0">
-                      {(c.menuItem.price * c.quantity).toLocaleString("vi-VN")} đ
-                    </span>
-                  </div>
-                ))}
-
-                {/* Ghi chú đơn hàng */}
-                <div className="pt-2">
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                    Ghi chú cho bếp / pha chế (tùy chọn):
-                  </label>
-                  <input
-                    type="text"
-                    value={orderNotes}
-                    onChange={(e) => setOrderNotes(e.target.value)}
-                    placeholder="VD: Ít đường, không đá, mang cùng lúc..."
-                    className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-600"
-                  />
-                </div>
-
-                {/* Tóm tắt thanh toán */}
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/90 space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>Tạm tính ({totalCartCount} món):</span>
-                    <span>{totalCartRawAmount.toLocaleString("vi-VN")} đ</span>
-                  </div>
-
-                  {voucherDiscount > 0 && (
-                    <div className="flex items-center justify-between text-rose-600 font-bold">
-                      <span>Voucher ({appliedVoucher?.code}):</span>
-                      <span>-{voucherDiscount.toLocaleString("vi-VN")} đ</span>
-                    </div>
-                  )}
-
-                  {customerPhone && (
-                    <div className="flex items-center justify-between text-cyan-700 font-bold text-[11px]">
-                      <span>Tích điểm SĐT {customerPhone}:</span>
-                      <span>+{Math.floor(finalCartTotal / 10000)} điểm</span>
-                    </div>
-                  )}
-
-                  <div className="border-t border-slate-200 pt-1.5 flex items-center justify-between font-black text-sm text-slate-900">
-                    <span>Tổng thanh toán:</span>
-                    <span className="text-emerald-800">{finalCartTotal.toLocaleString("vi-VN")} đ</span>
-                  </div>
-                </div>
-
-                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-[10.5px] leading-relaxed">
-                  ⏳ <strong>Lưu ý:</strong> Khi bạn bấm gửi, đơn hàng sẽ chuyển tới quầy quán để nhân viên xác nhận duyệt trước khi bếp chế biến.
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-100 transition"
-                >
-                  Chọn Thêm
-                </button>
-                <button
-                  type="button"
-                  disabled={isSubmittingOrder}
-                  onClick={handleConfirmAndSubmitOrder}
-                  className="flex-1 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-900/20 active:scale-95 transition disabled:opacity-50"
-                >
-                  {isSubmittingOrder ? (
-                    <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  ) : (
-                    <>
-                      <Icon name="check" size={14} />
-                      <span>Xác Nhận Đặt Món</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <CustomerOrderConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        tableName={tableInfo?.name || "Bàn"}
+        cart={cart}
+        totalCartCount={totalCartCount}
+        totalCartRawAmount={totalCartRawAmount}
+        orderNotes={orderNotes}
+        setOrderNotes={setOrderNotes}
+        appliedVoucher={appliedVoucher}
+        voucherDiscount={voucherDiscount}
+        customerPhone={customerPhone}
+        finalCartTotal={finalCartTotal}
+        isSubmittingOrder={isSubmittingOrder}
+        onConfirmAndSubmit={handleConfirmAndSubmitOrder}
+      />
 
       {/* Modal 3: Hỗ Trợ Nhanh Tại Bàn (Quick Service Bottom Sheet) */}
-      {showServiceModal && (
-        <Portal>
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl border border-slate-200 space-y-4 animate-scaleUp">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
-                    <Icon name="bell" size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-900">Hỗ Trợ Nhanh Tại Bàn</h3>
-                    <p className="text-[10.5px] text-slate-400">Yêu cầu phục vụ tới nhân viên quầy</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowServiceModal(false)}
-                  className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700"
-                >
-                  <Icon name="x" size={15} />
-                </button>
-              </div>
-
-              {/* Grid 6 nút hỗ trợ nhanh */}
-              <div className="grid grid-cols-2 gap-2">
-                {SERVICE_OPTIONS.map((srv) => (
-                  <button
-                    key={srv.id}
-                    type="button"
-                    disabled={isSendingService}
-                    onClick={() => handleSendService(srv)}
-                    className="p-3 rounded-2xl border border-slate-200/90 bg-white hover:bg-brand-50 hover:border-brand-300 text-left transition active:scale-95 space-y-1.5 shadow-2xs group"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-brand-100 flex items-center justify-center text-brand-900 group-hover:bg-brand-900 group-hover:text-white transition-colors">
-                      <Icon name={srv.icon} size={18} />
-                    </div>
-                    <span className="font-bold text-xs text-slate-900 group-hover:text-brand-900 block truncate">
-                      {srv.label}
-                    </span>
-                    <span className="text-[10px] text-slate-500 block truncate">{srv.desc}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Ghi chú thêm nếu cần */}
-              <div>
-                <input
-                  type="text"
-                  value={serviceNote}
-                  onChange={(e) => setServiceNote(e.target.value)}
-                  placeholder="Ghi chú thêm nếu cần (VD: 2 ly đá, ít ngọt...)"
-                  className="w-full h-9 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 focus:outline-none focus:border-emerald-600"
-                />
-              </div>
-
-              <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                Nhân viên sẽ nhận thông báo chuông tức thì và phục vụ trong ít phút.
-              </p>
-            </div>
-          </div>
-        </Portal>
-      )}
+      <CustomerQuickServiceModal
+        isOpen={showServiceModal}
+        onClose={() => setShowServiceModal(false)}
+        serviceOptions={SERVICE_OPTIONS}
+        serviceNote={serviceNote}
+        setServiceNote={setServiceNote}
+        isSendingService={isSendingService}
+        onSendService={handleSendService}
+      />
     </div>
   );
 };
