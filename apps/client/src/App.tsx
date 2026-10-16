@@ -11,7 +11,7 @@ import { TablesOverviewTab, ActiveTableActionModal } from "@/features/tables/com
 import { TableStatus, OrderItemStatus } from "@a2order/shared";
 import { KdsTicketCard } from "@/features/kds/components/KdsTicketCard";
 import { OrderMenuModal } from "@/features/ordering/components/OrderMenuModal";
-import { UnifiedAuthModal } from "@/features/auth/components/UnifiedAuthModal";
+import { UnifiedAuthModal, UnifiedLoginPage } from "@/features/auth";
 import { GlobalFeedback } from "@/components/feedback";
 import { Panel, Button, Badge, LoadingScreen, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -236,21 +236,74 @@ export const App: React.FC = () => {
     );
   }
 
-  const authModal = (<UnifiedAuthModal
-          isOpen={isAuthModalOpen || !isVerified}
-          staffList={staffMembers}
-          onPinSubmit={async (staffId: string, enteredPin: string) => {
-    try { const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-pin", { method: "POST", body: JSON.stringify({ storeId: activeStoreId, staffId, pinCode: enteredPin }) }); saveAuth(result.user, result.token); applyUser(result.user); setActiveTab(result.user.role === "CHEF" ? "kds" : result.user.role === "CASHIER" ? "billing" : "tables"); setIsAuthModalOpen(false); }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đăng nhập"); }
-  }}
-          onAdminLogin={async (email: string, password: string) => {
-    try { const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-owner", { method: "POST", body: JSON.stringify({ email, password }) }); if (["SUPER_ADMIN", "ACCOUNTANT"].includes(result.user.role)) { window.location.assign(import.meta.env.VITE_CMS_URL || window.location.origin); return; } saveAuth(result.user, result.token); applyUser(result.user); setActiveTab("tables"); setIsAuthModalOpen(false); }
-    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đăng nhập"); }
-  }}
-          onClose={() => { if (isVerified) setIsAuthModalOpen(false); }}
-        />);
+  const handleUnifiedLoginSuccess = (user: BrowserAuthUser, token: string) => {
+    saveAuth(user, token);
+    applyUser(user);
+    setIsAuthModalOpen(false);
 
-  if (!isLoading && !isVerified) return <><GlobalFeedback />{authModal}</>;
+    // Tự động phân luồng theo vai trò người dùng (Role-Based Auto-Dispatch)
+    const roleUpper = (user.role || "").toUpperCase();
+    if (roleUpper === "CHEF" || roleUpper.includes("BẾP")) {
+      setActiveTab("kds");
+      toast.success(`Chào Bếp Trưởng ${user.name}! Đã mở màn hình điều phối Bếp KDS.`);
+    } else if (roleUpper === "CASHIER" || roleUpper.includes("THU NGÂN")) {
+      setActiveTab("billing");
+      toast.success(`Chào Thu Ngân ${user.name}! Đã mở quầy Thu Ngân POS.`);
+    } else if (roleUpper === "WAITER" || roleUpper.includes("PHỤC VỤ")) {
+      setActiveTab("tables");
+      toast.success(`Chào Phục Vụ ${user.name}! Đã mở sơ đồ bàn phục vụ.`);
+    } else if (roleUpper === "SUPER_ADMIN") {
+      setActiveTab("tables");
+      toast.success(`Chào Quản trị viên SaaS ${user.name}! Đã mở phiên làm việc toàn quyền.`);
+    } else {
+      setActiveTab("tables");
+      toast.success(`Chào mừng ${user.name} (${user.role})!`);
+    }
+  };
+
+  if (!isLoading && !isVerified) {
+    return (
+      <>
+        <GlobalFeedback />
+        <UnifiedLoginPage
+          onLoginSuccess={handleUnifiedLoginSuccess}
+          staffList={staffMembers}
+          storeId={activeStoreId}
+          storeName={activeStore?.name}
+        />
+      </>
+    );
+  }
+
+  const authModal = (
+    <UnifiedAuthModal
+      isOpen={isAuthModalOpen}
+      staffList={staffMembers}
+      onPinSubmit={async (staffId: string, enteredPin: string) => {
+        try {
+          const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-pin", {
+            method: "POST",
+            body: JSON.stringify({ storeId: activeStoreId, staffId, pinCode: enteredPin }),
+          });
+          handleUnifiedLoginSuccess(result.user, result.token);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Không thể đăng nhập");
+        }
+      }}
+      onAdminLogin={async (email: string, password: string) => {
+        try {
+          const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-owner", {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          });
+          handleUnifiedLoginSuccess(result.user, result.token);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Không thể đăng nhập");
+        }
+      }}
+      onClose={() => setIsAuthModalOpen(false)}
+    />
+  );
 
   if (isLoading) {
     return null;

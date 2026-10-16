@@ -1,3 +1,5 @@
+import type { BrowserAuthUser } from "@a2order/shared";
+
 export interface StaffMember {
   id: string;
   name: string;
@@ -51,6 +53,13 @@ export interface UnifiedAuthModalProps {
   onClockOut?: (staff: StaffMember) => void;
   attendanceRecords?: AttendanceRecord[];
   onClose: () => void;
+}
+
+export interface UnifiedLoginPageProps {
+  onLoginSuccess: (user: BrowserAuthUser, token: string) => void | Promise<void>;
+  staffList?: StaffMember[];
+  storeId?: string;
+  storeName?: string;
 }
 
 export interface StaffScheduleProfileProps {

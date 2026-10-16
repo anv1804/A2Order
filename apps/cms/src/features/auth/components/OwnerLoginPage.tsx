@@ -42,14 +42,6 @@ export const OwnerLoginPage: React.FC<OwnerLoginPageProps> = ({
         return;
       }
 
-      // Kiểm soát vai trò: Cổng này chỉ dành cho Chủ Quán & nhân viên F&B
-      if (data.user.role === "SUPER_ADMIN") {
-        setErrorMessage("Tài khoản này là Quản trị viên SaaS (Super Admin). Vui lòng chuyển sang Cổng Quản Trị Hệ Thống.");
-        setShowAdminRedirectHint(true);
-        setIsSubmitting(false);
-        return;
-      }
-
       onLoginSuccess(data.user, data.token, rememberMe);
     } catch (err: any) {
       setErrorMessage("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại dịch vụ Backend.");
