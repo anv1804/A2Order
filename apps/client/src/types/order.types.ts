@@ -6,6 +6,7 @@ export type OrderStepType = "TABLE_INFO" | "SELECT_MENU" | "REVIEW_CART";
 
 export interface CartItem {
   id: string;
+  dishId?: string;
   name: string;
   price: number;
   quantity: number;
@@ -104,12 +105,15 @@ export interface OrderMenuModalProps {
   isOpen: boolean;
   table: TableItem | null;
   onClose: () => void;
-  onSubmitOrder: (tableName: string, items: CartItem[]) => void;
+  onSubmitOrder: (tableName: string, items: CartItem[]) => Promise<void> | void;
   storeDishes?: MenuDishItem[];
 }
 
 
 export interface CustomerMenuItem {
+  dishId?: string;
+  variants?: import("./menu.types").DishVariantItem[];
+  customizationGroups?: import("./menu.types").DishOptionGroup[];
   id: string;
   name: string;
   price: number;
@@ -124,6 +128,8 @@ export interface CustomerCategory {
 }
 
 export interface CustomerCartItem {
+  variantId?: string;
+  customizationIds?: string[];
   menuItem: CustomerMenuItem;
   quantity: number;
   notes?: string;
@@ -135,7 +141,7 @@ export interface CustomerOrderedItem {
   name: string;
   price: number;
   quantity: number;
-  status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
+  status: "PENDING_APPROVAL" | "QUEUED" | "COOKING" | "READY" | "SERVED" | "CANCELLED";
   orderId?: string;
   orderedAt: string;
   notes?: string;
@@ -147,6 +153,7 @@ export interface VoucherItem {
   value: number;
   description: string;
   minOrder?: number;
+  maxDiscount?: number;
 }
 
 export interface ServiceOptionItem {
@@ -155,4 +162,3 @@ export interface ServiceOptionItem {
   label: string;
   desc: string;
 }
-

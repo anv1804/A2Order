@@ -4,6 +4,8 @@
 
 A2Order là nền tảng quản trị và vận hành toàn diện dành cho quán ăn, quán cà phê, nhà hàng vừa và nhỏ. Hệ thống tích hợp toàn bộ chuỗi giá trị: Gọi món tại bàn bằng QR/PWA, Màn hình bếp KDS thời gian thực, Thu ngân POS với Dynamic VietQR gạch nợ tự động, và Central SaaS CMS dành cho Chủ quán và Super Admin.
 
+**Bản sửa tính toàn vẹn 16/10/2026:** xem [hướng dẫn chạy và nâng cấp database](docs/02-features/F02-operational-integrity/RUNBOOK.md) và [đối chiếu các phát hiện](docs/02-features/F02-operational-integrity/REMEDIATION.md). Luồng giao dịch hiện yêu cầu PostgreSQL, không dùng `USE_MOCK_DB=true`. Các tích hợp ngoài chưa cấu hình được báo rõ thay vì giả lập thành công. Cần triển khai migration và đổi credential đã từng vào lịch sử Git trước khi vận hành bản này.
+
 ---
 
 ## 🏗️ Cấu trúc Monorepo

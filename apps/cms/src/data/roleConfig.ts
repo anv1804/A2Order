@@ -49,7 +49,7 @@ export const ROLE_DEFAULT_MENUS: Record<CmsAppRole, string> = {
 };
 
 export const normalizeAppRole = (role?: string | null): CmsAppRole => {
-  if (!role) return "STORE_OWNER";
+  if (!role) return "WAITER";
   const upper = role.toUpperCase();
   if (upper === "SUPER_ADMIN") return "SUPER_ADMIN";
   if (upper === "ACCOUNTANT") return "ACCOUNTANT";

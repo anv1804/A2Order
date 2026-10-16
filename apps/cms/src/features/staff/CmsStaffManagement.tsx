@@ -1,3 +1,5 @@
+import { browserRequest } from "@a2order/shared";
+import { getAuthUser } from "@a2order/shared";
 import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
@@ -66,17 +68,9 @@ const DEFAULT_ROLE_PERMISSIONS: Record<StaffRole, string[]> = {
     "MENU_EDIT",
     "MANAGE_STAFF",
   ],
-  STORE_MANAGER: [
-    "CREATE_ORDER",
-    "VOID_ITEM",
-    "APPLY_DISCOUNT",
-    "OPEN_CASH_DRAWER",
-    "CLOSE_SHIFT",
-    "VIEW_REVENUE",
-    "MENU_EDIT",
-  ],
-  CASHIER: ["CREATE_ORDER", "APPLY_DISCOUNT", "OPEN_CASH_DRAWER", "CLOSE_SHIFT"],
-  WAITER: ["CREATE_ORDER", "MENU_EDIT"],
+  STORE_MANAGER: [],
+  CASHIER: ["CREATE_ORDER", "VIEW_REVENUE"],
+  WAITER: ["CREATE_ORDER"],
   CHEF: ["MENU_EDIT"],
   ACCOUNTANT: ["CLOSE_SHIFT", "VIEW_REVENUE"],
 };
@@ -85,8 +79,7 @@ export const CmsStaffManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"STAFF_LIST" | "RBAC_MATRIX" | "SCHEDULE" | "ATTENDANCE">("STAFF_LIST");
 
   // Lấy storeId thực tế từ phiên đăng nhập
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const storeId = userStr ? JSON.parse(userStr).storeId || "store-a2-kitchen" : "store-a2-kitchen";
+  const storeId = getAuthUser()?.storeId || "";
 
   const [staffList, setStaffList] = usePersistentState<StaffUser[]>("staff_list", []);
 
@@ -102,8 +95,8 @@ export const CmsStaffManagement: React.FC = () => {
             name: s.name,
             role: (s.role as StaffRole) || "WAITER",
             phone: (s as any).phone || "",
-            shift: "FULL_TIME",
-            pin: s.pinCode || "1234",
+            shift: (s as any).shift || "FULL_TIME",
+            pin: "••••",
             email: s.email || undefined,
             ordersServedToday: 0,
             isActive: s.isActive,
@@ -131,7 +124,7 @@ export const CmsStaffManagement: React.FC = () => {
     role: "WAITER" as StaffRole,
     phone: "",
     shift: "MORNING" as "MORNING" | "EVENING" | "FULL_TIME",
-    pin: "1234",
+    pin: "",
     email: "",
   });
 
@@ -188,40 +181,11 @@ export const CmsStaffManagement: React.FC = () => {
     setShowPins((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleResetPin = (id: string, name: string) => {
-    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
-    staffApi.resetCredentials(id, { pinCode: randomPin }).catch(() => {});
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, pin: randomPin } : s))
-    );
-    setShowPins((prev) => ({ ...prev, [id]: true }));
-    toast.success(`Đã cấp lại mã PIN mới cho ${name}: ${randomPin}`);
-  };
+  const handleResetPin = async (id: string, name: string) => { const pin = String(1000 + crypto.getRandomValues(new Uint32Array(1))[0] % 9000); try { await staffApi.resetCredentials(id, { pinCode: pin }); toast.success(name + " — PIN mới: " + pin); } catch (e: any) { toast.error(e.message); } };
 
-  const handleToggleActive = (id: string, name: string, active: boolean) => {
-    staffApi.toggleStaffStatus(id).catch(() => {});
-    setStaffList((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, isActive: !active } : s))
-    );
-    toast.info(`Đã ${active ? "tạm khóa" : "mở lại"} ca làm việc của ${name}`);
-  };
+  const handleToggleActive = async (id: string, name: string, active: boolean) => { try { await staffApi.toggleStaffStatus(id); setStaffList(prev => prev.map(s => s.id === id ? { ...s, isActive: !active } : s)); toast.success("Đã cập nhật trạng thái " + name); } catch (e: any) { toast.error(e.message); } };
 
-  const handleTogglePermission = (role: StaffRole, permId: string) => {
-    if (role === "STORE_OWNER") {
-      toast.info("Tài khoản Chủ Quán luôn có toàn quyền bảo mật");
-      return;
-    }
-
-    setRolePermissions((prev) => {
-      const currentList = prev[role] || [];
-      const hasPerm = currentList.includes(permId);
-      const updated = hasPerm
-        ? currentList.filter((p) => p !== permId)
-        : [...currentList, permId];
-      return { ...prev, [role]: updated };
-    });
-    toast.success("Đã cập nhật ma trận phân quyền!");
-  };
+  const handleTogglePermission = (_role: StaffRole, _permId: string) => { toast.info("Phân quyền được áp dụng theo vai trò trên máy chủ"); };
 
   const handleOpenAddModal = () => {
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
@@ -236,64 +200,7 @@ export const CmsStaffManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCreateStaffSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!modalForm.name.trim() || !modalForm.phone.trim()) {
-      toast.error("Vui lòng điền đầy đủ tên và số điện thoại");
-      return;
-    }
-
-    const sName = modalForm.name.trim();
-    const sRole = modalForm.role;
-    const sPhone = modalForm.phone.trim();
-    const sShift = modalForm.shift;
-    const sPin = modalForm.pin || "1234";
-    const sEmail = modalForm.email.trim() || undefined;
-
-    staffApi
-      .createStaff({
-        storeId,
-        name: sName,
-        role: sRole,
-        pinCode: sPin,
-        email: sEmail,
-        isActive: true,
-      })
-      .then((created) => {
-        const newStaff: StaffUser = {
-          id: created.id || `s-${Date.now()}`,
-          code: `NV-${String(staffList.length + 1).padStart(3, "0")}`,
-          name: sName,
-          role: sRole,
-          phone: sPhone,
-          shift: sShift,
-          pin: sPin,
-          email: sEmail,
-          ordersServedToday: 0,
-          isActive: true,
-        };
-        setStaffList((prev) => [newStaff, ...prev]);
-        toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
-      })
-      .catch(() => {
-        const newStaff: StaffUser = {
-          id: `s-${Date.now()}`,
-          code: `NV-${String(staffList.length + 1).padStart(3, "0")}`,
-          name: sName,
-          role: sRole,
-          phone: sPhone,
-          shift: sShift,
-          pin: sPin,
-          email: sEmail,
-          ordersServedToday: 0,
-          isActive: true,
-        };
-        setStaffList((prev) => [newStaff, ...prev]);
-        toast.success(`Đã thêm nhân viên ${newStaff.name} với mã PIN ${newStaff.pin}!`);
-      });
-
-    setIsModalOpen(false);
-  };
+  const handleCreateStaffSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!modalForm.name.trim() || !modalForm.pin) return toast.error("Vui lòng nhập tên và PIN riêng"); if (["STORE_OWNER", "ACCOUNTANT"].includes(modalForm.role)) return toast.info("Tài khoản quản lý cần được tạo với email và mật khẩu qua màn hình quản trị tài khoản"); try { const created = await staffApi.createStaff({ storeId, name: modalForm.name.trim(), role: modalForm.role, email: modalForm.email || undefined, pinCode: modalForm.pin, phone: modalForm.phone, shift: modalForm.shift, isActive: true } as any); if (!created.id) throw new Error("Máy chủ chưa xác nhận nhân viên"); setStaffList(prev => [{ id: created.id, code: "NV-" + (prev.length + 1), name: created.name, role: created.role as StaffRole, phone: modalForm.phone, shift: modalForm.shift, pin: "••••", email: modalForm.email || undefined, ordersServedToday: 0, isActive: true }, ...prev]); setIsModalOpen(false); toast.success("Đã thêm nhân viên. PIN: " + modalForm.pin); } catch (e: any) { toast.error(e.message); } };
 
   const totalStaff = staffList.length;
   const activeStaff = staffList.filter((s) => s.isActive).length;
@@ -809,7 +716,7 @@ export const CmsStaffManagement: React.FC = () => {
                       <option value="WAITER">Phục Vụ Bàn</option>
                       <option value="CASHIER">Thu Ngân</option>
                       <option value="CHEF">Bếp / Bar</option>
-                      <option value="STORE_MANAGER">Quản Lý Ca</option>
+
                       <option value="ACCOUNTANT">Kế Toán</option>
                     </select>
                   </div>
@@ -1041,23 +948,7 @@ export const CmsStaffManagement: React.FC = () => {
           return true;
         });
 
-        const handleClockOutStaff = (id: string, staffName: string) => {
-          const now = new Date();
-          const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-          setAttendanceLogs((prev) =>
-            prev.map((l) =>
-              l.id === id
-                ? {
-                    ...l,
-                    status: "COMPLETED",
-                    clockOutTime: timeStr,
-                    note: (l.note ? l.note + " • " : "") + `Quản lý chốt kết ca lúc ${timeStr}`,
-                  }
-                : l
-            )
-          );
-          toast.success(`Đã chốt kết ca cho nhân viên ${staffName} lúc ${timeStr}!`);
-        };
+        const handleClockOutStaff = async (id: string, staffName: string) => { const log = attendanceLogs.find(r => r.id === id); if (!log) return; try { await browserRequest("/workforce/attendance", { method: "POST", body: JSON.stringify({ action: "OUT", staffId: log.staffId }) }); toast.success("Đã chốt ca " + staffName); } catch (e: any) { toast.error(e.message); } };
 
         return (
           <div className="space-y-4 animate-fadeIn">

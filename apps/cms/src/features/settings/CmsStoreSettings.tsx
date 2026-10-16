@@ -1,16 +1,12 @@
-import React, { useState } from "react";
+import { getAuthUser, browserRequest } from "@a2order/shared";
+import React, { useState, useEffect } from "react";
 import { AppModule, APP_MODULE_CATALOG } from "@a2order/shared";
 import { Panel, Button, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { CmsStoreSettingsProps } from "@/types/cms.types";
 import { useUnsavedChanges } from "@/stores/unsavedChangesStore";
 
-const readSetting = (key: string, fallback: string) => {
-  try {
-    const saved = localStorage.getItem(`a2order_${key}`);
-    return saved === null ? fallback : JSON.parse(saved) as string;
-  } catch { return fallback; }
-};
+const readSetting = (_key: string, fallback: string) => fallback;
 
 export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   enabledModules = [AppModule.CORE_POS],
@@ -18,12 +14,11 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<"store_info" | "modules_license">("store_info");
 
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const loggedStore = userStr ? JSON.parse(userStr) : null;
+  const loggedStore = getAuthUser();
 
-  const [storeName, setStoreName] = useState(() => readSetting("store_settings_name", loggedStore?.storeName || "A2 Roastery & Kitchen"));
-  const [phone, setPhone] = useState(() => readSetting("store_settings_phone", loggedStore?.phone || "0908889999"));
-  const [address, setAddress] = useState(() => readSetting("store_settings_address", loggedStore?.address || "79 Đường Hoa Sứ, Phường 7, Phú Nhuận, TP.HCM"));
+  const [storeName, setStoreName] = useState(() => readSetting("store_settings_name", loggedStore?.storeName || ""));
+  const [phone, setPhone] = useState(() => readSetting("store_settings_phone", loggedStore?.phone || ""));
+  const [address, setAddress] = useState(() => readSetting("store_settings_address", loggedStore?.address || ""));
   const [bankBin, setBankBin] = useState(() => readSetting("store_settings_bankBin", ""));
   const [bankAccount, setBankAccount] = useState(() => readSetting("store_settings_bankAccount", ""));
   const [bankOwnerName, setBankOwnerName] = useState(() => readSetting("store_settings_bankOwnerName", ""));
@@ -31,24 +26,14 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
   const currentStoreInfo = JSON.stringify({ storeName, phone, address, bankBin, bankAccount, bankOwnerName, vatRate });
   const [savedStoreInfo, setSavedStoreInfo] = useState(currentStoreInfo);
 
+  useEffect(() => { browserRequest<any>(`/stores/${loggedStore?.storeId}`).then(store => { setStoreName(store.name); setPhone(store.phone || ""); setAddress(store.address || ""); setBankBin(store.bankBin || ""); setBankAccount(store.bankAccount || ""); setBankOwnerName(store.bankOwnerName || ""); setVatRate(String(store.vatRate ?? 8)); setSavedStoreInfo(JSON.stringify({ storeName: store.name, phone: store.phone || "", address: store.address || "", bankBin: store.bankBin || "", bankAccount: store.bankAccount || "", bankOwnerName: store.bankOwnerName || "", vatRate: String(store.vatRate ?? 8) })); }, e => toast.error(e.message)); }, [loggedStore?.storeId]);
   // Tab 2: Modules state
   const [selectedModules, setSelectedModules] = useState<AppModule[]>(enabledModules);
   const [durationMonths, setDurationMonths] = useState<number>(6);
   const modulesChanged = [...selectedModules].sort().join("|") !== [...enabledModules].sort().join("|");
   useUnsavedChanges("store_settings", currentStoreInfo !== savedStoreInfo || modulesChanged);
 
-  const handleSaveStoreInfo = () => {
-    const fields: Record<string, string> = { storeName, phone, address, bankBin, bankAccount, bankOwnerName, vatRate };
-    const keys: Record<string, string> = { storeName: "store_settings_name", phone: "store_settings_phone", address: "store_settings_address", bankBin: "store_settings_bankBin", bankAccount: "store_settings_bankAccount", bankOwnerName: "store_settings_bankOwnerName", vatRate: "store_settings_vatRate" };
-    try {
-      Object.entries(fields).forEach(([field, value]) => localStorage.setItem(`a2order_${keys[field]}`, JSON.stringify(value)));
-    } catch {
-      toast.error("Không thể lưu cấu hình trên thiết bị này.");
-      return;
-    }
-    setSavedStoreInfo(currentStoreInfo);
-    toast.success("Đã lưu cấu hình tài khoản VietQR và thông tin quán thành công!");
-  };
+  const handleSaveStoreInfo = async () => { try { await browserRequest(`/stores/${loggedStore?.storeId}`, { method: "PUT", body: JSON.stringify({ name: storeName, phone, address, bankBin, bankAccount, bankOwnerName, vatRate: Number(vatRate) }) }); setSavedStoreInfo(currentStoreInfo); toast.success("Đã lưu cấu hình quán"); } catch (e: any) { toast.error(e.message); } };
 
   const toggleModule = (modId: AppModule) => {
     if (modId === AppModule.CORE_POS) {
@@ -63,26 +48,11 @@ export const CmsStoreSettings: React.FC<CmsStoreSettingsProps> = ({
     }
   };
 
-  const handleApplyModules = () => {
-    onSaveModules(selectedModules);
-    toast.success("Đã cập nhật các module tính năng cho quán thành công! Menu thanh bên đã được làm mới.");
-  };
+  const handleApplyModules = async () => { try { const invoice = await browserRequest<any>("/licenses/invoice/create", { method: "POST", body: JSON.stringify({ storeId: loggedStore?.storeId, durationMonths, enabledModules: selectedModules }) }); toast.success("Đã tạo yêu cầu thanh toán " + (invoice.invoice?.invoiceCode || invoice.invoiceCode || "")); } catch (e: any) { toast.error(e.message); } };
 
-  // Tính tiền gói thuê
-  const monthlySum = selectedModules.reduce((sum, modId) => {
-    const item = APP_MODULE_CATALOG.find((m) => m.id === modId);
-    return sum + (item ? item.monthlyPrice : 0);
-  }, 0);
-
-  let discountPercent = 0;
-  if (durationMonths >= 24) discountPercent = 30;
-  else if (durationMonths >= 12) discountPercent = 20;
-  else if (durationMonths >= 6) discountPercent = 10;
-  else if (durationMonths >= 3) discountPercent = 5;
-
-  const rawTotal = monthlySum * durationMonths;
-  const discountAmount = Math.round((rawTotal * discountPercent) / 100);
-  const finalTotal = rawTotal - discountAmount;
+  const [quote, setQuote] = useState<any>(null);
+  useEffect(() => { let active = true; browserRequest<any>("/licenses/calculate-pricing", { method: "POST", body: JSON.stringify({ selectedModules, durationMonths }) }).then(value => { if (active) setQuote(value); }, e => toast.error(e.message)); return () => { active = false; }; }, [selectedModules, durationMonths]);
+  const monthlySum = quote?.monthlyTotal || 0, rawTotal = quote?.subtotal || monthlySum * durationMonths, discountPercent = quote?.discountPercent || 0, discountAmount = quote?.discountAmount || 0, finalTotal = quote?.finalAmount || 0;
 
   return (
     <div className="space-y-6 animate-fadeIn pb-10">

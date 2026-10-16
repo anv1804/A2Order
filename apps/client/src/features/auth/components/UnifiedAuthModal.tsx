@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useDialogAccessibility } from "@a2order/shared/react";
 import { StaffMember, UnifiedAuthModalProps } from "@/types";
 import { NumericKeypad } from "@/components/shared/NumericKeypad";
 import { Button, Icon } from "@/components/ui";
@@ -13,22 +14,25 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
   attendanceRecords = [],
   onClose,
 }) => {
+  const dialogRef = useDialogAccessibility(isOpen, onClose);
   const [authMode, setAuthMode] = useState<"pin" | "admin">("pin");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState<string>("");
-  const [email, setEmail] = useState<string>("chuquan@gmail.com");
+  const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleDigit = (digit: string) => {
+  const handleDigit = async (digit: string) => {
+    if (isSubmitting) return;
     if (pin.length < 4) {
       const nextPin = pin + digit;
       setPin(nextPin);
       if (nextPin.length === 4 && selectedStaff) {
-        onPinSubmit(selectedStaff.id, nextPin);
-        setPin("");
+        setIsSubmitting(true);
+        try { await onPinSubmit(selectedStaff.id, nextPin); }
+        finally { setPin(""); setIsSubmitting(false); }
       }
     }
   };
@@ -41,21 +45,16 @@ export const UnifiedAuthModal: React.FC<UnifiedAuthModalProps> = ({
     setPin("");
   };
 
-  const handleAdminSubmit = (e: React.FormEvent) => {
+  const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      if (onAdminLogin) {
-        onAdminLogin(email, password);
-      } else {
-        onClose();
-      }
-    }, 600);
+    try { if (onAdminLogin) await onAdminLogin(email, password); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md select-none animate-fadeIn">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Đăng nhập" tabIndex={-1} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-md select-none animate-fadeIn">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-surface-border overflow-hidden relative flex flex-col max-h-[92vh]">
         {/* Top Header Card */}
         <div className="bg-brand-950 text-white p-6 pb-5 relative overflow-hidden">

@@ -1,139 +1,31 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
 import { prisma } from "../../core/database/prismaClient.js";
+import { command } from "../../core/security/commands.js";
+import { currentStore } from "../../core/security/access.js";
+import { requireValue } from "../../core/security/errors.js";
+import { checkLicense } from "../order/order.service.js";
 
-export async function landingRoutes(fastify: FastifyInstance) {
-  /**
-   * 1. API CÔNG KHAI CHO KHÁCH HÀNG TRUY CẬP LANDING PAGE CỦA QUÁN
-   * Hỗ trợ tìm qua slug (phobonamdinh) hoặc customDomain (phobonamdinh.vn)
-   */
-  fastify.get("/public/:slugOrDomain", async (request, reply) => {
+const url = z.string().max(2000).refine(value => !value || /^https?:\/\//i.test(value), "Đường dẫn phải dùng http hoặc https").optional();
+const landingInput = z.object({ customDomain: z.string().trim().max(200).regex(/^(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$|^$/).optional(), slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{1,100}$/), heroTitle: z.string().trim().min(1).max(200), heroSubtitle: z.string().max(500).optional(), heroBannerUrl: url, storyContent: z.string().max(10000).optional(), openingHours: z.string().max(100).optional(), hotline: z.string().max(30).optional(), address: z.string().max(500).optional(), googleMapsUrl: url, facebookUrl: url, zaloPhone: z.string().max(30).optional(), isBookingOpen: z.boolean().default(false), isPublished: z.boolean().default(false) });
+export const landingRoutes: FastifyPluginAsync = async app => {
+  app.get("/public/:slugOrDomain", async request => {
     const { slugOrDomain } = request.params as { slugOrDomain: string };
-
-    let landingPage = null;
-    try {
-      landingPage = await prisma.storeLandingPage.findFirst({
-        where: {
-          OR: [{ slug: slugOrDomain }, { customDomain: slugOrDomain }],
-        },
-        include: {
-          store: {
-            include: {
-              categories: {
-                orderBy: { sortOrder: "asc" },
-                include: {
-                  menuItems: {
-                    where: { isAvailable: true },
-                  },
-                },
-              },
-            },
-          },
-        },
-      });
-    } catch (e) {
-      // Fallback demo data
-    }
-
-    if (!landingPage) {
-      // Dữ liệu mẫu hoàn chỉnh nếu quán chưa cấu hình riêng
-      return {
-        storeId: "store-a2-kitchen",
-        storeName: "A2 Roastery & Kitchen",
-        customDomain: "",
-        slug: slugOrDomain,
-        heroTitle: "A2 Roastery & Kitchen",
-        heroSubtitle: "Không gian ẩm thực & trải nghiệm F&B hiện đại",
-        heroBannerUrl: "",
-        storyContent: "Chào mừng quý khách đến với hệ thống đặt bàn và gọi món trực tuyến của A2 Roastery & Kitchen.",
-        openingHours: "07:00 - 22:30",
-        hotline: "",
-        address: "",
-        googleMapsUrl: "",
-        isBookingOpen: true,
-        isPublished: true,
-        publicMenuCategories: [],
-      };
-    }
-
-    return {
-      storeId: landingPage.storeId,
-      storeName: landingPage.store.name,
-      customDomain: landingPage.customDomain,
-      slug: landingPage.slug,
-      heroTitle: landingPage.heroTitle,
-      heroSubtitle: landingPage.heroSubtitle,
-      heroBannerUrl: landingPage.heroBannerUrl,
-      storyContent: landingPage.storyContent,
-      openingHours: landingPage.openingHours,
-      hotline: landingPage.hotline,
-      address: landingPage.address,
-      googleMapsUrl: landingPage.googleMapsUrl,
-      facebookUrl: landingPage.facebookUrl,
-      zaloPhone: landingPage.zaloPhone,
-      isBookingOpen: landingPage.isBookingOpen,
-      isPublished: landingPage.isPublished,
-      publicMenuCategories: landingPage.store.categories.map((c) => ({
-        name: c.name,
-        items: c.menuItems.map((item) => ({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-        })),
-      })),
-    };
+    const page = requireValue(await prisma.storeLandingPage.findFirst({ where: { isPublished: true, OR: [{ slug: slugOrDomain }, { customDomain: slugOrDomain }], store: { status: "ACTIVE" } }, include: { store: { include: { categories: { include: { menuItems: { where: { isAvailable: true, archivedAt: null }, select: { id: true, name: true, price: true, image: true, description: true } } }, orderBy: { sortOrder: "asc" } } } } } }), "Trang chưa được xuất bản");
+    return { storeId: page.storeId, storeName: page.store.name, slug: page.slug, customDomain: page.customDomain, heroTitle: page.heroTitle, heroSubtitle: page.heroSubtitle, heroBannerUrl: page.heroBannerUrl, storyContent: page.storyContent, openingHours: page.openingHours, hotline: page.hotline, address: page.address, googleMapsUrl: page.googleMapsUrl, facebookUrl: page.facebookUrl, zaloPhone: page.zaloPhone, isBookingOpen: page.isBookingOpen, isPublished: page.isPublished, publicMenuCategories: page.store.categories.map(c => ({ name: c.name, items: c.menuItems })) };
   });
-
-  /**
-   * 2. CHỦ QUÁN CẬP NHẬT CẤU HÌNH LANDING PAGE TỪ CMS
-   */
-  fastify.put("/cms/:storeId/update", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const body = request.body as any;
-
-    try {
-      const updated = await prisma.storeLandingPage.upsert({
-        where: { storeId },
-        update: {
-          customDomain: body.customDomain,
-          slug: body.slug || `store-${storeId}`,
-          heroTitle: body.heroTitle,
-          heroSubtitle: body.heroSubtitle,
-          heroBannerUrl: body.heroBannerUrl,
-          storyContent: body.storyContent,
-          openingHours: body.openingHours,
-          hotline: body.hotline,
-          address: body.address,
-          isBookingOpen: body.isBookingOpen ?? true,
-          isPublished: body.isPublished ?? true,
-        },
-        create: {
-          storeId,
-          customDomain: body.customDomain,
-          slug: body.slug || `store-${storeId}`,
-          heroTitle: body.heroTitle || "Chào mừng đến với quán",
-          heroSubtitle: body.heroSubtitle,
-          heroBannerUrl: body.heroBannerUrl,
-          storyContent: body.storyContent,
-          openingHours: body.openingHours || "06:00 - 22:00",
-          hotline: body.hotline,
-          address: body.address,
-          isBookingOpen: body.isBookingOpen ?? true,
-          isPublished: body.isPublished ?? true,
-        },
-      });
-
-      return {
-        success: true,
-        message: "Đã lưu và xuất bản Landing Page thành công!",
-        landingPage: updated,
-      };
-    } catch (e: any) {
-      return {
-        success: true,
-        message: "Đã cập nhật cấu hình Landing Page (Mock)",
-        landingPage: body,
-      };
-    }
+  app.get("/cms/:storeId", async request => {
+    const storeId = currentStore(request);
+    return { success: true, data: await prisma.storeLandingPage.findUnique({ where: { storeId } }) };
   });
-}
+  app.put("/cms/:storeId/update", async request => {
+    const storeId = currentStore(request);
+    const input = landingInput.parse(request.body);
+    const landingPage = await command(request, storeId, "LANDING_SAVE", async tx => {
+      await checkLicense(tx, storeId, "MODULE_LANDING_PAGE");
+      const data = { ...input, customDomain: input.customDomain || null };
+      return tx.storeLandingPage.upsert({ where: { storeId }, create: { storeId, ...data }, update: data });
+    });
+    return { success: true, data: landingPage };
+  });
+};

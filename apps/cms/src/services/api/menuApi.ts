@@ -42,7 +42,7 @@ export const menuApi = {
   async updateStock(
     storeId: string,
     dishId: string,
-    stockCount: number | null,
+    stockCount: number | null | undefined,
     isAvailable?: boolean
   ): Promise<FnbDishItem> {
     return requestApi<FnbDishItem>(`/menu/${storeId}/dishes/${dishId}/stock`, {

@@ -61,7 +61,7 @@ export const DashboardCalendarWidget: React.FC<DashboardCalendarWidgetProps> = (
   const [newContent, setNewContent] = useState("");
   const [newTag, setNewTag] = useState<CalendarNote["tag"]>("GENERAL");
 
-  const handleAddNote = (e?: React.FormEvent) => {
+  const handleAddNote = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const trimmed = newContent.trim();
     if (!trimmed) return;
@@ -75,18 +75,18 @@ export const DashboardCalendarWidget: React.FC<DashboardCalendarWidgetProps> = (
       createdAt: new Date().toISOString(),
     };
 
-    setNotes((prev) => [newNote, ...prev]);
+    if (!(await setNotes((prev) => [newNote, ...prev]))) return;
     setNewContent("");
   };
 
-  const handleToggleNote = (id: string) => {
-    setNotes((prev) =>
+  const handleToggleNote = async (id: string) => {
+    if (!(await setNotes((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isCompleted: !n.isCompleted } : n))
-    );
+    ))) return;
   };
 
-  const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+  const handleDeleteNote = async (id: string) => {
+    if (!(await setNotes((prev) => prev.filter((n) => n.id !== id)))) return;
   };
 
   // Tính toán các ngày trong tháng hiện tại

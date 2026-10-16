@@ -30,13 +30,7 @@ export const SaasDashboard: React.FC<SaasDashboardProps> = ({
 
   // MRR tính dựa trên gói cước của các quán đang hoạt động
   const mrr = useMemo(() => {
-    return activeStores.reduce((sum, store) => {
-      if (store.plan === "STARTER") return sum + 119000;
-      if (store.plan === "GROWTH") return sum + 199000;
-      if (store.plan === "PRO") return sum + 299000;
-      if (store.plan === "ENTERPRISE") return sum + 599000;
-      return sum + 199000;
-    }, 0);
+    return activeStores.reduce((sum, store) => sum + (store.monthlyRecurringRevenue || 0), 0);
   }, [activeStores]);
 
   // Hóa đơn & Thực thu

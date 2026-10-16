@@ -1,3 +1,10 @@
+import { useResource } from "@a2order/shared/react";
+import type { AttendanceRecord } from "@/types";
+import { readAuth, saveAuth, clearAuth, getAuthUser, ApiError } from "@a2order/shared";
+import type { BrowserAuthUser, OperationalTable } from "@a2order/shared";
+import { requestApi } from "@/services/api/apiClient";
+import { getSocketClient } from "@/lib/socket";
+import { useAntiSpamAction } from "@/hooks/useAntiSpamAction";
 import React, { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { TablesOverviewTab, ActiveTableActionModal } from "@/features/tables/components";
@@ -30,16 +37,14 @@ const MenuDashboard = React.lazy(() =>
 const CustomerTableOrderPage = React.lazy(() =>
   import("@/features/ordering/CustomerTableOrderPage").then((m) => ({ default: m.CustomerTableOrderPage }))
 );
+const PublicLandingPage = React.lazy(() => import("@/features/landing/PublicLandingPage").then(m => ({ default: m.PublicLandingPage })));
 
 const INITIAL_KDS_TICKETS: KdsTicket[] = [];
 
-const DEFAULT_STAFF: StaffMember[] = [
-  { id: "staff-waiter-1", name: "Nhân Viên Phục Vụ", role: "Phục vụ", pinCode: "1234" },
-  { id: "staff-cashier-1", name: "Thu Ngân Quán", role: "Thu ngân", pinCode: "5678" },
-  { id: "staff-chef-1", name: "Bếp Trưởng", role: "Đầu bếp", pinCode: "9999" },
-];
+const DEFAULT_STAFF: StaffMember[] = [];
 
 export const App: React.FC = () => {
+  const landingSlug = new URLSearchParams(window.location.search).get("landing") || (window.location.pathname.startsWith("/s/") ? window.location.pathname.slice(3) : "");
   const [currentPath, setCurrentPath] = useState(() =>
     typeof window !== "undefined" ? window.location.pathname : "/"
   );
@@ -53,6 +58,11 @@ export const App: React.FC = () => {
   }, []);
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [sessionUser, setSessionUser] = useState<BrowserAuthUser | null>(null);
+  const [isVerified, setIsVerified] = useState(false);
+  const [attendanceRecords, refreshAttendance] = useResource<AttendanceRecord[]>(isVerified ? "/workforce/attendance" : null, []);
+  const attendanceAction = useAntiSpamAction("attendance", (action: string, key) => requestApi("/workforce/attendance", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify({ action }) }));
+  const recordAttendance = async (action: string) => { try { const result = await attendanceAction.execute(action); if (!result) return; await refreshAttendance(); toast.success(action === "IN" ? "Đã ghi nhận vào ca" : "Đã ghi nhận kết ca"); } catch (e: any) { toast.error(e.message); } };
 
   const getInitialTab = (): "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings" => {
     if (typeof window === "undefined") return "tables";
@@ -68,13 +78,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(DEFAULT_STAFF);
-  const [currentStaff, setCurrentStaff] = useState<StaffMember>(() => {
-    try {
-      const saved = localStorage.getItem("a2order_client_active_staff");
-      if (saved) return JSON.parse(saved);
-    } catch {}
-    return DEFAULT_STAFF[0];
-  });
+  const [currentStaff, setCurrentStaff] = useState<StaffMember>({ id: "", name: "Chưa đăng nhập", role: "Nhân viên", pinCode: "" });
 
   // Data states from DB
   const [activeStore, setActiveStore] = useState<{ id: string; name: string } | null>(null);
@@ -83,96 +87,62 @@ export const App: React.FC = () => {
   const [menuItems, setMenuItems] = useState<any[]>([]);
 
   const queryStore = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("store") : null;
-  const activeStoreId = queryStore || (typeof window !== "undefined" ? localStorage.getItem("a2order_active_store_id") : null) || "store-a2-kitchen";
+  const activeStoreId = sessionUser?.storeId || queryStore || "";
 
+  const applyUser = (user: BrowserAuthUser) => {
+    const roles: Record<string, string> = { WAITER: "Phục vụ", CASHIER: "Thu ngân", CHEF: "Đầu bếp", STORE_OWNER: "Chủ quán", ACCOUNTANT: "Kế toán", SUPER_ADMIN: "Quản trị viên" };
+    setSessionUser(user); setCurrentStaff({ id: user.id, name: user.name, role: roles[user.role] || user.role, pinCode: "" }); setIsVerified(true);
+  };
   useEffect(() => {
-    // Nếu khách đang quét QR tại bàn, không cần chờ dữ liệu POS nhân viên
-    if (currentPath.startsWith("/order")) {
-      setIsLoading(false);
-      return;
-    }
-
-    let isMounted = true;
-    async function loadStoreData() {
-      try {
-        const [storeData, zones, dishes, rawStaff] = await Promise.all([
-          storeApi.getStoreById(activeStoreId).catch(() => null),
-          tableApi.getTableZones(activeStoreId).catch(() => []),
-          menuApi.getDishes(activeStoreId).catch(() => []),
-          staffApi.getStaff({ storeId: activeStoreId }).catch(() => []),
-        ]);
-
-        if (!isMounted) return;
-
-        if (storeData) {
-          setActiveStore({ id: storeData.id, name: storeData.name });
-        } else {
-          setActiveStore({ id: activeStoreId, name: "A2 Restaurant & Kitchen" });
-        }
-
-        if (Array.isArray(zones) && zones.length > 0) {
-          const flat = zones.flatMap((z: any) =>
-            (z.tables || []).map((t: any) => ({
-              id: t.id,
-              name: t.name,
-              code: t.code,
-              status: (t.status as TableStatus) || TableStatus.EMPTY,
-              zone: z.name,
-              occupiedMinutes: t.occupiedMinutes || 0,
-              totalAmount: t.totalAmount || 0,
-            }))
-          );
-          setTables(flat);
-        }
-
-        if (Array.isArray(dishes) && dishes.length > 0) {
-          setMenuItems(dishes);
-        }
-
-        if (Array.isArray(rawStaff) && rawStaff.length > 0) {
-          const roleMap: Record<string, string> = {
-            WAITER: "Phục vụ",
-            CASHIER: "Thu ngân",
-            CHEF: "Đầu bếp",
-            STORE_OWNER: "Chủ quán",
-            ACCOUNTANT: "Kế toán",
-            SUPER_ADMIN: "Quản trị viên",
-          };
-          const formatted: StaffMember[] = rawStaff.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            role: roleMap[s.role] || s.role,
-            pinCode: s.pinCode || "",
-            avatar: s.avatar || "",
-          }));
-          setStaffMembers(formatted);
-
-          const saved = localStorage.getItem("a2order_client_active_staff");
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              const found = formatted.find((st) => st.id === parsed.id);
-              if (found) setCurrentStaff(found);
-              else setCurrentStaff(formatted[0]);
-            } catch {
-              setCurrentStaff(formatted[0]);
-            }
-          } else {
-            setCurrentStaff(formatted[0]);
-          }
-        }
-      } catch (err: any) {
-        console.warn("Lỗi nạp dữ liệu POS:", err);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    }
-
-    loadStoreData();
-    return () => {
-      isMounted = false;
+    let active = true;
+    const verify = async () => {
+      if (currentPath.startsWith("/order") || landingSlug) { setIsLoading(false); return; }
+      const previousAuth = readAuth();
+      if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables([]); setKdsTickets([]); setMenuItems([]); setIsLoading(false); return; }
+      try { const result = await requestApi<{ user: BrowserAuthUser }>("/auth/me"); if (active && readAuth()?.token === previousAuth.token) { applyUser(result.user); getSocketClient(); } }
+      catch (error) { if (active && readAuth()?.token === previousAuth.token) { if (error instanceof ApiError && [401, 403].includes(error.status)) { clearAuth(false); setIsVerified(false); setSessionUser(null); } else toast.error("Chưa thể xác minh phiên đăng nhập. Hệ thống sẽ thử kết nối lại."); } }
+      finally { if (active) setIsLoading(false); }
     };
-  }, [activeStoreId]);
+    void verify();
+    const changed = () => { void verify(); };
+    window.addEventListener("a2order:auth", changed);
+    window.addEventListener("online", changed);
+    const timer = setInterval(changed, 30000);
+    return () => { active = false; clearInterval(timer); window.removeEventListener("online", changed); window.removeEventListener("a2order:auth", changed); };
+  }, [currentPath]);
+  useEffect(() => {
+    if (!activeStoreId || currentPath.startsWith("/order") || landingSlug) return;
+    let active = true;
+    requestApi<StaffMember[]>("/auth/staff/" + encodeURIComponent(activeStoreId)).then(list => { if (active) setStaffMembers(list.map(s => ({ ...s, pinCode: "" }))); }).catch(error => toast.error(error.message));
+    return () => { active = false; };
+  }, [activeStoreId, currentPath]);
+  const refreshOperational = React.useCallback(async () => {
+    if (!isVerified || !sessionUser) return;
+    const store = await storeApi.getStoreById(sessionUser.storeId);
+    const dishes = await menuApi.getDishes(sessionUser.storeId);
+    setActiveStore({ id: store.id, name: store.name });
+    setMenuItems(dishes.map((d: any) => ({ ...d, optionGroups: d.customizationGroups || [] })));
+    if (sessionUser.role !== "CHEF") {
+      const snapshot = await requestApi<OperationalTable[]>("/orders/" + sessionUser.storeId + "/snapshot");
+      setTables(snapshot.map(t => ({ id: t.tableId, name: t.tableName, code: t.tableCode, status: t.status as TableStatus, zone: t.zoneName, occupiedMinutes: t.openedAtMs ? Math.max(0, Math.floor((Date.now() - t.openedAtMs) / 60000)) : 0, totalAmount: t.balanceAmount ?? t.totalAmount })));
+    }
+    if ((store.modules || []).includes("MODULE_KDS" as any) && sessionUser.role !== "CASHIER") {
+      const tickets = await requestApi<any[]>("/orders/kds/tickets");
+      setKdsTickets(tickets.map(t => ({ id: t.id, tableName: t.tableName, minutesAgo: Math.max(0, Math.floor((Date.now() - t.orderTimestamp) / 60000)), batchNumber: 1, items: t.items.map((i: any) => ({ id: i.id, name: i.name || i.dishName, quantity: i.quantity, notes: i.notes, status: i.status === "WAITING" ? OrderItemStatus.QUEUED : i.status === "READY" ? OrderItemStatus.DONE : i.status })) })));
+    }
+  }, [isVerified, sessionUser?.storeId, sessionUser?.role]);
+  useEffect(() => {
+    const refresh = () => { void refreshOperational().catch(error => toast.error(error.message)); };
+    refresh(); const timer = setInterval(refresh, 15000);
+    window.addEventListener("a2order:data", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("a2order:data", refresh); };
+  }, [refreshOperational]);
+  const { execute: submitStaffOrder } = useAntiSpamAction("STAFF_ORDER", async (payload: { tableId: string; items: CartItem[] }, key) => {
+    return requestApi("/orders/submit", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify({ storeId: activeStoreId, tableId: payload.tableId, items: payload.items.map(item => {
+      const dish = menuItems.find(d => d.id === item.dishId);
+      return { dishId: item.dishId, quantity: item.quantity, notes: item.notes, variantId: dish?.variants?.find((v: any) => v.name === item.selectedVariant)?.id, customizationIds: (dish?.customizationGroups || []).flatMap((g: any) => g.options || []).filter((o: any) => item.selectedOptions?.includes(o.id) || item.selectedOptions?.includes(o.name)).map((o: any) => o.id) };
+    }) }) });
+  });
 
   // Table pins
   const [pinnedTables, setPinnedTables] = useState<string[]>([]);
@@ -215,43 +185,14 @@ export const App: React.FC = () => {
   };
 
   // Xác nhận gọi món và gửi đơn vào bếp KDS
-  const handleOrderSubmitted = (tableName: string, items: CartItem[]) => {
-    const sum = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
-
-    // 1. Cập nhật trạng thái bàn
-    setTables((prev) =>
-      prev.map((t) =>
-        t.name === tableName
-          ? {
-              ...t,
-              status: TableStatus.WAITING_FOOD,
-              occupiedMinutes: t.occupiedMinutes ? t.occupiedMinutes : 1,
-              totalAmount: (t.totalAmount || 0) + sum,
-            }
-          : t
-      )
-    );
-
-    // 2. Tạo vé KDS mới cho bếp
-    const newTicket: KdsTicket = {
-      id: `t-${Date.now()}`,
-      tableName,
-      minutesAgo: 0,
-      batchNumber: 1,
-      items: items.map((i, idx) => ({
-        id: `item-${Date.now()}-${idx}`,
-        name: i.name,
-        quantity: i.quantity,
-        notes: i.notes,
-        status: OrderItemStatus.QUEUED,
-      })),
-    };
-    setKdsTickets((prev) => [newTicket, ...prev]);
-
-    sound.playKitchenChime();
-    toast.success(`Đã gửi ${items.length} món của ${tableName} vào bếp KDS!`);
-    setIsOrderModalOpen(false);
-    setActiveTableMenuActions(null);
+  const handleOrderSubmitted = async (_tableName: string, items: CartItem[]) => {
+    const table = activeTableForOrder;
+    if (!table) throw new Error("Chưa chọn bàn");
+    try {
+      const result = await submitStaffOrder({ tableId: table.id, items });
+      if (!result) throw new Error("Đơn đang được xử lý, vui lòng chờ");
+      await refreshOperational(); sound.playKitchenChime(); toast.success("Đã lưu đơn và gửi vào bếp"); setIsOrderModalOpen(false); setActiveTableMenuActions(null);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể gửi đơn"); throw error; }
   };
 
   // Hoàn tất thu tiền bàn từ quầy thu ngân
@@ -271,41 +212,45 @@ export const App: React.FC = () => {
   };
 
   // Đổi trạng thái món KDS
-  const handleToggleKdsItem = (itemId: string) => {
-    setKdsTickets((prev) =>
-      prev.map((ticket) => ({
-        ...ticket,
-        items: ticket.items.map((i) =>
-          i.id === itemId
-            ? {
-                ...i,
-                status:
-                  i.status === OrderItemStatus.QUEUED
-                    ? OrderItemStatus.COOKING
-                    : i.status === OrderItemStatus.COOKING
-                    ? OrderItemStatus.DONE
-                    : OrderItemStatus.QUEUED,
-              }
-            : i
-        ),
-      }))
-    );
+  const handleToggleKdsItem = async (itemId: string) => {
+    const item = kdsTickets.flatMap(t => t.items).find(i => i.id === itemId);
+    if (!item || item.status === OrderItemStatus.DONE) return;
+    try { await requestApi("/orders/items/" + itemId + "/status", { method: "PATCH", body: JSON.stringify({ status: item.status === OrderItemStatus.QUEUED ? "COOKING" : "DONE" }) }); await refreshOperational(); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể cập nhật món"); }
   };
 
-  const handleCompleteKdsTicket = (ticketId: string) => {
-    setKdsTickets((prev) => prev.filter((t) => t.id !== ticketId));
-    sound.playKitchenChime();
-    toast.success("Đã hoàn tất vé bếp!");
+  const handleCompleteKdsTicket = async (ticketId: string) => {
+    const ticket = kdsTickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+    try { for (const item of ticket.items) { if (item.status === OrderItemStatus.QUEUED) await requestApi("/orders/items/" + item.id + "/status", { method: "PATCH", body: JSON.stringify({ status: "COOKING" }) }); if (item.status !== OrderItemStatus.DONE) await requestApi("/orders/items/" + item.id + "/status", { method: "PATCH", body: JSON.stringify({ status: "DONE" }) }); } await refreshOperational(); toast.success("Đã hoàn tất vé bếp"); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể hoàn tất vé"); }
   };
 
   // 1. Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
+  if (landingSlug) return <React.Suspense fallback={<LoadingScreen />}><PublicLandingPage slug={landingSlug} /></React.Suspense>;
   if (currentPath.startsWith("/order")) {
     return (
       <React.Suspense fallback={<LoadingScreen message="Đang tải menu gọi món..." subMessage="Đồng bộ thông tin món và bàn ăn" />}>
-        <CustomerTableOrderPage />
+        <GlobalFeedback /><CustomerTableOrderPage />
       </React.Suspense>
     );
   }
+
+  const authModal = (<UnifiedAuthModal
+          isOpen={isAuthModalOpen || !isVerified}
+          staffList={staffMembers}
+          onPinSubmit={async (staffId: string, enteredPin: string) => {
+    try { const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-pin", { method: "POST", body: JSON.stringify({ storeId: activeStoreId, staffId, pinCode: enteredPin }) }); saveAuth(result.user, result.token); applyUser(result.user); setActiveTab(result.user.role === "CHEF" ? "kds" : result.user.role === "CASHIER" ? "billing" : "tables"); setIsAuthModalOpen(false); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đăng nhập"); }
+  }}
+          onAdminLogin={async (email: string, password: string) => {
+    try { const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-owner", { method: "POST", body: JSON.stringify({ email, password }) }); if (["SUPER_ADMIN", "ACCOUNTANT"].includes(result.user.role)) { window.location.assign(import.meta.env.VITE_CMS_URL || window.location.origin); return; } saveAuth(result.user, result.token); applyUser(result.user); setActiveTab("tables"); setIsAuthModalOpen(false); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đăng nhập"); }
+  }}
+          onClose={() => { if (isVerified) setIsAuthModalOpen(false); }}
+        />);
+
+  if (!isLoading && !isVerified) return <><GlobalFeedback />{authModal}</>;
 
   if (isLoading) {
     return null;
@@ -325,7 +270,8 @@ export const App: React.FC = () => {
       variant: "danger",
     });
     if (ok) {
-      setIsAuthModalOpen(true);
+      try { await requestApi("/auth/logout", { method: "POST" }); } catch { /* Local sign-out remains available. */ }
+      clearAuth(); setIsVerified(false); setSessionUser(null); setIsAuthModalOpen(true);
     }
   };
 
@@ -414,13 +360,9 @@ export const App: React.FC = () => {
         {/* ===================== TAB 4: DANH MỤC MÓN & BÁO HẾT 86 ===================== */}
         {activeTab === "menu" && (
           <React.Suspense fallback={<div className="p-8 text-center text-ink-muted">Đang tải danh mục món...</div>}>
-            <MenuDashboard 
-              menuItems={menuItems} 
-              onToggleStock={(id, avail) => {
-                setMenuItems((prev) =>
-                  prev.map((m) => (m.id === id ? { ...m, isAvailable: avail } : m))
-                );
-              }} 
+            <MenuDashboard
+              menuItems={menuItems}
+              onToggleStock={async (id, avail) => { try { await requestApi(`/menu/${activeStoreId}/dishes/${id}/stock`, { method: "PATCH", body: JSON.stringify({ isAvailable: avail }) }); await refreshOperational(); } catch (e: any) { toast.error(e.message); } }}
             />
           </React.Suspense>
         )}
@@ -428,11 +370,11 @@ export const App: React.FC = () => {
         {/* ===================== TAB 5: BỘ ĐÀM (CHAT) ===================== */}
         {activeTab === "chat" && (
           <div className="w-full flex-1 flex flex-col animate-fadeIn">
-            <StaffIntercomWidget 
-              currentStaffName={currentStaff.name} 
-              currentStaffRole={currentStaff.role} 
+            <StaffIntercomWidget
+              currentStaffName={currentStaff.name}
+              currentStaffRole={currentStaff.role}
               fullScreenMode={true}
-              tables={tables} 
+              tables={tables}
             />
           </div>
         )}
@@ -441,12 +383,10 @@ export const App: React.FC = () => {
         {activeTab === "schedule" && (
           <div className="w-full">
             <React.Suspense fallback={<div className="p-8 text-center text-ink-muted">Đang tải ca làm việc...</div>}>
-              <StaffScheduleProfile 
-                currentStaff={currentStaff} 
-                attendanceRecords={[]}
-                onClockIn={(staff) => {
-                  toast.success(`Nhân viên ${staff.name} đã chấm công vào ca!`);
-                }}
+              <StaffScheduleProfile
+                currentStaff={currentStaff}
+                attendanceRecords={attendanceRecords}
+                onClockIn={() => recordAttendance("IN")}
                 onClockOut={async (staff) => {
                   const ok = await confirmDialog({
                     title: "Chốt Ca & Ra Về?",
@@ -456,7 +396,7 @@ export const App: React.FC = () => {
                     variant: "danger",
                   });
                   if (ok) {
-                    toast.success(`Nhân viên ${staff.name} đã chốt ca và ra về.`);
+                    await recordAttendance("OUT");
                     setIsAuthModalOpen(true);
                   }
                 }}
@@ -486,49 +426,7 @@ export const App: React.FC = () => {
           storeDishes={menuItems}
         />
 
-        {/* Unified Auth Modal */}
-        <UnifiedAuthModal
-          isOpen={isAuthModalOpen}
-          staffList={staffMembers}
-          onPinSubmit={(staffId: string, enteredPin: string) => {
-            const staff = staffMembers.find((s) => s.id === staffId);
-            if (staff) {
-              if (staff.pinCode && enteredPin !== staff.pinCode) {
-                toast.error("Mã PIN không chính xác! Vui lòng thử lại.");
-                return;
-              }
-              setCurrentStaff(staff);
-              localStorage.setItem("a2order_client_active_staff", JSON.stringify(staff));
-              toast.success(`Nhân viên ${staff.name} (${staff.role}) vào ca thành công!`);
-              if (staff.role.toLowerCase().includes("bếp")) {
-                setActiveTab("kds");
-              } else if (staff.role.toLowerCase().includes("thu ngân")) {
-                setActiveTab("billing");
-              }
-              setIsAuthModalOpen(false);
-            }
-          }}
-          onAdminLogin={async (adminEmail: string, adminPass: string) => {
-            try {
-              const res = await fetch("http://localhost:4000/api/auth/login-owner", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: adminEmail.trim(), password: adminPass }),
-              });
-              const data = await res.json();
-              if (res.ok && data.success) {
-                toast.success(`Xác thực quản trị (${data.user.name}) thành công!`);
-                window.open("http://localhost:3001", "_blank");
-                setIsAuthModalOpen(false);
-              } else {
-                toast.error(data.message || "Tài khoản hoặc mật khẩu không chính xác.");
-              }
-            } catch {
-              toast.error("Không thể kết nối đến máy chủ.");
-            }
-          }}
-          onClose={() => setIsAuthModalOpen(false)}
-        />
+        {authModal}
       </AppShell>
     </>
   );

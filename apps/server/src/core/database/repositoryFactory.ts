@@ -13,7 +13,6 @@ import {
   PrismaStaffRepository,
 } from "./prisma/prismaRepositories.js";
 
-console.log("🐘 [A2Order Database] Connected to Supabase PostgreSQL via Prisma");
 
 export const storeRepository: IStoreRepository = new PrismaStoreRepository();
 export const menuRepository: IMenuRepository = new PrismaMenuRepository();

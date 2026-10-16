@@ -1,0 +1,4 @@
+export interface AttendanceEntry { id:string; staffId:string; staffName:string; role:string; clockInTime:string; clockOutTime?:string; shiftName:string; date:string; status:"ACTIVE"|"COMPLETED"; workHours?:number; }
+export interface IntercomEntry { id:string; senderId:string; senderName:string; senderRole:string; targetRole:string; content:string; timestamp:string; type:string; audioUrl?:string; audioDurationSec?:number; createdAt:string; }
+export interface IngredientEntry { id:string; name:string; unit:string; currentStock:number; avgCostPrice:number; updatedAt:string; }
+export interface ReceiptEntry { id:string; code:string; supplierName:string; receivedDate:string; receivedBy:string; items:Array<{ingredientId:string;ingredientName:string;quantity:number;unit:string;unitPrice:number;subtotal:number}>; totalAmount:number; paymentStatus:string; notes:string; createdAt:string; }

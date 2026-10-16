@@ -19,6 +19,7 @@ model Store {
   bankOwnerName String?
   status        String            @default("ACTIVE")
   configVersion String            @default("v1.0.0")
+  vatRate       Int               @default(8)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
   auditLogs     AuditLog[]
@@ -32,6 +33,9 @@ model Store {
   telemetries   StoreTelemetry[]
   tables        Table[]
   tableZones    TableZone[]
+  documents     WorkspaceDocument[]
+  commands      IdempotentCommand[]
+  serviceRequests ServiceRequest[]
 }
 
 model Staff {
@@ -41,6 +45,9 @@ model Staff {
   email        String?    @unique
   passwordHash String?
   pinCode      String?
+  phone        String?
+  shift        String @default("FULL_TIME")
+  sessionVersion Int      @default(0)
   role         String
   isActive     Boolean    @default(true)
   createdAt    DateTime   @default(now())
@@ -48,6 +55,7 @@ model Staff {
   store        Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
+  @@unique([id, storeId])
 }
 
 model TableZone {
@@ -59,6 +67,7 @@ model TableZone {
   store     Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
+  @@unique([id, storeId])
 }
 
 model Table {
@@ -70,11 +79,16 @@ model Table {
   status           String         @default("EMPTY")
   qrSecret         String         @default(uuid())
   currentSessionId String?
+  capacity         Int            @default(4)
+  archivedAt       DateTime?
   orderSessions    OrderSession[]
   store            Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  zone             TableZone      @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  zone             TableZone      @relation(fields: [zoneId, storeId], references: [id, storeId], onDelete: Restrict)
 
   @@index([storeId])
+  @@index([zoneId])
+  @@unique([id, storeId])
+  @@unique([storeId, code])
 }
 
 model Category {
@@ -86,6 +100,7 @@ model Category {
   menuItems MenuItem[]
 
   @@index([storeId])
+  @@unique([id, storeId])
 }
 
 model MenuItem {
@@ -94,15 +109,27 @@ model MenuItem {
   categoryId  String
   name        String
   price       Int
+  costPrice   Int         @default(0)
+  stockCount  Int?
+  description String?
+  isBestSeller Boolean   @default(false)
+  variants    Json        @default("[]")
+  modifiers   Json        @default("[]")
+  customizationGroups Json @default("[]")
+  majorCategory String?
+  subCategory String?
+  archivedAt  DateTime?
   image       String?
   isAvailable Boolean     @default(true)
   station     String      @default("KITCHEN")
   createdAt   DateTime    @default(now())
-  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category    Category    @relation(fields: [categoryId, storeId], references: [id, storeId], onDelete: Restrict)
   store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
   orderItems  OrderItem[]
 
   @@index([storeId])
+  @@index([categoryId])
+  @@unique([id, storeId])
 }
 
 model OrderSession {
@@ -112,13 +139,16 @@ model OrderSession {
   status     String       @default("ACTIVE")
   checkInAt  DateTime     @default(now())
   checkOutAt DateTime?
+  guestCount Int          @default(2)
+  adjustments Json        @default("{}")
   bills      Bill[]
   batches    OrderBatch[]
   store      Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  table      Table        @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  table      Table        @relation(fields: [tableId, storeId], references: [id, storeId], onDelete: Restrict)
 
   @@index([storeId])
   @@index([tableId])
+  @@unique([id, storeId])
 }
 
 model OrderBatch {
@@ -126,9 +156,16 @@ model OrderBatch {
   orderSessionId String
   batchNumber    Int          @default(1)
   isCustomerQr   Boolean      @default(false)
+  voucherCode String?
+  discountAmount Int @default(0)
+  promotionSnapshot Json @default("{}")
+  status         String       @default("APPROVED")
+  customerPhone  String?
+  rejectionReason String?
   createdAt      DateTime     @default(now())
   orderSession   OrderSession @relation(fields: [orderSessionId], references: [id], onDelete: Cascade)
   items          OrderItem[]
+  @@index([orderSessionId, createdAt])
 }
 
 model OrderItem {
@@ -137,11 +174,17 @@ model OrderItem {
   menuItemId   String
   quantity     Int
   price        Int
+  nameSnapshot String     @default("")
+  costSnapshot Int        @default(0)
+  station      String     @default("KITCHEN")
+  optionSnapshot Json     @default("[]")
   notes        String?
   status       String     @default("QUEUED")
   createdAt    DateTime   @default(now())
   menuItem     MenuItem   @relation(fields: [menuItemId], references: [id])
   orderBatch   OrderBatch @relation(fields: [orderBatchId], references: [id], onDelete: Cascade)
+  @@index([orderBatchId])
+  @@index([menuItemId])
 }
 
 model Bill {
@@ -151,14 +194,27 @@ model Bill {
   totalAmount     Int
   discountAmount  Int          @default(0)
   finalAmount     Int
+  taxAmount       Int          @default(0)
+  surchargeAmount Int          @default(0)
+  discountPercent Int          @default(0)
+  includeVat      Boolean      @default(false)
+  discountReason  String?
+  lineSnapshot    Json         @default("[]")
+  paidAt          DateTime?
+  cashierId       String?
+  splitCount      Int          @default(1)
   paymentMethod   String       @default("CASH")
   paymentStatus   String       @default("PENDING")
   transactionCode String?
   createdAt       DateTime     @default(now())
-  orderSession    OrderSession @relation(fields: [orderSessionId], references: [id], onDelete: Cascade)
+  orderSession    OrderSession @relation(fields: [orderSessionId, storeId], references: [id, storeId], onDelete: Restrict)
   store           Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  payments        Payment[]
 
+  @@unique([id, storeId])
   @@index([storeId])
+  @@index([orderSessionId])
+  @@index([storeId, paidAt])
 }
 
 model AuditLog {
@@ -172,11 +228,12 @@ model AuditLog {
   store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
   @@index([storeId])
+  @@index([staffId])
 }
 
 model StoreLicense {
   id             String            @id @default(uuid())
-  storeId        String            @unique
+  storeId        String?           @unique
   licenseKey     String            @unique
   planType       String            @default("PRO")
   enabledModules String            @default("CORE_POS,MODULE_KDS,MODULE_ACCOUNTING,MODULE_QR_ORDER,MODULE_ADVANCED_ANALYTICS")
@@ -189,7 +246,7 @@ model StoreLicense {
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
   invoices       SoftwareInvoice[]
-  store          Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store          Store?            @relation(fields: [storeId], references: [id], onDelete: Restrict)
 }
 
 model SoftwareInvoice {
@@ -205,8 +262,11 @@ model SoftwareInvoice {
   transactionRef String?
   paidAt         DateTime?
   pdfUrl         String?
+  voucherCode String?
+  requestedModules String?
   createdAt      DateTime     @default(now())
   license        StoreLicense @relation(fields: [storeLicenseId], references: [id], onDelete: Cascade)
+  @@index([storeLicenseId])
 }
 
 model StoreTelemetry {
@@ -251,4 +311,54 @@ model SystemConfig {
   description String?
   updatedAt   DateTime @updatedAt
   createdAt   DateTime @default(now())
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  billId         String
+  storeId        String
+  amount         Int
+  method         String
+  transactionRef String?  @unique
+  partIndex      Int?
+  createdAt      DateTime @default(now())
+  bill           Bill     @relation(fields: [billId, storeId], references: [id, storeId], onDelete: Restrict)
+  @@index([billId])
+  @@unique([billId, partIndex])
+  @@index([storeId, createdAt])
+}
+
+model IdempotentCommand {
+  id          String   @id
+  storeId     String
+  actorId     String
+  operation   String
+  requestHash String
+  response    Json
+  createdAt   DateTime @default(now())
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@index([storeId, createdAt])
+}
+
+model WorkspaceDocument {
+  storeId   String
+  key       String
+  data      Json
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, key])
+}
+
+model ServiceRequest {
+  id          String   @id @default(uuid())
+  storeId     String
+  tableId     String
+  sessionId   String?
+  type        String
+  note        String?
+  status      String   @default("PENDING")
+  requestedAt DateTime @default(now())
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@index([storeId, status, requestedAt])
 }

@@ -186,6 +186,7 @@ export interface ConnectedTerminalRecord {
 }
 
 export interface TenantStoreRecord {
+  monthlyRecurringRevenue?: number;
   id: string;
   name: string;
   owner: string;
@@ -217,6 +218,7 @@ export interface TenantStoreRecord {
 }
 
 export interface CreateStoreInput extends Partial<TenantStoreRecord> {
+  voucherCode?: string;
   ownerPassword?: string;
   ownerPin?: string;
   durationMonths?: number;

@@ -1,3 +1,6 @@
+import { useResource } from "@a2order/shared/react";
+import { scopedStorageKey } from "@a2order/shared";
+import { getAuthUser } from "@a2order/shared";
 import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -16,10 +19,7 @@ import {
 
 // Lấy URL cơ sở gọi món động theo domain thực tế đang chạy
 export function getOrderBaseUrl(): string {
-  if (typeof window !== "undefined" && window.location?.origin) {
-    return window.location.origin;
-  }
-  return (import.meta as any).env?.VITE_ORDER_BASE_URL || (import.meta as any).env?.VITE_APP_URL || "http://localhost:3001";
+  return import.meta.env.VITE_ORDER_BASE_URL || import.meta.env.VITE_CLIENT_URL || (["3000", "3001", "3002"].includes(window.location.port) ? window.location.protocol + "//" + window.location.hostname + ":3000" : window.location.origin);
 }
 
 // Trợ giúp tạo mã bàn mặc định & link QR gọi món tại bàn cho khách
@@ -76,87 +76,16 @@ export const CmsTableManagement: React.FC<CmsTableManagementProps> = ({
   const isCashier = currentRole === "CASHIER";
 
   // Lấy storeId thực tế từ phiên đăng nhập
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const storeId = userStr ? JSON.parse(userStr).storeId || "store-a2-kitchen" : "store-a2-kitchen";
+  const storeId = getAuthUser()?.storeId || "";
 
-  const [zones, setZones] = usePersistentState<TableZoneData[]>("tables_zones_data", []);
+  const [zones, refreshZones] = useResource<TableZoneData[]>(`/tables/${storeId}`, []);
+  const setZones = (_update: React.SetStateAction<TableZoneData[]>) => { void refreshZones().catch(e => toast.error(e.message)); };
 
   // Tự động tải sơ đồ bàn thực tế từ Database
-  useEffect(() => {
-    tableApi
-      .getTableZones(storeId)
-      .then((dbZones) => {
-        if (dbZones && dbZones.length > 0) {
-          setZones(dbZones);
-        }
-      })
-      .catch((err) => {
-        console.warn("Lỗi tải sơ đồ bàn từ server:", err);
-      });
-  }, [storeId]);
+
 
   // Lắng nghe Socket để đồng bộ trạng thái bàn (Mở bàn, đóng bàn, cập nhật PIN) trong thời gian thực
-  useEffect(() => {
-    const socket = getSocketClient();
-    joinStoreRoom(storeId);
 
-    const handleSessionApproved = (data: any) => {
-      if (!data) return;
-      setZones((prev) =>
-        prev.map((z) => ({
-          ...z,
-          tables: z.tables.map((t) =>
-            t.id === data.tableId
-              ? {
-                  ...t,
-                  status: "OCCUPIED",
-                  pin: data.pin || t.pin,
-                  capacity: data.guestCount || t.capacity,
-                }
-              : t
-          ),
-        }))
-      );
-    };
-
-    const handleSessionClosed = (data: any) => {
-      if (!data) return;
-      setZones((prev) =>
-        prev.map((z) => ({
-          ...z,
-          tables: z.tables.map((t) =>
-            t.id === data.tableId
-              ? { ...t, status: "EMPTY" }
-              : t
-          ),
-        }))
-      );
-    };
-
-    const handleTableStatusUpdated = (data: any) => {
-      if (!data || !data.tableId) return;
-      setZones((prev) =>
-        prev.map((z) => ({
-          ...z,
-          tables: z.tables.map((t) =>
-            t.id === data.tableId
-              ? { ...t, status: data.status || t.status, pin: data.pin || t.pin }
-              : t
-          ),
-        }))
-      );
-    };
-
-    socket.on("table:session_approved", handleSessionApproved);
-    socket.on("table:session_closed", handleSessionClosed);
-    socket.on("table:status_updated", handleTableStatusUpdated);
-
-    return () => {
-      socket.off("table:session_approved", handleSessionApproved);
-      socket.off("table:session_closed", handleSessionClosed);
-      socket.off("table:status_updated", handleTableStatusUpdated);
-    };
-  }, [storeId, setZones]);
 
   // Quản lý Modal Mở Bàn & Đóng Bàn
   const [openTableModal, setOpenTableModal] = useState<{
@@ -169,50 +98,7 @@ export const CmsTableManagement: React.FC<CmsTableManagementProps> = ({
 
   // Xử lý Mở Bàn từ Quản Lý Bàn
   const handleOpenTableSession = async (table: CmsTableItem, guestCount: number, andGoToOrder = false) => {
-    try {
-      setIsOpeningTable(true);
-      const res = await tableApi.approveTableSession(storeId, table.id, guestCount);
-      const newPin = res?.pin || table.pin || "1234";
 
-      // Cập nhật trạng thái bàn cục bộ
-      setZones((prev) =>
-        prev.map((z) => ({
-          ...z,
-          tables: z.tables.map((t) =>
-            t.id === table.id
-              ? { ...t, status: "OCCUPIED", pin: newPin }
-              : t
-          ),
-        }))
-      );
-
-      // Đồng bộ vào LocalStorage cho Gọi Món POS
-      try {
-        const storedOrders = localStorage.getItem("a2order_staff_order_tables_data");
-        if (storedOrders) {
-          const list = JSON.parse(storedOrders);
-          const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-          const updated = list.map((it: any) =>
-            it.tableId === table.id
-              ? { ...it, status: "OCCUPIED", guestCount, pin: newPin, openedAt: timeNow, openedAtMs: Date.now() }
-              : it
-          );
-          localStorage.setItem("a2order_staff_order_tables_data", JSON.stringify(updated));
-        }
-      } catch (e) {}
-
-      setOpenTableModal(null);
-      toast.success(`Đã mở bàn ${table.name} (${guestCount} khách) thành công!`);
-
-      if (andGoToOrder) {
-        localStorage.setItem("a2order_staff_order_active_table", JSON.stringify(table.id));
-        onNavigateToOrder?.(table.id);
-      }
-    } catch (err: any) {
-      toast.error("Không thể mở bàn: " + (err.message || "Lỗi kết nối"));
-    } finally {
-      setIsOpeningTable(false);
-    }
   };
 
   // Xử lý Đóng Bàn từ Quản Lý Bàn
@@ -226,47 +112,12 @@ export const CmsTableManagement: React.FC<CmsTableManagementProps> = ({
     });
     if (!confirmed) return;
 
-    try {
-      setIsClosingTableId(table.id);
-      await tableApi.closeTableSession(storeId, table.id);
 
-      // Cập nhật zones
-      setZones((prev) =>
-        prev.map((z) => ({
-          ...z,
-          tables: z.tables.map((t) =>
-            t.id === table.id
-              ? { ...t, status: "EMPTY" }
-              : t
-          ),
-        }))
-      );
-
-      // Cập nhật storage của Gọi Món POS
-      try {
-        const storedOrders = localStorage.getItem("a2order_staff_order_tables_data");
-        if (storedOrders) {
-          const list = JSON.parse(storedOrders);
-          const updated = list.map((it: any) =>
-            it.tableId === table.id
-              ? { ...it, status: "EMPTY", items: [], totalAmount: 0, openedAt: undefined, guestCount: 0 }
-              : it
-          );
-          localStorage.setItem("a2order_staff_order_tables_data", JSON.stringify(updated));
-        }
-      } catch (e) {}
-
-      toast.success(`Đã đóng bàn ${table.name} và trả về bàn trống.`);
-    } catch (err: any) {
-      toast.error("Không thể đóng bàn: " + (err.message || "Lỗi hệ thống"));
-    } finally {
-      setIsClosingTableId(null);
-    }
   };
 
   // Nảy sang Gọi Món POS với bàn này được chọn sẵn
   const handleGoToOrder = (tableId: string) => {
-    localStorage.setItem("a2order_staff_order_active_table", JSON.stringify(tableId));
+    localStorage.setItem(scopedStorageKey("staff_order_active_table"), JSON.stringify(tableId));
     onNavigateToOrder?.(tableId);
   };
 

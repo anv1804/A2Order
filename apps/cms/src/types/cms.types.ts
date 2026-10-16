@@ -305,6 +305,7 @@ export interface SalesBillItem {
 }
 
 export interface SalesBillRecord {
+  payments?: Array<{ method: string; amount: number }>;
   id: string;
   billCode: string;
   tableName: string;
@@ -317,10 +318,11 @@ export interface SalesBillRecord {
   discountAmount: number;
   vatAmount: number;
   finalAmount: number;
-  paymentMethod: "VIETQR" | "CASH" | "CARD";
+  paymentMethod: "VIETQR" | "CASH" | "CARD" | "MIXED";
   status: "COMPLETED" | "CANCELED";
   vietQrRef?: string;
 }
+export interface ProfitLossPeriodRow { week: string; revenue: number; cogs: number; staff: number; other: number; }
 
 export interface CanceledItemRecord {
   id: string;
@@ -412,6 +414,7 @@ export interface ConnectedTerminalRecord {
 }
 
 export interface TenantStoreRecord {
+  monthlyRecurringRevenue?: number;
   id: string;
   name: string;
   owner: string;
@@ -544,6 +547,7 @@ export interface ReceiptTemplateConfig {
 
 // ================= NHÂN VIÊN ORDER CẦM TAY (WAITER POS) =================
 export interface WaiterOrderItem {
+  variantId?: string;
   id?: string;
   dishId: string;
   name: string;
@@ -551,7 +555,7 @@ export interface WaiterOrderItem {
   quantity: number;
   notes?: string;
   selectedModifiers?: string[];
-  status?: "WAITING" | "COOKING" | "SERVED" | "OUT_OF_STOCK" | "REMAKE" | "RETURNED" | "CANCELED";
+  status?: "WAITING" | "COOKING" | "READY" | "SERVED" | "OUT_OF_STOCK" | "REMAKE" | "RETURNED" | "CANCELED";
   orderedAt?: string;
   round?: number;
   remakeReason?: string;
@@ -571,6 +575,12 @@ export interface OrderDiscount {
 }
 
 export interface WaiterTableOrder {
+  discountAmount?: number;
+  taxAmount?: number;
+  surchargeAmount?: number;
+  paidAmount?: number;
+  adjustment?: import("@a2order/shared").BillAdjustment;
+  pendingBillId?: string;
   tableId: string;
   tableName: string;
   tableCode?: string;
@@ -784,6 +794,3 @@ export interface StaffOrderDishItem {
   isPopular?: boolean;
   modifiers?: string[];
 }
-
-
-

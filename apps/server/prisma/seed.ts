@@ -1,14 +1,14 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_URL || process.env.DATABASE_URL } } });
 
 async function main() {
   console.log("🌱 [A2Order Prisma Seed] Bắt đầu gieo mầm dữ liệu...");
 
   const adminEmail = process.env.SUPER_ADMIN_SEED_EMAIL?.trim();
   const adminPassword = process.env.SUPER_ADMIN_SEED_PASSWORD;
-  if (!adminEmail || !adminPassword) {
+  if (!adminEmail || !adminPassword || adminPassword.length < 10) {
     throw new Error("Cần cấu hình SUPER_ADMIN_SEED_EMAIL và SUPER_ADMIN_SEED_PASSWORD trước khi chạy seed.");
   }
 

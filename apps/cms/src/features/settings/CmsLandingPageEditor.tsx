@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { getAuthUser, browserRequest } from "@a2order/shared";
+import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { StoreLandingPageData } from "@a2order/shared";
@@ -14,17 +15,13 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
 }) => {
   const [devicePreview, setDevicePreview] = useState<"desktop" | "mobile">("desktop");
   const [pageData, setPageData] = useState<StoreLandingPageData>(() => {
-    try {
-      const saved = localStorage.getItem(LANDING_PAGE_STORAGE_KEY);
-      if (saved) return JSON.parse(saved) as StoreLandingPageData;
-    } catch {}
-    const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-    const storeObj = userStr ? JSON.parse(userStr) : null;
+
+    const storeObj = getAuthUser();
     return {
-      storeId: storeObj?.storeId || "store-a2-kitchen",
+      storeId: storeObj?.storeId || "",
       storeName: storeObj?.storeName || "A2 Roastery & Kitchen",
       customDomain: "",
-      slug: storeObj?.slug || "a2-kitchen",
+      slug: storeObj?.slug || "",
       heroTitle: storeObj?.storeName ? `Chào Mừng Đến Với ${storeObj.storeName}` : "A2 Roastery & Kitchen",
       heroSubtitle: "Hương vị ẩm thực đặc sắc & dịch vụ tận tâm",
       heroBannerUrl: "",
@@ -34,11 +31,12 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
       address: storeObj?.address || "79 Đường Hoa Sứ, Phường 7, Phú Nhuận, TP.HCM",
       googleMapsUrl: "",
       isBookingOpen: true,
-      isPublished: true,
+      isPublished: false,
       publicMenuCategories: [],
     };
   });
   const [savedPageData, setSavedPageData] = useState(() => JSON.stringify(pageData));
+  useEffect(() => { if (!isUnlocked) return; browserRequest<StoreLandingPageData | null>(`/landing/cms/${getAuthUser()?.storeId}`).then(value => { if (value) { const merged = { ...pageData, ...value }; setPageData(merged); setSavedPageData(JSON.stringify(merged)); } }, e => toast.error(e.message)); }, [isUnlocked]);
   useUnsavedChanges("landing_page_editor", isUnlocked && JSON.stringify(pageData) !== savedPageData);
 
   // MÀN HÌNH KHÓA TRẢ PHÍ (PAYWALL) NẾU CHƯA THUÊ MODULE LANDING PAGE
@@ -99,11 +97,7 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
     );
   }
 
-  const handleSave = () => {
-    localStorage.setItem(LANDING_PAGE_STORAGE_KEY, JSON.stringify(pageData));
-    setSavedPageData(JSON.stringify(pageData));
-    toast.success("Đã lưu và xuất bản trang Landing Page thương hiệu thành công!");
-  };
+  const handleSave = async () => { try { await browserRequest(`/landing/cms/${getAuthUser()?.storeId}/update`, { method: "PUT", body: JSON.stringify({ ...pageData, isPublished: true }) }); setPageData(prev => ({ ...prev, isPublished: true })); setSavedPageData(JSON.stringify({ ...pageData, isPublished: true })); toast.success("Đã lưu và xuất bản"); } catch (e: any) { toast.error(e.message); } };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -128,7 +122,7 @@ export const CmsLandingPageEditor: React.FC<CmsLandingPageEditorProps> = ({
             size="sm"
             variant="outline"
             className="rounded-full gap-2 text-xs"
-            onClick={() => window.open(`http://localhost:4000/api/landing/public/${pageData.slug}`, "_blank")}
+            onClick={() => window.open(`${import.meta.env.VITE_CLIENT_URL || window.location.protocol + "//" + window.location.hostname + ":3000"}/?landing=${encodeURIComponent(pageData.slug)}`, "_blank")}
           >
             <Icon name="externalLink" className="w-3.5 h-3.5" />
             <span>Xem Thực Tế</span>

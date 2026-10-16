@@ -8,13 +8,20 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspaces",
+    "setup": "node scripts/setup-env.mjs && npm run build --workspace=packages/shared && npm run prisma:generate --workspace=apps/server",
+    "dev": "npm run build --workspace=packages/shared && node scripts/dev.mjs",
     "dev:server": "npm run dev --workspace=apps/server",
     "dev:client": "npm run dev --workspace=apps/client",
     "dev:cms": "npm run dev --workspace=apps/cms",
     "dev:admin": "npm run dev:admin --workspace=apps/cms",
-    "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/server && npm run build --workspace=apps/client && npm run build --workspace=apps/cms",
+    "lint": "eslint apps packages scripts && npm run typecheck",
+    "typecheck": "npm run build --workspace=packages/shared && tsc --noEmit -p apps/server && tsc --noEmit -p apps/client && tsc --noEmit -p apps/cms",
+    "test": "npm run build --workspace=packages/shared && node --test packages/shared/test/*.test.mjs && npm run test --workspace=apps/server",
+    "postinstall": "node scripts/harden-tooling.mjs",
+    "db:check": "node scripts/database.mjs check",
+    "db:deploy": "node scripts/database.mjs deploy",
+    "db:runtime": "node scripts/database.mjs runtime"
   },
   "keywords": [
     "pos",
@@ -27,5 +34,21 @@
     "cms"
   ],
   "author": "A2Order Team",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/pg": "8.15.5",
+    "eslint": "10.12.0",
+    "pg": "8.16.3",
+    "postcss-selector-parser": "^7.1.6",
+    "source-map-js": "^1.2.2",
+    "typescript-eslint": "8.71.2"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.6",
+    "source-map-js": "^1.2.2"
+  }
 }

@@ -2,6 +2,7 @@
   "name": "@a2order/server",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -9,20 +10,21 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "test": "tsx --test test/*.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@a2order/shared": "*",
-    "@fastify/cors": "^8.5.0",
-    "@fastify/jwt": "^8.0.0",
+    "@fastify/cors": "11.3.1",
+    "@fastify/jwt": "10.2.4",
     "@prisma/client": "^5.10.2",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "dotenv": "^16.4.5",
-    "fastify": "^4.26.1",
+    "fastify": "5.12.7",
     "socket.io": "^4.7.4",
     "zod": "^3.22.4"
   },

@@ -1,3 +1,6 @@
+import { browserRequest as requestApi, type BillView, type BillAdjustment, type OperationalTable } from "@a2order/shared";
+import { useResource, useAntiSpamAction } from "@a2order/shared/react";
+import { getAuthUser } from "@a2order/shared";
 import React, { useState, useMemo, useEffect } from "react";
 import { Icon, Button, Badge, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -53,9 +56,13 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   onNavigateTab,
 }) => {
   const isCashier = currentRole === "CASHIER";
-  const [tables, setTables] = usePersistentState<WaiterTableOrder[]>("staff_order_tables_data", INITIAL_TABLES);
-  const [zonesData, setZonesData] = usePersistentState<any[]>("tables_zones_data", []);
-  const [menuDishes, setMenuDishes] = usePersistentState<any[]>("menu_dishes_data", []);
+  const storeId = getAuthUser()?.storeId || "";
+  const [zonesData] = useResource<any[]>(storeId ? `/tables/${storeId}` : null, []);
+  const [snapshot, refreshTables] = useResource<OperationalTable[]>(storeId ? `/orders/${storeId}/snapshot` : null, []);
+  const tables = snapshot.map(t => ({ ...t, totalAmount: t.balanceAmount ?? t.totalAmount, pin: zonesData.flatMap(z => z.tables || []).find(table => table.id === t.tableId)?.pin, openedAt: t.openedAt ? new Date(t.openedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : undefined, items: t.items.map(i => ({ ...i, orderedAt: new Date(i.orderedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) })), status: t.status === "PAYMENT_PENDING" ? "BILL_REQUESTED" : t.status, surcharges: t.adjustment?.surchargeAmount ? [{ id: "server", name: "Phụ thu", amount: t.adjustment.surchargeAmount }] : [], discount: t.adjustment?.discountPercent || t.adjustment?.fixedDiscount ? { type: t.adjustment.fixedDiscount ? "AMOUNT" : "PERCENT", value: t.adjustment.fixedDiscount || t.adjustment.discountPercent, reason: t.adjustment.discountReason || "" } : undefined })) as WaiterTableOrder[];
+  const setTables = (_update: React.SetStateAction<WaiterTableOrder[]>) => { void refreshTables().catch(e => toast.error(e.message)); };
+
+  const [menuDishes] = useResource<any[]>(storeId ? `/menu/${storeId}` : null, []);
 
   const dishesList: DishItem[] = useMemo(() => {
     if (menuDishes && menuDishes.length > 0) {
@@ -67,7 +74,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
         image: d.image || "",
         description: d.description || "",
         isPopular: d.isBestSeller,
-        modifiers: d.options?.flatMap((opt: any) => opt.choices || []) || [],
+        modifiers: [...(d.variants || []).map((v: any) => "Phần: " + v.name), ...(d.customizationGroups || []).flatMap((g: any) => g.options.map((o: any) => o.name))],
       }));
     }
     return [];
@@ -78,48 +85,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   const [activeTab, setActiveTab] = useState<"MENU" | "SERVED_ITEMS">("MENU");
 
   // Tự động đồng bộ bàn thực tế từ sơ đồ bàn (Database) và loại bỏ bàn fake cũ
-  useEffect(() => {
-    if (zonesData && zonesData.length > 0) {
-      const allZoneTableIds = new Set(zonesData.flatMap((z: any) => (z.tables || []).map((t: any) => t.id)));
-      const hasInvalidTables =
-        tables.length === 0 ||
-        tables.some((t) => !allZoneTableIds.has(t.tableId)) ||
-        tables.some((t) => {
-          const found = zonesData.flatMap((z: any) => z.tables || []).find((zt: any) => zt.id === t.tableId);
-          return found && !t.pin && found.pin;
-        });
 
-      if (tables.length === 0 || hasInvalidTables) {
-        const synced: WaiterTableOrder[] = zonesData.flatMap((z: any) =>
-          (z.tables || []).map((t: any) => {
-            const existing = tables.find((et) => et.tableId === t.id);
-            return existing
-              ? { ...existing, pin: t.pin || existing.pin, tableCode: t.code || existing.tableCode }
-              : {
-                  tableId: t.id,
-                  tableName: t.name,
-                  tableCode: t.code,
-                  pin: t.pin,
-                  zoneName: z.name,
-                  guestCount: 0,
-                  status: "EMPTY" as const,
-                  items: [],
-                  totalAmount: 0,
-                };
-          })
-        );
-        if (synced.length > 0) {
-          setTables(synced);
-          if (!synced.some((t) => t.tableId === activeTableId)) {
-            setActiveTableId(synced[0].tableId);
-          }
-        }
-      }
-    }
-  }, [zonesData, tables, activeTableId, setTables, setActiveTableId]);
-
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("a2order_current_user") || localStorage.getItem("user") : null;
-  const storeId = userStr ? JSON.parse(userStr).storeId || "store-a2-kitchen" : "store-a2-kitchen";
 
   const formatTableName = (name?: string) => {
     if (!name) return "Bàn";
@@ -127,27 +93,13 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   };
 
   // Tự động tải sơ đồ bàn và thực đơn món từ Database vào POS nếu chưa có
-  useEffect(() => {
-    tableApi.getTableZones(storeId).then((res) => {
-      const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
-      if (list.length > 0) {
-        setZonesData(list);
-      }
-    }).catch(() => {});
 
-    menuApi.getDishes(storeId).then((res) => {
-      const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
-      if (list.length > 0) {
-        setMenuDishes(list);
-      }
-    }).catch(() => {});
-  }, [storeId, setZonesData, setMenuDishes]);
 
-  const [pendingRequests, setPendingRequests] = useState<PendingSessionRequest[]>([]);
-  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
-  const [serviceRequests, setServiceRequests] = useState<
-    Array<{ id: string; tableId?: string; tableName?: string; type: string; note?: string; time: string }>
-  >([]);
+  const [pendingRequests, refreshRequests] = useResource<PendingSessionRequest[]>(`/tables/${storeId}/pending-requests`, []);
+  const setPendingRequests = (_update: React.SetStateAction<PendingSessionRequest[]>) => { void refreshRequests().catch(() => undefined); };
+  const [pendingOrders, refreshOrders] = useResource<PendingOrder[]>(`/orders/${storeId}/pending`, []);
+  const setPendingOrders = (_update: React.SetStateAction<PendingOrder[]>) => { void refreshOrders().catch(() => undefined); };
+  const [serviceRequests, refreshServices] = useResource<any[]>(`/tables/${storeId}/service-requests`, []);
   const [isApprovingId, setIsApprovingId] = useState<string | null>(null);
   const [isProcessingOrderId, setIsProcessingOrderId] = useState<string | null>(null);
 
@@ -204,237 +156,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   };
 
   // Lắng nghe yêu cầu mở bàn QR từ khách và các sự kiện thời gian thực
-  useEffect(() => {
-    joinStoreRoom(storeId);
-    const socket = getSocketClient();
 
-    // 1. Tải các yêu cầu mở bàn đang chờ duyệt từ server
-    tableApi
-      .getPendingRequests(storeId)
-      .then((res) => {
-        const list = Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : [];
-        setPendingRequests(list);
-      })
-      .catch(() => {});
-
-    // 1.1 Tải danh sách đơn hàng QR đang chờ duyệt vào bếp
-    orderApi
-      .getPendingOrders(storeId)
-      .then((res) => {
-        if (Array.isArray(res)) setPendingOrders(res);
-      })
-      .catch(() => {});
-
-    // 2. Khách quét QR bấm "Yêu Cầu Mở Bàn"
-    const handleSessionRequested = (data: PendingSessionRequest) => {
-      if (!data) return;
-      sound.playAlertTone();
-      setNotifTab("OPEN_TABLE");
-      setPendingRequests((prev) => {
-        const filtered = prev.filter((r) => r.tableId !== data.tableId);
-        return [data, ...filtered];
-      });
-      toast.info(`🔔 ${formatTableName(data.tableName)} vừa quét QR yêu cầu mở bàn (${data.guestCount || 2} khách)!`);
-    };
-
-    // 3. Đã duyệt mở bàn
-    const handleSessionApproved = (data: any) => {
-      if (!data) return;
-      setPendingRequests((prev) => prev.filter((r) => r.tableId !== data.tableId));
-      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-      setTables((prev) =>
-        prev.map((t) =>
-          t.tableId === data.tableId
-            ? {
-                ...t,
-                status: "OCCUPIED",
-                guestCount: data.guestCount || t.guestCount || 2,
-                openedAt: t.openedAt || timeNow,
-                openedAtMs: t.openedAtMs || Date.now(),
-              }
-            : t
-        )
-      );
-    };
-
-    // 4. Từ chối mở bàn
-    const handleSessionRejected = (data: any) => {
-      if (!data) return;
-      setPendingRequests((prev) => prev.filter((r) => r.tableId !== data.tableId));
-    };
-
-    // 5. Đóng phiên bàn (thanh toán / dọn bàn)
-    const handleSessionClosed = (data: any) => {
-      if (!data) return;
-      setTables((prev) =>
-        prev.map((t) =>
-          t.tableId === data.tableId
-            ? { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 }
-            : t
-        )
-      );
-    };
-
-    // 6. Đơn hàng khách gửi chờ duyệt trước khi vào bếp
-    const handleOrderApprovalRequested = (order: PendingOrder) => {
-      if (!order || order.storeId !== storeId) return;
-      sound.playAlertTone();
-      setNotifTab("ORDERS");
-      setPendingOrders((prev) => {
-        const filtered = prev.filter((o) => o.orderId !== order.orderId);
-        return [order, ...filtered];
-      });
-      toast.info(`🔔 ${formatTableName(order.tableName)} vừa gửi đơn ${order.items.length} món (Chờ duyệt vào bếp)!`);
-    };
-
-    // 7. Đơn đã được duyệt vào bếp (đồng bộ trên mọi tab POS)
-    const handleOrderApproved = (data: any) => {
-      if (!data) return;
-      setPendingOrders((prev) => prev.filter((o) => o.orderId !== data.orderId));
-    };
-
-    // 8. Đơn bị từ chối
-    const handleOrderRejected = (data: any) => {
-      if (!data) return;
-      setPendingOrders((prev) => prev.filter((o) => o.orderId !== data.orderId));
-    };
-
-    // 9. Khách hủy món khi quán chưa duyệt (PENDING_APPROVAL)
-    const handleOrderItemCancelled = (data: any) => {
-      if (!data) return;
-      sound.playAlertTone();
-      setPendingOrders((prev) =>
-        prev
-          .map((o) => {
-            if (o.orderId === data.orderId) {
-              return {
-                ...o,
-                items: o.items.filter((it) => it.id !== data.itemId),
-              };
-            }
-            return o;
-          })
-          .filter((o) => o.items.length > 0)
-      );
-
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.tableId === data.tableId) {
-            return {
-              ...t,
-              items: t.items.filter((it) => it.id !== data.itemId),
-            };
-          }
-          return t;
-        })
-      );
-      toast.info(`Khách tại ${data.tableName || "bàn"} đã hủy món ${data.dishName || ""}`);
-    };
-
-    // 10. Khách gửi yêu cầu hỗ trợ nhanh (đá, giấy, dọn bàn...)
-    const handleServiceRequested = (data: any) => {
-      if (!data || data.storeId !== storeId) return;
-      sound.playAlertTone();
-      setNotifTab("SERVICE");
-      const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-      setServiceRequests((prev) => [
-        {
-          id: `req-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-          tableId: data.tableId,
-          tableName: data.tableName || "Bàn",
-          type: data.type,
-          note: data.note,
-          time: timeStr,
-        },
-        ...prev,
-      ]);
-      toast.warning(`⚡ ${formatTableName(data.tableName)} yêu cầu: ${data.type}!`);
-    };
-
-    // 11. Đơn hàng chính thức vào bếp (qua POS hoặc sau khi duyệt)
-    const handleOrderSubmitted = (data: any) => {
-      if (!data || !data.items || !Array.isArray(data.items)) return;
-      sound.playKitchenChime();
-      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-      const newItems: WaiterOrderItem[] = data.items.map((it: any, idx: number) => ({
-        id: `cust-${Date.now()}-${idx}`,
-        name: it.name,
-        price: it.price,
-        quantity: it.quantity,
-        status: "COOKING",
-        orderedAt: timeNow,
-        round: 1,
-      }));
-
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.tableId === data.tableId || t.tableName === data.tableName) {
-            const addedSum = newItems.reduce((s, i) => s + i.price * i.quantity, 0);
-            return {
-              ...t,
-              status: "WAITING_FOOD",
-              openedAt: t.openedAt || timeNow,
-              items: [...t.items, ...newItems],
-              totalAmount: t.totalAmount + addedSum,
-            };
-          }
-          return t;
-        })
-      );
-
-      // Thêm vé vào KDS Bếp
-      try {
-        const rawKds = localStorage.getItem("a2order_kds_tickets_data");
-        const existingTickets: CmsKdsTicket[] = rawKds ? JSON.parse(rawKds) : [];
-        const newTicket: CmsKdsTicket = {
-          id: "kt-qr-" + Date.now(),
-          ticketCode: `#QR-${String(data.tableName || "BAN").replace(/\s+/g, "")}-${String(Date.now()).slice(-4)}`,
-          tableName: `${data.tableName || "Bàn QR"}`,
-          orderTime: timeNow,
-          orderTimestamp: Date.now(),
-          status: "NEW",
-          station: "KITCHEN",
-          waiterName: "Khách Quét QR",
-          priority: "NORMAL",
-          items: newItems.map((i) => ({
-            dishName: i.name,
-            quantity: i.quantity,
-            notes: "[Khách gọi qua QR]",
-          })),
-        };
-        localStorage.setItem("a2order_kds_tickets_data", JSON.stringify([newTicket, ...existingTickets]));
-      } catch (e) {
-        console.warn("Lỗi lưu vé KDS từ khách:", e);
-      }
-
-      toast.success(`Khách tại ${data.tableName || "Bàn"} vừa gọi ${newItems.length} món qua QR! Bếp đã nhận vé.`);
-    };
-
-    socket.on(SocketEvents.SESSION_REQUESTED, handleSessionRequested);
-    socket.on(SocketEvents.SESSION_APPROVED, handleSessionApproved);
-    socket.on(SocketEvents.SESSION_REJECTED, handleSessionRejected);
-    socket.on(SocketEvents.SESSION_CLOSED, handleSessionClosed);
-    socket.on(SocketEvents.ORDER_APPROVAL_REQUESTED, handleOrderApprovalRequested);
-    socket.on(SocketEvents.ORDER_APPROVED, handleOrderApproved);
-    socket.on(SocketEvents.ORDER_REJECTED, handleOrderRejected);
-    socket.on(SocketEvents.ORDER_ITEM_CANCELLED, handleOrderItemCancelled);
-    socket.on(SocketEvents.SERVICE_REQUESTED, handleServiceRequested);
-    socket.on(SocketEvents.ORDER_SUBMITTED, handleOrderSubmitted);
-
-    return () => {
-      socket.off(SocketEvents.SESSION_REQUESTED, handleSessionRequested);
-      socket.off(SocketEvents.SESSION_APPROVED, handleSessionApproved);
-      socket.off(SocketEvents.SESSION_REJECTED, handleSessionRejected);
-      socket.off(SocketEvents.SESSION_CLOSED, handleSessionClosed);
-      socket.off(SocketEvents.ORDER_APPROVAL_REQUESTED, handleOrderApprovalRequested);
-      socket.off(SocketEvents.ORDER_APPROVED, handleOrderApproved);
-      socket.off(SocketEvents.ORDER_REJECTED, handleOrderRejected);
-      socket.off(SocketEvents.ORDER_ITEM_CANCELLED, handleOrderItemCancelled);
-      socket.off(SocketEvents.SERVICE_REQUESTED, handleServiceRequested);
-      socket.off(SocketEvents.ORDER_SUBMITTED, handleOrderSubmitted);
-    };
-  }, [storeId, setTables]);
 
   // Duyệt mở bàn 1-chạm
   const handleApproveSession = async (req: PendingSessionRequest) => {
@@ -652,20 +374,35 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   }, [activeTable.items]);
 
   const surchargesTotalAmount = useMemo(() => {
-    return (activeTable.surcharges || []).reduce((sum, s) => sum + s.amount, 0);
-  }, [activeTable.surcharges]);
+    return activeTable.surchargeAmount || 0;
+  }, [activeTable.surchargeAmount]);
 
   const discountTotalAmount = useMemo(() => {
-    if (!activeTable.discount) return 0;
-    if (activeTable.discount.type === "PERCENT") {
-      return Math.round((foodTotalAmount * activeTable.discount.value) / 100);
-    }
-    return activeTable.discount.value;
-  }, [activeTable.discount, foodTotalAmount]);
+    return activeTable.discountAmount || 0;
+  }, [activeTable.discountAmount]);
 
   const finalPayableAmount = useMemo(() => {
-    return Math.max(0, foodTotalAmount + surchargesTotalAmount - discountTotalAmount);
-  }, [foodTotalAmount, surchargesTotalAmount, discountTotalAmount]);
+    return activeTable.totalAmount;
+  }, [activeTable.totalAmount]);
+
+
+  const [paymentBill, setPaymentBill] = useState<BillView | null>(null);
+  const submitOrder = useAntiSpamAction("staff-order", (payload: unknown, key) => requestApi("/orders/submit", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
+  const cashPayment = useAntiSpamAction("cash-payment", (payload: unknown, key) => requestApi<any>("/billing/checkout", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
+  const openBill = async (extra: Record<string, unknown> = {}) => {
+    try { const bill = await requestApi<BillView>("/billing/generate-vietqr", { method: "POST", body: JSON.stringify({ tableId: activeTable.tableId, ...extra }) }); setPaymentBill(bill); setCashGivenAmount(0); setIsOfflineModalOpen(true); await refreshTables(); return bill; } catch (e: any) { toast.error(e.message); return null; }
+  };
+  const saveAdjustment = async (adjustment: Partial<BillAdjustment>) => {
+    try { await requestApi(`/orders/${storeId}/adjustment`, { method: "POST", body: JSON.stringify({ tableId: activeTable.tableId, adjustment }) }); await refreshTables(); toast.success("Đã lưu điều chỉnh"); return true; } catch (e: any) { toast.error(e.message); return false; }
+  };
+  const cancelOperationalItem = async (itemId: string, reason: string) => {
+    try { await requestApi(`/orders/${storeId}/cancel-item`, { method: "POST", body: JSON.stringify({ itemId, reason }) }); await refreshTables(); toast.success("Đã hủy món"); return true; } catch (e: any) { toast.error(e.message); return false; }
+  };
+  useEffect(() => {
+    if (!paymentBill || !isOfflineModalOpen) return;
+    const timer = setInterval(async () => { try { const bill = await requestApi<BillView>(`/billing/bills/${paymentBill.id}`); setPaymentBill(bill); if (bill.paymentStatus === "PAID") { setIsOfflineModalOpen(false); toast.success("Ngân hàng đã xác nhận thanh toán"); await refreshTables(); } } catch {} }, 4000);
+    return () => clearInterval(timer);
+  }, [paymentBill?.id, isOfflineModalOpen, refreshTables]);
 
   // Danh sách khu vực bàn
   const zones = useMemo(() => {
@@ -697,6 +434,8 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
 
   // Thêm món nhanh vào giỏ order
   const handleQuickAddDish = (dish: DishItem) => {
+    const source = menuDishes.find(d => d.id === dish.id);
+    if (source?.variants?.length || source?.customizationGroups?.length) { handleOpenCustomize(dish); return; }
     setNewOrderCart((prev) => {
       const existIdx = prev.findIndex((item) => item.dishId === dish.id && !item.notes);
       if (existIdx > -1) {
@@ -730,7 +469,11 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
 
   // Xác nhận thêm món có tùy chỉnh ghi chú
   const handleAddToCart = (dish: DishItem, modifiers: string[], customNote: string) => {
-    const allNotes = [...modifiers, customNote.trim()].filter(Boolean).join(", ");
+    const source = menuDishes.find(d => d.id === dish.id);
+    const variant = source?.variants?.find((v: any) => modifiers.includes("Phần: " + v.name));
+    if (source?.variants?.length && source.variants.filter((v: any) => modifiers.includes("Phần: " + v.name)).length !== 1) return toast.error("Vui lòng chọn một biến thể món");
+    const ids: string[] = modifiers.map(name => (source?.customizationGroups || []).flatMap((g: any) => g.options).find((o: any) => o.name === name)?.id).filter(Boolean);
+    for (const group of source?.customizationGroups || []) { const count = group.options.filter((o: any) => ids.includes(o.id)).length; if (count < (group.minSelect ?? (group.required ? 1 : 0)) || count > (group.maxSelect ?? (group.type === "SINGLE" ? 1 : group.options.length))) return toast.error("Chọn đúng tùy chọn " + group.name); }
     setNewOrderCart((prev) => [
       ...prev,
       {
@@ -738,7 +481,9 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
         name: dish.name,
         price: dish.price,
         quantity: 1,
-        notes: allNotes,
+        notes: customNote,
+        variantId: variant?.id,
+        selectedModifiers: modifiers.map(name => (menuDishes.find(d => d.id === dish.id)?.customizationGroups || []).flatMap((g: any) => g.options).find((o: any) => o.name === name)?.id).filter(Boolean),
         status: "WAITING",
       },
     ]);
@@ -760,174 +505,39 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   };
 
   // Gửi order mới vào bếp nấu (hỗ trợ nhiều đợt gọi món: đợt 1 khách đến trước, đợt 2 khách đến sau)
-  const handleSendToKitchen = () => {
-    if (newOrderCart.length === 0) return;
-
-    const addedAmount = newOrderCart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-    // Tự động tính đợt gọi món tiếp theo (round)
-    const currentMaxRound = activeTable.items.reduce((max, i) => Math.max(max, i.round || 1), 0);
-    const nextRound = activeTable.items.length === 0 ? 1 : currentMaxRound + 1;
-
-    const newServedItems: WaiterOrderItem[] = newOrderCart.map((item) => ({
-      ...item,
-      status: "COOKING",
-      orderedAt: timeNow,
-      round: nextRound,
-    }));
-
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          return {
-            ...t,
-            status: "WAITING_FOOD",
-            openedAt: t.openedAt || timeNow,
-            guestCount: t.guestCount || 2,
-            items: [...t.items, ...newServedItems],
-            totalAmount: t.totalAmount + addedAmount,
-          };
-        }
-        return t;
-      })
-    );
-
-    // Đồng bộ vé vào KDS Bếp
-    try {
-      const rawKds = localStorage.getItem("a2order_kds_tickets_data");
-      const existingTickets: CmsKdsTicket[] = rawKds ? JSON.parse(rawKds) : [];
-      const newTicket: CmsKdsTicket = {
-        id: "kt-" + Date.now(),
-        ticketCode: `#${activeTable.tableName.replace(/\s+/g, "")}-${String(Date.now()).slice(-4)}`,
-        tableName: `${activeTable.tableName} (${activeTable.zoneName})`,
-        orderTime: timeNow,
-        orderTimestamp: Date.now(),
-        status: "NEW",
-        station: "KITCHEN",
-        waiterName: isCashier ? "Thu ngân" : "Nhân viên phục vụ",
-        priority: "NORMAL",
-        items: newOrderCart.map((i: WaiterOrderItem) => ({
-          dishName: i.name,
-          quantity: i.quantity,
-          notes: i.notes ? `[Đợt ${nextRound}] ${i.notes}` : `[Đợt ${nextRound}]`,
-        })),
-      };
-      localStorage.setItem("a2order_kds_tickets_data", JSON.stringify([newTicket, ...existingTickets]));
-    } catch (e) {
-      console.warn("Lỗi lưu vé KDS:", e);
-    }
-
-    toast.success(`Đã bắn Đợt ${nextRound} (${newOrderCart.length} món) của ${activeTable.tableName} vào Bếp KDS thành công! 🔥`);
-    setNewOrderCart([]);
-    setActiveTab("SERVED_ITEMS");
-    setMobileStep("CART");
-  };
+  const handleSendToKitchen = async () => {
+  if (!newOrderCart.length || !activeTable.tableId) return;
+  try {
+    const result = await submitOrder.execute({ storeId, tableId: activeTable.tableId, items: newOrderCart.map(i => ({ dishId: i.dishId, quantity: i.quantity, notes: i.notes, variantId: i.variantId, customizationIds: i.selectedModifiers || [] })) });
+    if (!result) return;
+    await refreshTables(); setNewOrderCart([]); setActiveTab("SERVED_ITEMS"); setMobileStep("CART"); toast.success("Đã gửi đơn vào bếp");
+  } catch (e: any) { toast.error(e.message); }
+};
 
   // Yêu cầu in tạm tính bill cho bàn
   const handleRequestBill = async () => {
-    const ok = await confirmDialog({
-      title: `In tạm tính cho ${activeTable.tableName}?`,
-      message: `Tổng tiền hiện tại: ${activeTable.totalAmount.toLocaleString("vi-VN")} đ (${activeTable.items.length} món). Bấm xác nhận để gửi lệnh in bill tới máy in thu ngân.`,
-      confirmText: isCashier ? "Thanh Toán & In Bill" : "In Tạm Tính Ngay",
-      cancelText: "Hủy",
-      variant: "primary",
-    });
-    if (!ok) return;
-
-    if (isCashier) {
-      tableApi.closeTableSession(storeId, activeTable.tableId).catch(() => {});
-      setTables((prev) =>
-        prev.map((t) =>
-          t.tableId === activeTable.tableId
-            ? { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 }
-            : t
-        )
-      );
-      sound.playPaymentChime();
-      toast.success(`Đã thanh toán hóa đơn cho ${activeTable.tableName} và giải phóng bàn!`);
+    if (currentRole === "WAITER") { try { await requestApi(`/tables/${storeId}/service-request`, { method: "POST", body: JSON.stringify({ tableId: activeTable.tableId, type: "BILL" }) }); toast.success("Đã gửi yêu cầu tính tiền tới thu ngân"); } catch (e: any) { toast.error(e.message); } return; }
+    if (activeTable.pendingBillId) {
+      if (!await confirmDialog({ title: "Hủy tạm tính?", message: "Chỉ hủy khi khách chưa chuyển khoản. Mã QR cũ sẽ hết hiệu lực và bàn có thể gọi thêm món.", confirmText: "Hủy tạm tính", variant: "danger" })) return;
+      try { await requestApi(`/billing/bills/${activeTable.pendingBillId}/cancel`, { method: "POST", body: "{}" }); setPaymentBill(null); await refreshTables(); toast.success("Đã hủy tạm tính"); } catch (error: any) { toast.error(error.message); }
       return;
     }
-
-    setTables((prev) =>
-      prev.map((t) => (t.tableId === activeTable.tableId ? { ...t, status: "BILL_REQUESTED" } : t))
-    );
-    toast.success(`Đã gửi lệnh in tạm tính cho ${activeTable.tableName} tới thu ngân!`);
+    await openBill();
   };
 
   // Gọi dịch vụ phục vụ bàn
-  const handleCallStaffService = (serviceName: string) => {
-    toast.info(`Đã gửi yêu cầu "${serviceName}" cho ${activeTable.tableName}`);
-  };
+  const handleCallStaffService = async (serviceName: string) => {
+  try { await requestApi(`/tables/${storeId}/service-request`, { method: "POST", body: JSON.stringify({ tableId: activeTable.tableId, type: "WAITER", note: serviceName }) }); toast.success("Đã gửi yêu cầu"); } catch (e: any) { toast.error(e.message); }
+};
 
   // Thực hiện chuyển hoặc ghép bàn (khách đến trước, đến sau gộp bàn)
-  const handleExecuteTransfer = () => {
-    if (!targetTransferTableId) {
-      toast.error("Vui lòng chọn bàn đích để thực hiện");
-      return;
-    }
-
-    const target = tables.find((t) => t.tableId === targetTransferTableId);
-    if (!target) return;
-
-    if (transferMode === "MOVE") {
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.tableId === activeTable.tableId) {
-            return { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 };
-          }
-          if (t.tableId === target.tableId) {
-            return {
-              ...t,
-              items: activeTable.items,
-              totalAmount: activeTable.totalAmount,
-              status: activeTable.status,
-              openedAt: activeTable.openedAt,
-              guestCount: activeTable.guestCount,
-            };
-          }
-          return t;
-        })
-      );
-      toast.success(`Đã chuyển toàn bộ đơn từ ${activeTable.tableName} sang ${target.tableName}`);
-      setActiveTableId(target.tableId);
-    } else {
-      // GỘP BÀN (MERGE TABLES)
-      const mergedGuests = (target.guestCount || 0) + (activeTable.guestCount || 0);
-      const mergedTotal = target.totalAmount + activeTable.totalAmount;
-      const mergedItems = [...target.items, ...activeTable.items];
-      const targetOpened = target.openedAt || activeTable.openedAt;
-
-      setTables((prev) =>
-        prev.map((t) => {
-          if (t.tableId === activeTable.tableId) {
-            // Giải phóng bàn nguồn về trạng thái BÀN TRỐNG để đón lượt khách mới
-            return { ...t, items: [], totalAmount: 0, status: "EMPTY", openedAt: undefined, guestCount: 0 };
-          }
-          if (t.tableId === target.tableId) {
-            return {
-              ...t,
-              items: mergedItems,
-              totalAmount: mergedTotal,
-              guestCount: mergedGuests,
-              status: "OCCUPIED",
-              openedAt: targetOpened,
-              mergedTables: [...(target.mergedTables || []), activeTable.tableName],
-            };
-          }
-          return t;
-        })
-      );
-      toast.success(`Đã gộp đơn ${activeTable.tableName} vào ${target.tableName} thành công! (${activeTable.tableName} đã được giải phóng thành bàn trống)`);
-      setActiveTableId(target.tableId);
-    }
-
-    setIsTransferModalOpen(false);
-    setTargetTransferTableId("");
-  };
+  const handleExecuteTransfer = async () => {
+  try { await requestApi(`/orders/${storeId}/transfer`, { method: "POST", body: JSON.stringify({ fromTableId: activeTable.tableId, toTableId: targetTransferTableId, mode: transferMode }) }); await refreshTables(); setActiveTableId(targetTransferTableId); setIsTransferModalOpen(false); toast.success("Đã cập nhật bàn"); } catch (e: any) { toast.error(e.message); }
+};
 
   // ------------------ TÁCH HÓA ĐƠN (SPLIT BILL SOP) ------------------
   const handleOpenSplitBill = () => {
+    if (currentRole === "WAITER") { toast.info("Thu ngân hoặc chủ quán thực hiện tách bill"); return; }
     setSplitItemCounts({});
     setEqualSplitGuests(activeTable.guestCount || 2);
     setEqualSplitPaid({});
@@ -935,205 +545,31 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
     setIsSplitBillModalOpen(true);
   };
 
-  const handleExecuteItemizedSplit = () => {
-    const totalSelected = Object.values(splitItemCounts).reduce((s, c) => s + c, 0);
-    if (totalSelected === 0) {
-      toast.error("Vui lòng chọn ít nhất 1 món để tách sang Bill B");
-      return;
-    }
-
-    const itemsRemaining: WaiterOrderItem[] = [];
-    const itemsSplit: WaiterOrderItem[] = [];
-
-    activeTable.items.forEach((item, idx) => {
-      const splitCount = splitItemCounts[idx] || 0;
-      if (splitCount > 0) {
-        itemsSplit.push({ ...item, quantity: splitCount });
-      }
-      const remainingCount = item.quantity - splitCount;
-      if (remainingCount > 0) {
-        itemsRemaining.push({ ...item, quantity: remainingCount });
-      }
-    });
-
-    const splitTotal = itemsSplit.reduce((s, it) => s + it.price * it.quantity, 0);
-    const newRemainingTotal = calculateTableTotal(itemsRemaining, activeTable.surcharges, activeTable.discount);
-
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          return {
-            ...t,
-            items: itemsRemaining,
-            totalAmount: newRemainingTotal,
-            isSplit: true,
-          };
-        }
-        return t;
-      })
-    );
-
-    toast.success(
-      `Đã tách riêng Bill B (${splitTotal.toLocaleString("vi-VN")} đ - ${itemsSplit.length} món) để khách thanh toán trước! Bàn ${activeTable.tableName} còn lại ${newRemainingTotal.toLocaleString("vi-VN")} đ.`
-    );
-    setIsSplitBillModalOpen(false);
-  };
+  const handleExecuteItemizedSplit = async () => {
+  const allocation = activeTable.items.flatMap((item, index) => splitItemCounts[index] ? [{ itemId: item.id, quantity: splitItemCounts[index] }] : []);
+  if (!allocation.length) return toast.error("Vui lòng chọn món cần tách");
+  if (await openBill({ allocation })) setIsSplitBillModalOpen(false);
+};
 
   // ------------------ PHỤ THU & GIẢM GIÁ QUẢN LÝ ------------------
-  const handleAddSurcharge = (name: string, amount: number) => {
-    if (!name.trim() || amount <= 0) {
-      toast.error("Vui lòng nhập tên phụ thu và số tiền hợp lệ");
-      return;
-    }
-    const newSurcharge: OrderSurcharge = {
-      id: "sur_" + Date.now(),
-      name: name.trim(),
-      amount,
-    };
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updatedSurcharges = [...(t.surcharges || []), newSurcharge];
-          const newTotal = calculateTableTotal(t.items, updatedSurcharges, t.discount);
-          return { ...t, surcharges: updatedSurcharges, totalAmount: newTotal };
-        }
-        return t;
-      })
-    );
-    toast.success(`Đã thêm phụ thu "${name}" (+${amount.toLocaleString("vi-VN")} đ)`);
-    setCustomSurchargeName("");
-  };
+  const handleAddSurcharge = async (name: string, amount: number) => { if (amount <= 0 || !name.trim()) return toast.error("Phụ thu không hợp lệ"); await saveAdjustment({ ...activeTable.adjustment, surchargeAmount: (activeTable.adjustment?.surchargeAmount || 0) + amount, discountReason: name }); };
 
-  const handleRemoveSurcharge = (id: string) => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updatedSurcharges = (t.surcharges || []).filter((s) => s.id !== id);
-          const newTotal = calculateTableTotal(t.items, updatedSurcharges, t.discount);
-          return { ...t, surcharges: updatedSurcharges, totalAmount: newTotal };
-        }
-        return t;
-      })
-    );
-    toast.info("Đã xóa khoản phụ thu khỏi bàn");
-  };
+  const handleRemoveSurcharge = async (_id: string) => { await saveAdjustment({ ...activeTable.adjustment, surchargeAmount: 0 }); };
 
-  const handleApplyDiscount = () => {
-    if (!discountReason.trim()) {
-      toast.error("Vui lòng chọn hoặc nhập lý do giảm giá để phục vụ kiểm toán");
-      return;
-    }
-    if (discountValue <= 0) {
-      toast.error("Giá trị giảm giá phải lớn hơn 0");
-      return;
-    }
-    const newDiscount: OrderDiscount = {
-      type: discountType,
-      value: discountValue,
-      reason: discountReason.trim(),
-    };
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const newTotal = calculateTableTotal(t.items, t.surcharges, newDiscount);
-          return { ...t, discount: newDiscount, totalAmount: newTotal };
-        }
-        return t;
-      })
-    );
-    toast.success(
-      `Đã áp dụng giảm giá ${discountType === "PERCENT" ? `${discountValue}%` : `${discountValue.toLocaleString("vi-VN")} đ`}! Lý do: "${discountReason}".`
-    );
-    setIsSurchargeModalOpen(false);
-  };
+  const handleApplyDiscount = async () => { if (await saveAdjustment({ ...activeTable.adjustment, discountPercent: discountType === "PERCENT" ? discountValue : 0, fixedDiscount: discountType === "AMOUNT" ? discountValue : 0, discountReason })) setIsSurchargeModalOpen(false); };
 
-  const handleRemoveDiscount = () => {
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const newTotal = calculateTableTotal(t.items, t.surcharges, undefined);
-          return { ...t, discount: undefined, totalAmount: newTotal };
-        }
-        return t;
-      })
-    );
-    toast.info("Đã gỡ bỏ giảm giá khỏi bàn");
-  };
+  const handleRemoveDiscount = async () => { await saveAdjustment({ ...activeTable.adjustment, discountPercent: 0, fixedDiscount: 0 }); };
 
   // ------------------ KHẨN CẤP MẤT ĐIỆN / RỚT MẠNG ------------------
-  const handleOpenOfflineModal = () => {
-    setCashGivenAmount(0);
-    setIsOfflineModalOpen(true);
-  };
+  const handleOpenOfflineModal = async () => { if (currentRole === "WAITER") return toast.info("Thu ngân hoặc chủ quán thực hiện thanh toán"); await openBill(); };
 
-  const handleConfirmOfflinePaid = () => {
-    const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          return {
-            ...t,
-            offlinePaid: true,
-            offlinePaidAt: timeNow,
-            status: "BILL_REQUESTED",
-          };
-        }
-        return t;
-      })
-    );
-
-    try {
-      const rawOffline = localStorage.getItem("a2order_offline_bills") || "[]";
-      const offlineBills = JSON.parse(rawOffline);
-      offlineBills.push({
-        tableId: activeTable.tableId,
-        tableName: activeTable.tableName,
-        amount: finalPayableAmount,
-        paidAt: timeNow,
-        itemsCount: activeTable.items.length,
-      });
-      localStorage.setItem("a2order_offline_bills", JSON.stringify(offlineBills));
-    } catch (e) {
-      console.warn("Lỗi lưu offline bill:", e);
-    }
-
-    toast.success(
-      `Đã ghi nhận thanh toán Ngoại Tuyến cho ${activeTable.tableName} (${finalPayableAmount.toLocaleString("vi-VN")} đ)! Dữ liệu đã lưu an toàn trong máy POS.`
-    );
-    setIsOfflineModalOpen(false);
-  };
+  const handleConfirmOfflinePaid = async () => {
+  if (!paymentBill || cashGivenAmount < paymentBill.finalAmount - (paymentBill.paidAmount || 0)) return toast.error("Chọn đủ số tiền mặt khách đưa");
+  try { const result = await cashPayment.execute({ billId: paymentBill.id, method: "CASH", cashTendered: cashGivenAmount }); if (!result) return; setPaymentBill(result.bill); await refreshTables(); setIsOfflineModalOpen(false); toast.success("Đã ghi nhận tiền mặt trên máy chủ"); } catch (e: any) { toast.error(e.message); }
+};
 
   // 1. Hủy món chờ bếp (WAITING)
-  const handleCancelWaitingItem = async (index: number) => {
-    const item = activeTable.items[index];
-    if (!item) return;
-
-    const ok = await confirmDialog({
-      title: `Hủy món "${item.name}"?`,
-      message: `Món chưa nấu. Hủy món sẽ trừ ${(item.price * item.quantity).toLocaleString("vi-VN")} đ khỏi bàn ${activeTable.tableName}.`,
-      confirmText: "Hủy Món Ngay",
-      cancelText: "Không Hủy",
-      variant: "danger",
-    });
-    if (!ok) return;
-
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updated = [...t.items];
-          updated.splice(index, 1);
-          return {
-            ...t,
-            items: updated,
-            totalAmount: Math.max(0, t.totalAmount - item.price * item.quantity),
-            status: updated.length === 0 ? "EMPTY" : t.status,
-          };
-        }
-        return t;
-      })
-    );
-    toast.info(`Đã hủy món "${item.name}" của ${activeTable.tableName}`);
-  };
+  const handleCancelWaitingItem = async (index: number) => { const item = activeTable.items[index]; if (!item?.id) return; if (await confirmDialog({ title: "Hủy món?", message: item.name, confirmText: "Hủy món", variant: "danger" })) await cancelOperationalItem(item.id, "Hủy món chưa chế biến"); };
 
   // 2. Mở modal hủy món đang nấu (COOKING)
   const handleOpenVoidCooking = (index: number) => {
@@ -1148,76 +584,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   };
 
   // Xác nhận hủy món đang nấu (COOKING)
-  const handleConfirmVoidCooking = (selectedReason: string) => {
-    if (!voidCookingModal.item || voidCookingModal.itemIndex < 0) return;
-    const item = voidCookingModal.item;
-    const idx = voidCookingModal.itemIndex;
-    const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    const reasonToUse = selectedReason.trim() || voidCookingModal.reason || "Khách yêu cầu hủy món đang nấu";
-
-    // Trừ bill và cập nhật danh sách món của bàn
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updated = [...t.items];
-          updated.splice(idx, 1);
-          return {
-            ...t,
-            items: updated,
-            totalAmount: Math.max(0, t.totalAmount - item.price * item.quantity),
-            status: updated.length === 0 ? "EMPTY" : t.status,
-          };
-        }
-        return t;
-      })
-    );
-
-    // Ghi nhận nhật ký kiểm toán thất thoát (Void Audit)
-    try {
-      const raw = localStorage.getItem("a2order_void_audit_canceled_items");
-      const list: CanceledItemRecord[] = raw ? JSON.parse(raw) : [];
-      const newRecord: CanceledItemRecord = {
-        id: "void-" + Date.now(),
-        dishName: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        canceledAt: `${timeNow} Hôm nay`,
-        tableName: activeTable.tableName,
-        canceledBy: isCashier ? "Thu ngân" : "Nhân viên phục vụ",
-        reason: reasonToUse,
-        type: "CANCEL_COOKING",
-      };
-      localStorage.setItem("a2order_void_audit_canceled_items", JSON.stringify([newRecord, ...list]));
-    } catch (e) {
-      console.warn("Lỗi ghi void audit:", e);
-    }
-
-    // Bắn cảnh báo ngừng nấu tới Bếp KDS
-    try {
-      const rawKds = localStorage.getItem("a2order_kds_tickets_data");
-      if (rawKds) {
-        const tickets: CmsKdsTicket[] = JSON.parse(rawKds);
-        const updated = tickets.map((t: CmsKdsTicket) => {
-          if (t.tableName.includes(activeTable.tableName) && t.status !== "DONE") {
-            return {
-              ...t,
-              items: t.items.map((i: KdsOrderItem) =>
-                i.dishName.toLowerCase().includes(item.name.toLowerCase()) ? { ...i, isCanceled: true } : i
-              ),
-              cancelReason: `Bàn ${activeTable.tableName} vừa hủy "${item.name}": ${reasonToUse}`,
-            };
-          }
-          return t;
-        });
-        localStorage.setItem("a2order_kds_tickets_data", JSON.stringify(updated));
-      }
-    } catch (e) {
-      console.warn("Lỗi cập nhật KDS:", e);
-    }
-
-    toast.info(`⚠️ Đã hủy "${item.name}" và thông báo ngừng nấu tới Bếp KDS!`);
-    setVoidCookingModal({ isOpen: false, item: null, itemIndex: -1, reason: "" });
-  };
+  const handleConfirmVoidCooking = async (reason: string) => { if (voidCookingModal.item?.id && await cancelOperationalItem(voidCookingModal.item.id, reason)) setVoidCookingModal(prev => ({ ...prev, isOpen: false })); };
 
   // 3. Mở modal xử lý món đã lên bàn (SERVED: Remake vs Return)
   const handleOpenServedAction = (index: number) => {
@@ -1233,110 +600,10 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
   };
 
   // Xác nhận làm lại món (REMAKE)
-  const handleConfirmRemake = (reason: string) => {
-    if (!servedActionModal.item || servedActionModal.itemIndex < 0) return;
-    const item = servedActionModal.item;
-    const idx = servedActionModal.itemIndex;
-    const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    const reasonToUse = reason.trim() || "Khách khiếu nại chất lượng món";
-
-    // Cập nhật món trên bàn thành COOKING kèm ghi chú làm lại (KHÔNG tính thêm tiền khách)
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updated = [...t.items];
-          updated[idx] = {
-            ...updated[idx],
-            status: "COOKING",
-            notes: `[LÀM LẠI: ${reasonToUse}] ${updated[idx].notes || ""}`.trim(),
-          };
-          return { ...t, items: updated };
-        }
-        return t;
-      })
-    );
-
-    // Bắn vé ưu tiên khẩn cấp LÀM LẠI xuống Bếp KDS
-    try {
-      const rawKds = localStorage.getItem("a2order_kds_tickets_data");
-      const tickets: CmsKdsTicket[] = rawKds ? JSON.parse(rawKds) : [];
-      const remakeTicket: CmsKdsTicket = {
-        id: "kt-remake-" + Date.now(),
-        ticketCode: `#${activeTable.tableName.replace(/\s+/g, "")}-REMAKE`,
-        tableName: `${activeTable.tableName} (${activeTable.zoneName})`,
-        orderTime: timeNow,
-        orderTimestamp: Date.now(),
-        status: "NEW",
-        station: "KITCHEN",
-        waiterName: isCashier ? "Thu ngân" : "Nhân viên phục vụ",
-        priority: "REMAKE",
-        remakeReason: reasonToUse,
-        items: [
-          {
-            dishName: item.name,
-            quantity: item.quantity,
-            notes: `🔥 LÀM LẠI KHẨN CẤP: ${reasonToUse}`,
-          },
-        ],
-      };
-      localStorage.setItem("a2order_kds_tickets_data", JSON.stringify([remakeTicket, ...tickets]));
-    } catch (e) {
-      console.warn("Lỗi gửi vé remake KDS:", e);
-    }
-
-    toast.success(`🔥 Đã gửi vé LÀM LẠI KHẨN CẤP món "${item.name}" xuống Bếp! (Không tính thêm tiền)`);
-    setServedActionModal({ isOpen: false, item: null, itemIndex: -1, mode: "CHOICE", reason: "" });
-  };
+  const handleConfirmRemake = async (reason: string) => { try { await requestApi(`/orders/${storeId}/remake`, { method: "POST", body: JSON.stringify({ itemId: servedActionModal.item?.id, reason }) }); await refreshTables(); setServedActionModal(prev => ({ ...prev, isOpen: false })); toast.success("Đã gửi yêu cầu làm lại"); } catch (e: any) { toast.error(e.message); } };
 
   // Xác nhận trả món & trừ tiền (RETURN)
-  const handleConfirmReturn = (reason: string) => {
-    if (!servedActionModal.item || servedActionModal.itemIndex < 0) return;
-    const item = servedActionModal.item;
-    const idx = servedActionModal.itemIndex;
-    const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    const reasonToUse = reason.trim() || "Khách trả món đã lên bàn";
-    const deductAmount = item.price * item.quantity;
-
-    // Trừ món và trừ tiền bill
-    setTables((prev) =>
-      prev.map((t) => {
-        if (t.tableId === activeTable.tableId) {
-          const updated = [...t.items];
-          updated.splice(idx, 1);
-          return {
-            ...t,
-            items: updated,
-            totalAmount: Math.max(0, t.totalAmount - deductAmount),
-            status: updated.length === 0 ? "EMPTY" : t.status,
-          };
-        }
-        return t;
-      })
-    );
-
-    // Ghi nhận vào Void Audit (nhật ký hoàn/hủy)
-    try {
-      const raw = localStorage.getItem("a2order_void_audit_canceled_items");
-      const list: CanceledItemRecord[] = raw ? JSON.parse(raw) : [];
-      const newRecord: CanceledItemRecord = {
-        id: "ret-" + Date.now(),
-        dishName: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        canceledAt: `${timeNow} Hôm nay`,
-        tableName: activeTable.tableName,
-        canceledBy: isCashier ? "Thu ngân" : "Nhân viên phục vụ",
-        reason: `[TRẢ MÓN] ${reasonToUse}`,
-        type: "RETURN_SERVED",
-      };
-      localStorage.setItem("a2order_void_audit_canceled_items", JSON.stringify([newRecord, ...list]));
-    } catch (e) {
-      console.warn("Lỗi lưu void audit trả món:", e);
-    }
-
-    toast.info(`Đã hoàn trả món "${item.name}" và trừ ${deductAmount.toLocaleString("vi-VN")} đ khỏi bill.`);
-    setServedActionModal({ isOpen: false, item: null, itemIndex: -1, mode: "CHOICE", reason: "" });
-  };
+  const handleConfirmReturn = async (reason: string) => { if (servedActionModal.item?.id && await cancelOperationalItem(servedActionModal.item.id, reason)) setServedActionModal(prev => ({ ...prev, isOpen: false })); };
 
   const cartTotalAmount = newOrderCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cartTotalQuantity = newOrderCart.reduce((sum, item) => sum + item.quantity, 0);
@@ -1366,7 +633,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
         isApprovingId={isApprovingId}
         onRejectOrder={handleRejectOrder}
         onApproveOrder={handleApproveOrder}
-        onRemoveServiceRequest={(idx) => setServiceRequests((prev) => prev.filter((_, i) => i !== idx))}
+        onRemoveServiceRequest={async (idx) => { try { await requestApi(`/tables/${storeId}/service-requests/${serviceRequests[idx].id}/ack`, { method: "POST" }); await refreshServices(); } catch (e: any) { toast.error(e.message); } }}
         onRejectSession={handleRejectSession}
         onApproveSession={handleApproveSession}
         formatTableName={formatTableName}
@@ -1602,7 +869,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
               className="p-3 rounded-2xl border border-surface-border bg-white hover:border-brand-300 hover:shadow-xs transition-all flex gap-3 group"
             >
               <img
-                src={dish.image}
+                src={dish.image || "/logo-symbol.jpg"}
                 alt={dish.name}
                 className="w-16 h-16 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
               />
@@ -1863,7 +1130,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={newOrderCart.length === 0}
+                disabled={newOrderCart.length === 0 || submitOrder.isSubmitting}
                 onClick={() => setNewOrderCart([])}
                 className="rounded-2xl text-xs font-bold"
               >
@@ -1955,6 +1222,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
                         ? "Đã lên bàn"
                         : item.status === "COOKING"
                         ? "Bếp đang nấu"
+                        : item.status === "READY" ? "Món đã xong"
                         : "Chờ bếp"}
                     </span>
 
@@ -2019,11 +1287,13 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
 
               {discountTotalAmount > 0 && (
                 <div className="flex items-center justify-between text-rose-700 font-medium">
-                  <span>- Giảm giá ({activeTable.discount?.reason}):</span>
+                  <span>- Giảm giá ({activeTable.discount?.reason || "Khuyến mãi"}):</span>
                   <span className="font-bold">-{discountTotalAmount.toLocaleString("vi-VN")} đ</span>
                 </div>
               )}
 
+              {!!activeTable.taxAmount && <div className="flex items-center justify-between text-ink-muted"><span>+ VAT:</span><span className="font-bold">{activeTable.taxAmount.toLocaleString("vi-VN")} đ</span></div>}
+              {!!activeTable.paidAmount && <div className="flex items-center justify-between text-ink-muted"><span>- Đã thu:</span><span className="font-bold">{activeTable.paidAmount.toLocaleString("vi-VN")} đ</span></div>}
               <div className="pt-1.5 border-t border-surface-border/70 flex items-center justify-between">
                 <span className="font-black text-ink-primary">Tổng cộng thanh toán:</span>
                 <span className="font-black text-base text-brand-950">
@@ -2202,10 +1472,10 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
             onClick={handleOpenOfflineModal}
             disabled={activeTable.items.length === 0}
             className="px-3 py-1.5 rounded-xl border border-amber-300 text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-950 transition-colors flex items-center gap-1.5 disabled:opacity-40 shrink-0"
-            title="Chế độ ngoại tuyến / rớt mạng / mất điện"
+            title="Thanh toán hóa đơn qua server"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse" />
-            <span>⚡ Offline QR</span>
+            <span>Thanh Toán QR</span>
           </button>
 
           <button
@@ -2219,7 +1489,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
             }`}
           >
             <Icon name={isCashier ? "cashier" : "print"} className="w-3.5 h-3.5" />
-            <span>{isCashier ? "Thanh Toán & In Bill" : "In Tạm Tính"}</span>
+            <span>{currentRole !== "WAITER" && activeTable.pendingBillId ? "Hủy Tạm Tính" : currentRole === "WAITER" ? "Yêu Cầu Tính Tiền" : "Tạm Tính"}</span>
           </button>
         </div>
       </div>
@@ -2380,6 +1650,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
       />
 
       <SplitBillModal
+        storeId={storeId}
         isOpen={isSplitBillModalOpen}
         activeTable={activeTable}
         finalPayableAmount={finalPayableAmount}
@@ -2422,6 +1693,7 @@ export const CmsStaffOrderView: React.FC<CmsStaffOrderViewProps> = ({
       />
 
       <OfflineEmergencyModal
+        bill={paymentBill}
         isOpen={isOfflineModalOpen}
         activeTable={activeTable}
         finalPayableAmount={finalPayableAmount}

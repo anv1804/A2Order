@@ -19,8 +19,8 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
 
   useEffect(() => {
     if (user) {
-      setNewPassword("A2@" + Math.floor(100000 + Math.random() * 900000));
-      setNewPin(Math.floor(1000 + Math.random() * 9000).toString());
+      setNewPassword("A2@" + crypto.randomUUID().replace(/-/g, "").slice(0, 16));
+      setNewPin((crypto.getRandomValues(new Uint32Array(1))[0] % 10000).toString().padStart(4, "0"));
       setResetType("BOTH");
       setCopied(false);
     }
@@ -29,8 +29,8 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
   if (!user) return null;
 
   const handleGenerateRandom = () => {
-    setNewPassword("A2@" + Math.floor(100000 + Math.random() * 900000));
-    setNewPin(Math.floor(1000 + Math.random() * 9000).toString());
+    setNewPassword("A2@" + crypto.randomUUID().replace(/-/g, "").slice(0, 16));
+    setNewPin((crypto.getRandomValues(new Uint32Array(1))[0] % 10000).toString().padStart(4, "0"));
     toast.info("Đã tạo mật khẩu và mã PIN ngẫu nhiên mới.");
   };
 

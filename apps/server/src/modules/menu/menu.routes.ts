@@ -1,119 +1,45 @@
-import { FastifyInstance } from "fastify";
-import { menuRepository } from "../../core/database/repositoryFactory.js";
-import { FnbDishItem } from "@a2order/shared";
+import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
+import { prisma } from "../../core/database/prismaClient.js";
+import { currentStore } from "../../core/security/access.js";
+import { command } from "../../core/security/commands.js";
+import { requireValue } from "../../core/security/errors.js";
+import { menuView, saveDish } from "./menu.service.js";
+import { checkLicense } from "../order/order.service.js";
+import { emitToStore } from "../../core/websocket/socketServer.js";
 
-export async function menuRoutes(fastify: FastifyInstance) {
-  /**
-   * 1. LẤY THỰC ĐƠN CỦA QUÁN
-   * GET /api/menu/:storeId
-   */
-  fastify.get("/:storeId", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    try {
-      const dishes = await menuRepository.getDishesByStoreId(storeId);
-      return { success: true, count: dishes.length, data: dishes };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+export const menuRoutes: FastifyPluginAsync = async app => {
+  app.get("/:storeId", async request => ({ success: true, data: (await prisma.menuItem.findMany({ where: { storeId: currentStore(request), archivedAt: null }, include: { category: true }, orderBy: { name: "asc" } })).map(menuView) }));
+  app.get("/:storeId/dishes/:dishId", async request => {
+    const { dishId } = request.params as { dishId: string };
+    return { success: true, data: menuView(requireValue(await prisma.menuItem.findFirst({ where: { id: dishId, storeId: currentStore(request), archivedAt: null }, include: { category: true } }))) };
   });
-
-  /**
-   * 2. LẤY CHI TIẾT 1 MÓN ĂN
-   * GET /api/menu/:storeId/dishes/:dishId
-   */
-  fastify.get("/:storeId/dishes/:dishId", async (request, reply) => {
-    const { storeId, dishId } = request.params as { storeId: string; dishId: string };
-    try {
-      const dish = await menuRepository.getDishById(storeId, dishId);
-      if (!dish) {
-        return reply.status(404).send({ success: false, error: "Món ăn không tồn tại" });
-      }
-      return { success: true, data: dish };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.post("/:storeId/dishes", async request => {
+    const storeId = currentStore(request);
+    const data = await command(request, storeId, "MENU_CREATE", async tx => { await checkLicense(tx, storeId); return saveDish(tx, storeId, request.body); });
+    emitToStore(storeId, "store:config_updated", { storeId });
+    return { success: true, data };
   });
-
-  /**
-   * 3. THÊM MÓN MỚI VÀO THỰC ĐƠN
-   * POST /api/menu/:storeId/dishes
-   */
-  fastify.post("/:storeId/dishes", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const body = request.body as Omit<FnbDishItem, "id">;
-
-    if (!body || !body.name || !body.price) {
-      return reply.status(400).send({ success: false, error: "Tên món và giá bán là bắt buộc" });
-    }
-
-    try {
-      const newDish = await menuRepository.createDish(storeId, body);
-      return { success: true, message: `Đã thêm món "${newDish.name}" thành công!`, data: newDish };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.put("/:storeId/dishes/:dishId", async request => {
+    const { dishId } = request.params as { dishId: string };
+    const storeId = currentStore(request);
+    const data = await command(request, storeId, "MENU_UPDATE", tx => saveDish(tx, storeId, request.body, dishId));
+    emitToStore(storeId, "store:config_updated", { storeId });
+    return { success: true, data };
   });
-
-  /**
-   * 4. CẬP NHẬT THÔNG TIN MÓN ĂN (GIÁ, BIẾN THỂ SIZE, TOPPING, TRẠM)
-   * PUT /api/menu/:storeId/dishes/:dishId
-   */
-  fastify.put("/:storeId/dishes/:dishId", async (request, reply) => {
-    const { storeId, dishId } = request.params as { storeId: string; dishId: string };
-    const body = request.body as Partial<FnbDishItem>;
-
-    try {
-      const updated = await menuRepository.updateDish(storeId, dishId, body);
-      if (!updated) {
-        return reply.status(404).send({ success: false, error: "Không tìm thấy món ăn để cập nhật" });
-      }
-      return { success: true, message: `Đã cập nhật món "${updated.name}" thành công!`, data: updated };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.patch("/:storeId/dishes/:dishId/stock", async request => {
+    const { dishId } = request.params as { dishId: string };
+    const input = z.object({ stockCount: z.number().int().min(0).max(1000000).optional(), isAvailable: z.boolean().optional() }).refine(v => v.stockCount !== undefined || v.isAvailable !== undefined).parse(request.body);
+    const storeId = currentStore(request);
+    const data = await command(request, storeId, "MENU_STOCK", tx => saveDish(tx, storeId, { ...input, ...(input.stockCount !== undefined ? { isAvailable: input.stockCount > 0 } : {}) }, dishId));
+    emitToStore(storeId, "store:config_updated", { storeId });
+    return { success: true, data };
   });
-
-  /**
-   * 5. CẬP NHẬT NHANH SỐ SUẤT (BÁO HẾT MÓN 86)
-   * PATCH /api/menu/:storeId/dishes/:dishId/stock
-   */
-  fastify.patch("/:storeId/dishes/:dishId/stock", async (request, reply) => {
-    const { storeId, dishId } = request.params as { storeId: string; dishId: string };
-    const { stockCount } = request.body as { stockCount: number };
-
-    try {
-      const isAvailable = Number(stockCount) > 0;
-      const updated = await menuRepository.updateDish(storeId, dishId, {
-        stockCount: Number(stockCount),
-        isAvailable,
-      });
-      if (!updated) {
-        return reply.status(404).send({ success: false, error: "Món ăn không tồn tại" });
-      }
-      return {
-        success: true,
-        message: isAvailable ? `Đã cập nhật còn ${stockCount} suất` : "Đã chuyển sang trạng thái Hết Hàng",
-        data: updated,
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.delete("/:storeId/dishes/:dishId", async request => {
+    const { dishId } = request.params as { dishId: string };
+    const storeId = currentStore(request);
+    await command(request, storeId, "MENU_ARCHIVE", async tx => { await tx.menuItem.update({ where: { id_storeId: { id: dishId, storeId } }, data: { archivedAt: new Date(), isAvailable: false } }); await tx.store.update({ where: { id: storeId }, data: { configVersion: "v-" + crypto.randomUUID() } }); return { success: true }; });
+    emitToStore(storeId, "store:config_updated", { storeId });
+    return { success: true };
   });
-
-  /**
-   * 6. XÓA MÓN KHỎI THỰC ĐƠN
-   * DELETE /api/menu/:storeId/dishes/:dishId
-   */
-  fastify.delete("/:storeId/dishes/:dishId", async (request, reply) => {
-    const { storeId, dishId } = request.params as { storeId: string; dishId: string };
-    try {
-      const deleted = await menuRepository.deleteDish(storeId, dishId);
-      if (!deleted) {
-        return reply.status(404).send({ success: false, error: "Món ăn không tồn tại hoặc đã bị xóa" });
-      }
-      return { success: true, message: "Đã xóa món ăn thành công" };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-}
+};

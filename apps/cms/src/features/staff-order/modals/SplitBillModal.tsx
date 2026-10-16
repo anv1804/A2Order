@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { browserRequest, type BillView } from "@a2order/shared";
+import { useAntiSpamAction } from "@a2order/shared/react";
 import { Icon, Button, Portal } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { WaiterTableOrder } from "@/types/cms.types";
 
 export interface SplitBillModalProps {
+  storeId: string;
   isOpen: boolean;
   activeTable: WaiterTableOrder;
   finalPayableAmount: number;
@@ -22,6 +25,7 @@ export interface SplitBillModalProps {
 }
 
 export const SplitBillModal: React.FC<SplitBillModalProps> = ({
+  storeId,
   isOpen,
   activeTable,
   finalPayableAmount,
@@ -38,6 +42,23 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
   onExecuteItemizedSplit,
   onClose,
 }) => {
+  const [bill, setBill] = useState<BillView | null>(null);
+  const cashPart = useAntiSpamAction("split-cash", (index: number, key) => browserRequest<any>("/billing/checkout", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify({ billId: bill?.id, method: "CASH", partIndex: index, cashTendered: bill?.shares?.[index] }) }));
+  useEffect(() => {
+    if (!isOpen || splitBillTab !== "EQUAL") { setBill(null); return; }
+    let active = true;
+    browserRequest<BillView>("/billing/generate-vietqr", { method: "POST", body: JSON.stringify({ tableId: activeTable.tableId, splitCount: equalSplitGuests }) }).then(value => { if (active) setBill(value); }, e => toast.error(e.message));
+    return () => { active = false; };
+  }, [isOpen, splitBillTab, activeTable.tableId, equalSplitGuests]);
+  useEffect(() => {
+    if (!bill || !isOpen) return;
+    const timer = setInterval(() => { browserRequest<BillView>(`/billing/bills/${bill.id}`).then(setBill, () => undefined); }, 4000);
+    return () => clearInterval(timer);
+  }, [bill?.id, isOpen]);
+  const collect = async (index: number) => {
+    if (!bill) return;
+    try { const result = await cashPart.execute(index); if (result) { setBill(result.bill); toast.success("Đã ghi nhận tiền mặt"); } } catch (e: any) { toast.error(e.message); }
+  };
   if (!isOpen) return null;
 
   return (
@@ -201,8 +222,8 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
 
           {/* Tab 2: Equal Split (Chia đều đầu người) */}
           {splitBillTab === "EQUAL" && (() => {
-            const perPerson = Math.ceil(finalPayableAmount / Math.max(1, equalSplitGuests));
-            const paidCount = Object.values(equalSplitPaid).filter(Boolean).length;
+            const perPerson = bill?.shares?.[0] || 0;
+            const paidCount = bill?.paidParts?.length || 0;
 
             return (
               <div className="space-y-3 overflow-y-auto pr-1 flex-1">
@@ -249,7 +270,8 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
                 {/* Danh sách từng khách kèm nút QR động */}
                 <div className="space-y-2">
                   {Array.from({ length: equalSplitGuests }).map((_, i) => {
-                    const isPaid = equalSplitPaid[i];
+                    const isPaid = bill?.paymentStatus === "PAID" || bill?.paidParts?.includes(i);
+                    const personAmount = bill?.shares?.[i] || 0;
                     const isShowingQr = activePersonQr === i;
                     return (
                       <div
@@ -270,7 +292,7 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
                                 Khách #{i + 1}
                               </div>
                               <div className="text-[11px] font-black text-brand-900">
-                                {perPerson.toLocaleString("vi-VN")} đ
+                                {personAmount.toLocaleString("vi-VN")} đ
                               </div>
                             </div>
                           </div>
@@ -291,12 +313,7 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
 
                             <button
                               type="button"
-                              onClick={() =>
-                                setEqualSplitPaid((prev) => ({
-                                  ...prev,
-                                  [i]: !prev[i],
-                                }))
-                              }
+                              onClick={() => void collect(i)} disabled={isPaid || !bill || cashPart.isSubmitting}
                               className={`px-2.5 py-1 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${
                                 isPaid
                                   ? "bg-emerald-600 text-white shadow-xs"
@@ -313,12 +330,12 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
                         {isShowingQr && (
                           <div className="mt-3 p-3 bg-surface-canvas rounded-2xl border border-surface-border text-center space-y-2 animate-fadeIn">
                             <img
-                              src={`https://img.vietqr.io/image/970422-0903111222-compact2.png?amount=${perPerson}&addInfo=Ban${activeTable.tableName.replace(/\s+/g, "")}_Khach${i + 1}`}
+                              src={bill?.qrUrl ? bill.qrUrl.replace(/amount=\d+/, "amount=" + personAmount).replace(/addInfo=[^&]+/, "addInfo=" + encodeURIComponent(bill.transferContent + "P" + i)) : undefined}
                               alt={`VietQR Khách ${i + 1}`}
                               className="w-48 h-48 mx-auto rounded-xl shadow-xs border bg-white p-1"
                             />
                             <div className="text-[11px] text-ink-muted font-bold">
-                              Khách #{i + 1} quét mã chuyển đúng: <strong className="text-brand-950">{perPerson.toLocaleString("vi-VN")} đ</strong>
+                              Khách #{i + 1} quét mã chuyển đúng: <strong className="text-brand-950">{personAmount.toLocaleString("vi-VN")} đ</strong>
                             </div>
                           </div>
                         )}
@@ -357,7 +374,7 @@ export const SplitBillModal: React.FC<SplitBillModalProps> = ({
                 size="sm"
                 className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-5 shadow-sm font-bold"
                 onClick={() => {
-                  toast.success(`Đã cập nhật tiến độ chia bill cho ${activeTable.tableName}!`);
+                  if (bill?.paymentStatus !== "PAID") { toast.info("Hóa đơn vẫn còn phần chưa thanh toán"); return; }
                   onClose();
                 }}
               >

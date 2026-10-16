@@ -98,7 +98,7 @@ export const CmsCustomerManagement: React.FC = () => {
   };
 
   // Lưu khách hàng
-  const handleSaveCustomer = (e: React.FormEvent) => {
+  const handleSaveCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!customerForm.name.trim() || !customerForm.phone.trim()) {
       toast.error("Vui lòng nhập họ tên và số điện thoại khách hàng");
@@ -106,7 +106,7 @@ export const CmsCustomerManagement: React.FC = () => {
     }
 
     if (editingCustomer) {
-      setCustomers((prev) =>
+      if (!(await setCustomers((prev) =>
         prev.map((c) =>
           c.id === editingCustomer.id
             ? {
@@ -119,7 +119,7 @@ export const CmsCustomerManagement: React.FC = () => {
               }
             : c
         )
-      );
+      ))) return;
       toast.success(`Đã cập nhật thông tin khách hàng "${customerForm.name}"`);
     } else {
       const newCustomer: CustomerRecord = {
@@ -136,7 +136,7 @@ export const CmsCustomerManagement: React.FC = () => {
         createdAt: new Date().toLocaleDateString("vi-VN"),
         notes: customerForm.notes.trim() || undefined,
       };
-      setCustomers((prev) => [newCustomer, ...prev]);
+      if (!(await setCustomers((prev) => [newCustomer, ...prev]))) return;
       toast.success(`Đã thêm khách hàng "${customerForm.name}" với ${loyaltyRules.welcomePoints} điểm chào mừng!`);
     }
 
@@ -154,16 +154,16 @@ export const CmsCustomerManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setCustomers((prev) => prev.filter((item) => item.id !== c.id));
+    if (!(await setCustomers((prev) => prev.filter((item) => item.id !== c.id)))) return;
     toast.info(`Đã xóa khách hàng ${c.name}`);
   };
 
   // Áp dụng điều chỉnh điểm
-  const handleApplyPointAdjustment = () => {
+  const handleApplyPointAdjustment = async () => {
     if (!adjustingCustomer) return;
 
     const newPoints = Math.max(0, adjustingCustomer.points + pointDelta);
-    setCustomers((prev) =>
+    if (!(await setCustomers((prev) =>
       prev.map((c) =>
         c.id === adjustingCustomer.id
           ? {
@@ -172,7 +172,7 @@ export const CmsCustomerManagement: React.FC = () => {
             }
           : c
       )
-    );
+    ))) return;
 
     toast.success(
       `Đã ${pointDelta >= 0 ? "cộng" : "trừ"} ${Math.abs(pointDelta)} điểm cho khách hàng ${adjustingCustomer.name} (${pointReason})`
@@ -181,28 +181,15 @@ export const CmsCustomerManagement: React.FC = () => {
   };
 
   // Bật tắt chiến dịch
-  const handleToggleCampaign = (campId: string) => {
-    setCampaigns((prev) =>
+  const handleToggleCampaign = async (campId: string) => {
+    if (!(await setCampaigns((prev) =>
       prev.map((c) => (c.id === campId ? { ...c, isActive: !c.isActive } : c))
-    );
+    ))) return;
     toast.success("Đã cập nhật trạng thái chiến dịch tự động!");
   };
 
   // Kích hoạt chạy chiến dịch ngay
-  const handleTriggerCampaign = (camp: CrmCampaign) => {
-    setCampaigns((prev) =>
-      prev.map((c) =>
-        c.id === camp.id
-          ? {
-              ...c,
-              sentCount: c.sentCount + 15,
-              lastRunAt: "Vừa xong lúc " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-            }
-          : c
-      )
-    );
-    toast.success(`Đã kích hoạt gửi tin nhắn ưu đãi chiến dịch "${camp.name}" tới 15 khách hàng đủ điều kiện qua Zalo ZNS!`);
-  };
+  const handleTriggerCampaign = (_camp: CrmCampaign) => { toast.error("Chưa cấu hình nhà cung cấp Zalo ZNS"); };
 
   // Thống kê nhanh
   const stats = useMemo(() => {
@@ -792,7 +779,7 @@ export const CmsCustomerManagement: React.FC = () => {
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => toast.success("Đã gửi liên kết Thẻ Thành Viên Điện Tử qua Zalo cho khách hàng!")}
+                  onClick={() => toast.error("Chưa cấu hình nhà cung cấp Zalo ZNS")}
                   className="bg-emerald-600 text-white w-full"
                 >
                   <Icon name="send" size={14} className="mr-1" /> Gửi Thẻ VIP Qua Zalo Khách

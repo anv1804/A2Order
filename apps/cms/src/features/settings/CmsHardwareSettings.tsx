@@ -38,9 +38,7 @@ export const CmsHardwareSettings: React.FC = () => {
   });
 
   // Kiểm tra in thử nghiệm
-  const handleTestPrint = (printer: PrinterConfigRecord) => {
-    toast.success(`Đã gửi lệnh in thử nghiệm tới [${printer.name}] (${printer.ipAddress || printer.interfaceType})!`);
-  };
+  const handleTestPrint = (_printer: PrinterConfigRecord) => { toast.info("Cần kết nối máy in hoặc bộ chuyển tiếp tại quán trước khi in thử"); };
 
   // Mở modal tạo mới
   const handleOpenCreateModal = () => {
@@ -77,7 +75,7 @@ export const CmsHardwareSettings: React.FC = () => {
   };
 
   // Lưu cấu hình máy in
-  const handleSavePrinter = (e: React.FormEvent) => {
+  const handleSavePrinter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!printerForm.name.trim()) {
       toast.error("Vui lòng nhập tên nhận diện máy in");
@@ -85,7 +83,7 @@ export const CmsHardwareSettings: React.FC = () => {
     }
 
     if (editingPrinter) {
-      setPrinters((prev) =>
+      if (!(await setPrinters((prev) =>
         prev.map((item) =>
           item.id === editingPrinter.id
             ? {
@@ -94,17 +92,17 @@ export const CmsHardwareSettings: React.FC = () => {
               }
             : item
         )
-      );
+      ))) return;
       toast.success(`Đã cập nhật máy in "${printerForm.name}"`);
     } else {
       const newPrinter: PrinterConfigRecord = {
         id: `pr-${Date.now()}`,
         ...printerForm,
-        status: "CONNECTED",
-        lastPingMs: Math.floor(3 + Math.random() * 8),
+        status: "DISCONNECTED",
+        lastPingMs: 0,
       };
-      setPrinters((prev) => [...prev, newPrinter]);
-      toast.success(`Đã kết nối máy in mới "${newPrinter.name}"`);
+      if (!(await setPrinters((prev) => [...prev, newPrinter]))) return;
+      toast.success(`Đã lưu cấu hình máy in "${newPrinter.name}"`);
     }
 
     setIsModalOpen(false);
@@ -121,13 +119,13 @@ export const CmsHardwareSettings: React.FC = () => {
     });
     if (!ok) return;
 
-    setPrinters((prev) => prev.filter((item) => item.id !== p.id));
+    if (!(await setPrinters((prev) => prev.filter((item) => item.id !== p.id)))) return;
     toast.info(`Đã ngắt kết nối máy in ${p.name}`);
   };
 
   // Lưu mẫu hóa đơn
   const handleSaveTemplate = () => {
-    toast.success("Đã lưu mẫu hóa đơn in nhiệt và đồng bộ tới toàn bộ máy POS!");
+    toast.success("Đã lưu mẫu hóa đơn");
   };
 
   return (

@@ -1,3 +1,5 @@
+import { toast } from "@/stores/notificationStore";
+import { useDialogAccessibility } from "@a2order/shared/react";
 import React, { useState, useEffect } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Icon } from "@/components/ui";
@@ -15,6 +17,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const dialogRef = useDialogAccessibility(isOpen && !!dish, onClose);
   const [quantity, setQuantity] = useState(initialQuantity);
   const [notes, setNotes] = useState(initialNotes);
   const [selectedVariant, setSelectedVariant] = useState<string>("");
@@ -45,7 +48,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   let optionsExtra = 0;
   dish.optionGroups?.forEach((group) => {
     group.options.forEach((opt) => {
-      if (selectedOptions.includes(opt.name)) {
+      if (selectedOptions.includes(opt.id)) {
         optionsExtra += opt.priceModifier || 0;
       }
     });
@@ -82,6 +85,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   };
 
   const handleConfirm = () => {
+    for (const group of dish.optionGroups || []) { const count = group.options.filter(o => selectedOptions.includes(o.id)).length; if (count < (group.minSelect ?? (group.required ? 1 : 0)) || count > (group.maxSelect ?? (group.type === "SINGLE" ? 1 : group.options.length))) { toast.error("Vui lòng chọn đúng số tùy chọn: " + group.name); return; } }
     onConfirm({
       dish,
       quantity,
@@ -94,7 +98,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-5 bg-ink-primary/75 backdrop-blur-xs animate-fadeIn">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Tùy chọn món" tabIndex={-1} className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-5 bg-ink-primary/75 backdrop-blur-xs animate-fadeIn">
       {/* Container Dialog */}
       <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl border border-surface-border flex flex-col max-h-[92vh] sm:max-h-[88vh] overflow-hidden animate-scaleUp">
         {/* Header chi tiết món */}
@@ -175,7 +179,7 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
 
           {/* 2. Chọn Tuỳ chọn thêm (Option Groups) */}
           {dish.optionGroups && dish.optionGroups.map((group) => {
-            const groupOptionNames = group.options.map((o) => o.name);
+            const groupOptionNames = group.options.map((o) => o.id);
             return (
               <div key={group.id || group.name} className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -188,13 +192,13 @@ export const DishDetailModal: React.FC<DishDetailModalProps> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {group.options.map((opt) => {
-                    const isChecked = selectedOptions.includes(opt.name);
+                    const isChecked = selectedOptions.includes(opt.id);
                     const isRadio = !!group.required;
                     return (
                       <button
                         key={opt.id || opt.name}
                         type="button"
-                        onClick={() => handleToggleOption(opt.name, isRadio, groupOptionNames)}
+                        onClick={() => handleToggleOption(opt.id, isRadio, groupOptionNames)}
                         className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-1 transition-all active:scale-98 ${
                           isChecked
                             ? "border-brand-900 bg-brand-50 text-brand-900 font-black ring-1.5 ring-brand-900 shadow-2xs"

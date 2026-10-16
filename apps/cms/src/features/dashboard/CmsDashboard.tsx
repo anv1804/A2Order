@@ -1,3 +1,6 @@
+import { browserRequest } from "@a2order/shared";
+import { useResource } from "@a2order/shared/react";
+import { getAuthUser } from "@a2order/shared";
 import React, { useState, useMemo, useEffect } from "react";
 import { Button, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -18,15 +21,15 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
   const isCashier = currentRole === "CASHIER";
 
   // Lấy storeId thực tế từ phiên đăng nhập
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const storeId = userStr ? JSON.parse(userStr).storeId || "store-a2-kitchen" : "store-a2-kitchen";
+  const storeId = getAuthUser()?.storeId || "";
 
   // Đọc dữ liệu thực từ localStorage của các module khác
-  const [bills] = usePersistentState<any[]>("sales_bills_data", []);
-  const [tablesZones, setTablesZones] = usePersistentState<any[]>("tables_zones_data", []);
-  const [staffList, setStaffList] = usePersistentState<any[]>("staff_list", []);
+  const [report, refreshReport] = useResource<any>(`/analytics/${storeId}/reports?period=today`, { bills: [] });
+  const bills: any[] = report.bills;
+  const [tablesZones, refreshTables] = useResource<any[]>(`/tables/${storeId}`, []);
+  const [staffList, refreshStaff] = useResource<any[]>(currentRole === "STORE_OWNER" ? `/staff?storeId=${storeId}` : null, []);
   const [ingredients] = usePersistentState<any[]>("inventory_ingredients", []);
-  const [kdsTickets] = usePersistentState<any[]>("kds_tickets_data", []);
+  const [kdsTickets] = useResource<any[]>(currentRole === "STORE_OWNER" ? "/orders/kds/tickets" : null, []);
 
   // Xác định ca làm việc theo thời gian thực
   const now = new Date();
@@ -107,41 +110,23 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
   }, [staffList]);
 
   // Tự động đồng bộ sơ đồ bàn thực tế từ Database PostgreSQL
-  useEffect(() => {
-    tableApi
-      .getTableZones(storeId)
-      .then((serverZones) => {
-        if (Array.isArray(serverZones) && serverZones.length > 0) {
-          setTablesZones(serverZones);
-        }
-      })
-      .catch(() => {});
-  }, [storeId]);
+
 
   // Tự động đồng bộ nhân sự thực tế từ Database PostgreSQL
-  useEffect(() => {
-    staffApi
-      .getStaff({ storeId })
-      .then((serverStaff) => {
-        if (Array.isArray(serverStaff)) {
-          setStaffList(serverStaff);
-        }
-      })
-      .catch(() => {});
-  }, [storeId]);
+
 
   // Tính các KPI động
   const liveStats = useMemo(() => {
     const totalRevenue = bills.reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
     const totalOrders = bills.length;
     const discountTotal = bills.reduce((s: number, b: any) => s + (b.discountAmount || 0), 0);
-    const vietqrTotal = bills.filter((b: any) => b.paymentMethod === "VIETQR").reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
+    const vietqrTotal = bills.reduce((s: number, b: any) => s + (b.payments || []).filter((p: any) => p.method === "VIETQR").reduce((sum: number, p: any) => sum + p.amount, 0), 0);
     const vietqrPct = totalRevenue > 0 ? Math.round((vietqrTotal / totalRevenue) * 100) : 0;
-    const cashTotal = bills.filter((b: any) => b.paymentMethod === "CASH").reduce((s: number, b: any) => s + (b.finalAmount || 0), 0);
+    const cashTotal = bills.reduce((s: number, b: any) => s + (b.payments || []).filter((p: any) => p.method === "CASH").reduce((sum: number, p: any) => sum + p.amount, 0), 0);
 
     // Tables
     const allTables = tablesZones.flatMap((z: any) => z.tables || []);
-    const occupiedTables = allTables.filter((t: any) => t.status === "OCCUPIED" || t.status === "SERVING").length;
+    const occupiedTables = allTables.filter((t: any) => t.status !== "EMPTY").length;
     const totalTables = allTables.length;
 
     // Staff on duty
@@ -151,48 +136,15 @@ export const CmsDashboard: React.FC<CmsDashboardProps> = ({ onNavigateTab, curre
     const lowStockCount = ingredients.filter((i: any) => i.currentStock <= (i.minStock || 0)).length;
 
     // KDS pending tickets
-    const pendingTickets = kdsTickets.filter((t: any) => t.status === "PENDING" || t.status === "IN_PROGRESS").length;
+    const pendingTickets = kdsTickets.filter((t: any) => t.status === "NEW" || t.status === "IN_PROGRESS").length;
 
     return { totalRevenue, totalOrders, discountTotal, vietqrPct, cashTotal, vietqrTotal, occupiedTables, totalTables, activeStaff, lowStockCount, pendingTickets };
   }, [bills, tablesZones, staffList, ingredients, kdsTickets]);
 
   // Xử lý Publish bản snapshot cấu hình quán
-  const handlePublishChanges = async () => {
-    const confirmed = await confirmDialog({
-      title: "Áp Dụng Thay Đổi Cho Quán?",
-      message:
-        "Khi bấm xác nhận, hệ thống sẽ nâng version snapshot của quán lên và phát thông báo cập nhật tới các máy POS/KDS tại quán bạn. Các máy POS và điện thoại nhân viên sẽ tự động nhận menu và giá mới.",
-      confirmText: "Áp Dụng Ngay",
-      cancelText: "Hủy",
-      variant: "primary",
-    });
+  const handlePublishChanges = async () => { setIsPublishing(true); try { const result = await browserRequest<any>(`/stores/${storeId}/publish`, { method: "POST" }); setCurrentVersion(result.configVersion || result.version); setHasUnpublishedChanges(false); toast.success("Đã xuất bản cấu hình"); } catch (e: any) { toast.error(e.message); } finally { setIsPublishing(false); } };
 
-    if (!confirmed) return;
-
-    setIsPublishing(true);
-    setTimeout(() => {
-      setIsPublishing(false);
-      const nextVerNum = Number(currentVersion.replace("v1.0.", "")) + 1;
-      const nextVer = `v1.0.${nextVerNum}`;
-      setCurrentVersion(nextVer);
-      setHasUnpublishedChanges(false);
-      toast.success(`Đã xuất bản thành công phiên bản ${nextVer}! Các máy POS/KDS tại quán đã nhận cấu hình mới.`);
-    }, 800);
-  };
-
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast.success(
-        isAccountant
-          ? "Đã đồng bộ số dư két và dữ liệu doanh thu P&L mới nhất."
-          : isCashier
-          ? "Đã làm mới danh sách hóa đơn và két tiền ca trực."
-          : "Dữ liệu vận hành quán và trạng thái bàn đã được đồng bộ mới nhất."
-      );
-    }, 600);
-  };
+  const handleRefresh = async () => { setIsRefreshing(true); try { await Promise.all([refreshReport(), refreshTables(), refreshStaff()]); toast.success("Đã đồng bộ dữ liệu"); } catch (e: any) { toast.error(e.message); } finally { setIsRefreshing(false); } };
 
   return (
     <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">

@@ -45,8 +45,8 @@ export interface PinPadModalProps {
 export interface UnifiedAuthModalProps {
   isOpen: boolean;
   staffList: StaffMember[];
-  onPinSubmit: (staffId: string, pin: string) => void;
-  onAdminLogin?: (email: string, pass: string) => void;
+  onPinSubmit: (staffId: string, pin: string) => void | Promise<void>;
+  onAdminLogin?: (email: string, pass: string) => void | Promise<void>;
   onClockIn?: (staff: StaffMember) => void;
   onClockOut?: (staff: StaffMember) => void;
   attendanceRecords?: AttendanceRecord[];
@@ -64,5 +64,3 @@ export interface StaffScheduleProfileProps {
 export interface UseAttendanceParams {
   setAttendanceRecords: React.Dispatch<React.SetStateAction<AttendanceRecord[]>>;
 }
-
-

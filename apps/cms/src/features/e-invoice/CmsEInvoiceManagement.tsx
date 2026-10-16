@@ -41,7 +41,7 @@ export const CmsEInvoiceManagement: React.FC = () => {
     buyerAddress: "",
     totalBeforeTax: 500000,
     vatRate: 8,
-    orderCode: "BILL-POS-" + Math.floor(1000 + Math.random() * 9000),
+    orderCode: "",
   });
 
   // Modal xem chi tiết HĐ
@@ -74,65 +74,10 @@ export const CmsEInvoiceManagement: React.FC = () => {
   });
 
   // Tạo & Phát hành HĐĐT mới
-  const handleCreateInvoice = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newInvoiceForm.buyerName.trim()) {
-      toast.error("Vui lòng nhập tên người mua hàng hoặc tên doanh nghiệp");
-      return;
-    }
-
-    const vatAmount = Math.round((newInvoiceForm.totalBeforeTax * newInvoiceForm.vatRate) / 100);
-    const totalPayment = newInvoiceForm.totalBeforeTax + vatAmount;
-    const nextNumber = String(invoices.length + 43).padStart(7, "0");
-    const generatedCqtCode = `00C26TBB${Math.floor(10000000 + Math.random() * 90000000)}C`;
-
-    const newRecord: EInvoiceRecord = {
-      id: `einv-${Date.now()}`,
-      orderCode: newInvoiceForm.orderCode,
-      invoiceNumber: nextNumber,
-      invoiceSeries: config.invoiceSeries,
-      cqtCode: generatedCqtCode,
-      buyerName: newInvoiceForm.buyerName.trim(),
-      buyerTaxCode: newInvoiceForm.buyerTaxCode.trim() || undefined,
-      buyerEmail: newInvoiceForm.buyerEmail.trim() || undefined,
-      buyerAddress: newInvoiceForm.buyerAddress.trim() || undefined,
-      totalBeforeTax: newInvoiceForm.totalBeforeTax,
-      vatRate: newInvoiceForm.vatRate,
-      vatAmount,
-      totalPayment,
-      issuedAt: new Date().toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      signedBy: `${config.companyName} (${config.signatureType})`,
-      status: "ISSUED_WITH_CODE",
-      pdfDownloadUrl: "#",
-      xmlDownloadUrl: "#",
-    };
-
-    setInvoices((prev) => [newRecord, ...prev]);
-    setIsCreateModalOpen(false);
-    toast.success(`Đã ký số và phát hành thành công Hóa Đơn Điện Tử Số [${nextNumber}]! Cơ quan thuế đã cấp mã hợp lệ.`);
-  };
+  const handleCreateInvoice = (e: React.FormEvent) => { e.preventDefault(); toast.error("Chưa kết nối nhà cung cấp hóa đơn điện tử. Chưa có hóa đơn được phát hành."); };
 
   // Hủy hóa đơn
-  const handleCancelInvoice = async (inv: EInvoiceRecord) => {
-    const ok = await confirmDialog({
-      title: "Hủy Hóa Đơn Điện Tử",
-      message: `Bạn có chắc chắn muốn lập biên bản hủy hóa đơn điện tử số ${inv.invoiceNumber} (Mẫu ${inv.invoiceSeries})? Hành động này sẽ thông báo sai sót Mẫu 04/SS-HĐĐT lên Cơ quan Thuế.`,
-      confirmText: "Xác Nhận Hủy HĐ",
-      variant: "danger",
-    });
-    if (!ok) return;
-
-    setInvoices((prev) =>
-      prev.map((i) => (i.id === inv.id ? { ...i, status: "CANCELLED" } : i))
-    );
-    toast.success(`Đã hủy hóa đơn số ${inv.invoiceNumber} và gửi thông điệp 04/SS-HĐĐT lên CQT.`);
-  };
+  const handleCancelInvoice = async (_inv: EInvoiceRecord) => { toast.error("Cần kết nối nhà cung cấp để xử lý điều chỉnh hóa đơn"); };
 
   return (
     <div className="space-y-6">
@@ -465,7 +410,7 @@ export const CmsEInvoiceManagement: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => toast.success("Đã kiểm tra chứng thư số và thông điệp CQT: Kết nối thành công 100%!")}
+                onClick={() => toast.error("Chưa cấu hình kết nối nhà cung cấp trên máy chủ")}
               >
                 <Icon name="refresh" size={14} className="mr-1" />
                 Kiểm Tra Kết Nối CQT
@@ -473,7 +418,7 @@ export const CmsEInvoiceManagement: React.FC = () => {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => toast.success("Đã lưu thông tin cấu hình hóa đơn điện tử TT78 thành công!")}
+                onClick={() => toast.info("Cấu hình nhà cung cấp cần được thiết lập trên máy chủ")}
                 className="bg-emerald-600 text-white"
               >
                 Lưu Cấu Hình
@@ -679,21 +624,21 @@ export const CmsEInvoiceManagement: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.success("Đang tải file XML gốc có chữ ký số...")}
+                  onClick={() => toast.error("Chưa có XML đã ký từ nhà cung cấp")}
                 >
                   <Icon name="download" size={14} className="mr-1" /> Tải XML Gốc
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => toast.success("Đã gửi liên kết hóa đơn điện tử vào email khách hàng thành công!")}
+                  onClick={() => toast.error("Chưa cấu hình dịch vụ gửi hóa đơn")}
                 >
                   <Icon name="mail" size={14} className="mr-1" /> Gửi Email
                 </Button>
                 <Button
                   variant="primary"
                   size="sm"
-                  onClick={() => toast.success("Đang in bản thể hiện hóa đơn...")}
+                  onClick={() => toast.info("Cần hóa đơn hợp lệ từ nhà cung cấp để in")}
                   className="bg-emerald-600 text-white"
                 >
                   <Icon name="print" size={14} className="mr-1" /> In Bản Thể Hiện

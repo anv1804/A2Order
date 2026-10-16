@@ -1,748 +1,198 @@
-import { FastifyInstance, FastifyPluginAsync } from "fastify";
-import { randomUUID } from "crypto";
-import { prisma } from "../../core/database/prismaClient.js";
-import { emitToStore } from "../../core/websocket/socketServer.js";
+import type { FastifyPluginAsync } from "fastify";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
 import { SocketEvents } from "@a2order/shared";
+import { prisma } from "../../core/database/prismaClient.js";
+import { command } from "../../core/security/commands.js";
+import { AppError, requireValue } from "../../core/security/errors.js";
+import { currentStore, requireRoles } from "../../core/security/access.js";
+import { emitToStore, disconnectSession } from "../../core/websocket/socketServer.js";
+import { checkLicense, lockTable, openSession, closeEmptySession } from "../order/order.service.js";
+import type { Principal } from "../../types/security.js";
+import { publicPromotions } from "../promotion/promotion.service.js";
 
-// Bộ đệm lưu trữ tạm thời các yêu cầu mở bàn chờ nhân viên duyệt (Staff Confirmation Gate)
-interface PendingSessionRequest {
-  tableId: string;
-  tableName: string;
-  tableCode: string;
-  zoneName: string;
-  storeId: string;
-  requestedAt: number;
-  guestCount?: number;
+const nameInput = z.object({ name: z.string().trim().min(1).max(100) });
+const tableInput = z.object({ zoneId: z.string().min(1), name: z.string().trim().min(1).max(100), code: z.string().trim().min(1).max(30).optional(), capacity: z.number().int().min(1).max(100).optional() });
+const sessionInput = z.object({ tableId: z.string().min(1), guestCount: z.number().int().min(1).max(100).default(2) });
+
+export function generateDefaultTableCode(name: string, id?: string) {
+  const clean = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d").trim().toUpperCase();
+  const number = clean.match(/\d+/)?.[0];
+  return number ? (clean.startsWith("VIP") ? "VIP-" : "TB-") + number.padStart(2, "0") : "TB-" + (clean.replace(/[^A-Z0-9]/g, "").slice(0, 8) || (id || randomUUID()).slice(0, 8));
 }
-const pendingSessionRequests = new Map<string, PendingSessionRequest>();
-
-export function generateDefaultTableCode(name: string, id?: string): string {
-  if (!name || !name.trim()) return "";
-  const clean = name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-
-  // Tìm cụm số trong tên
-  const numMatch = clean.match(/\d+/);
-  const numStr = numMatch ? numMatch[0].padStart(2, "0") : "";
-
-  const upper = clean.toUpperCase();
-  if (upper.startsWith("VIP")) {
-    return numStr ? `VIP-${numStr}` : `VIP-${upper.replace(/[^A-Z0-9]/g, "").slice(3) || "01"}`;
-  }
-  if (upper.startsWith("BAN") || upper.startsWith("TB") || upper.startsWith("TABLE")) {
-    return numStr ? `TB-${numStr}` : `TB-${upper.replace(/[^A-Z0-9]/g, "").slice(3) || "01"}`;
-  }
-
-  // Tên có nhiều từ, ví dụ "Sân Thượng 2" -> chữ cái đầu các từ: ST-02
-  const words = clean.split(/\s+/).filter(Boolean);
-  if (words.length > 1 && numStr) {
-    const nonNumWords = words.filter((w) => !/^\d+$/.test(w));
-    if (nonNumWords.length > 0) {
-      const acronym = nonNumWords.map((w) => w[0].toUpperCase()).join("");
-      return `${acronym}-${numStr}`;
-    }
-  }
-
-  if (numStr) {
-    const textPart = clean.replace(/[^a-zA-Z]/g, "").toUpperCase().slice(0, 4);
-    return textPart ? `${textPart}-${numStr}` : `TB-${numStr}`;
-  }
-
-  const slug = clean.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 8);
-  return slug ? `TB-${slug}` : `TB-${(id || Math.random().toString(36).slice(2, 6)).slice(0, 4).toUpperCase()}`;
+export function getTablePin(table: { id: string; qrSecret?: string | null }) {
+  return String(1000 + createHash("sha256").update(table.qrSecret || table.id).digest().readUInt32BE(0) % 9000);
 }
-
-export function getTablePin(table: { id: string; qrSecret?: string | null }): string {
-  const secret = table.qrSecret || table.id;
-  let hash = 0;
-  for (let i = 0; i < secret.length; i++) {
-    hash = (hash * 31 + secret.charCodeAt(i)) >>> 0;
-  }
-  return ((hash % 9000) + 1000).toString();
-}
-
 export function buildTableOrderQr(storeId: string, tableCode: string, tableId: string) {
-  const baseUrl = (process.env.ORDER_BASE_URL || process.env.APP_URL || "http://localhost:3001").replace(/\/$/, "");
-  const orderUrl = `${baseUrl}/order?store=${storeId}&table=${encodeURIComponent(tableCode)}&tableId=${tableId}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(orderUrl)}&margin=12`;
-  return { orderUrl, qrCodeUrl };
+  const base = (process.env.ORDER_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const orderUrl = base + "/order?store=" + encodeURIComponent(storeId) + "&table=" + encodeURIComponent(tableCode) + "&tableId=" + encodeURIComponent(tableId);
+  return { orderUrl, qrCodeUrl: "https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=" + encodeURIComponent(orderUrl) };
 }
-
-export const tableRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  /**
-   * 1. LẤY SƠ ĐỒ BÀN & KHU VỰC CỦA QUÁN
-   * GET /api/tables/:storeId
-   */
-  fastify.get("/:storeId", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    try {
-      const zones = await prisma.tableZone.findMany({
-        where: { storeId },
-        include: {
-          tables: {
-            orderBy: { name: "asc" },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-      });
-
-      // Chuẩn hóa định dạng tương thích với giao diện CMS
-      const formattedZones = zones.map((z) => ({
-        id: z.id,
-        name: z.name,
-        sortOrder: z.sortOrder,
-        tables: z.tables.map((t) => {
-          const code = t.code || generateDefaultTableCode(t.name, t.id);
-          const pin = getTablePin(t);
-          const { orderUrl, qrCodeUrl } = buildTableOrderQr(storeId, code, t.id);
-          return {
-            id: t.id,
-            name: t.name,
-            code,
-            pin,
-            orderUrl,
-            capacity: 4,
-            status: t.status as any,
-            qrCodeUrl,
-          };
-        }),
-      }));
-
-      return { success: true, count: formattedZones.length, data: formattedZones };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+export const tableRoutes: FastifyPluginAsync = async app => {
+  const customerToken = (storeId: string, tableId: string, sessionId: string, guestId: string = randomUUID()) => app.jwt.sign({ kind: "customer", userId: "guest:" + guestId, role: "CUSTOMER", storeId, tableId, sessionId }, { expiresIn: "4h" });
+  app.get("/:storeId", async request => {
+    const storeId = currentStore(request);
+    const zones = await prisma.tableZone.findMany({ where: { storeId }, include: { tables: { where: { archivedAt: null }, orderBy: { name: "asc" } } }, orderBy: { sortOrder: "asc" } });
+    const canReadPin = ["STORE_OWNER", "CASHIER", "WAITER"].includes(request.principal!.role);
+    return { success: true, data: zones.map(zone => ({ id: zone.id, name: zone.name, sortOrder: zone.sortOrder, tables: zone.tables.map(table => ({ id: table.id, name: table.name, code: table.code || generateDefaultTableCode(table.name, table.id), capacity: table.capacity, status: table.status, ...(canReadPin ? { pin: getTablePin(table) } : {}), ...buildTableOrderQr(storeId, table.code || generateDefaultTableCode(table.name), table.id) })) })) };
   });
-
-  /**
-   * 2. TẠO KHU VỰC MỚI
-   * POST /api/tables/:storeId/zones
-   */
-  fastify.post("/:storeId/zones", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { name } = request.body as { name: string };
-    if (!name || !name.trim()) {
-      return reply.status(400).send({ success: false, error: "Tên khu vực là bắt buộc" });
-    }
-
-    try {
-      const zone = await prisma.tableZone.create({
-        data: {
-          storeId,
-          name: name.trim(),
-        },
-        include: { tables: true },
-      });
-      return { success: true, message: `Đã tạo khu vực "${zone.name}"`, data: zone };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.post("/:storeId/zones", async request => {
+    const { name } = nameInput.parse(request.body);
+    const storeId = currentStore(request);
+    return { success: true, data: await command(request, storeId, "ZONE_CREATE", async tx => { await checkLicense(tx, storeId); return tx.tableZone.create({ data: { name, storeId }, include: { tables: true } }); }) };
   });
-
-  /**
-   * 3. SỬA TÊN KHU VỰC
-   * PUT /api/tables/:storeId/zones/:zoneId
-   */
-  fastify.put("/:storeId/zones/:zoneId", async (request, reply) => {
-    const { zoneId } = request.params as { storeId: string; zoneId: string };
-    const { name } = request.body as { name: string };
-    if (!name || !name.trim()) {
-      return reply.status(400).send({ success: false, error: "Tên khu vực là bắt buộc" });
-    }
-
-    try {
-      const zone = await prisma.tableZone.update({
-        where: { id: zoneId },
-        data: { name: name.trim() },
-        include: { tables: true },
-      });
-      return { success: true, message: `Đã đổi tên khu vực thành "${zone.name}"`, data: zone };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.put("/:storeId/zones/:zoneId", async request => {
+    const { zoneId } = request.params as { zoneId: string };
+    const { name } = nameInput.parse(request.body);
+    const storeId = currentStore(request);
+    return { success: true, data: await command(request, storeId, "ZONE_UPDATE", tx => tx.tableZone.update({ where: { id_storeId: { id: zoneId, storeId } }, data: { name }, include: { tables: true } })) };
   });
-
-  /**
-   * 4. XÓA KHU VỰC
-   * DELETE /api/tables/:storeId/zones/:zoneId
-   */
-  fastify.delete("/:storeId/zones/:zoneId", async (request, reply) => {
-    const { zoneId } = request.params as { storeId: string; zoneId: string };
-    try {
-      await prisma.tableZone.delete({
-        where: { id: zoneId },
-      });
-      return { success: true, message: "Đã xóa khu vực thành công" };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.delete("/:storeId/zones/:zoneId", async request => {
+    const { zoneId } = request.params as { zoneId: string };
+    const storeId = currentStore(request);
+    return command(request, storeId, "ZONE_DELETE", async tx => { await tx.tableZone.delete({ where: { id_storeId: { id: zoneId, storeId } } }); return { success: true }; });
   });
-
-  /**
-   * 5. THÊM BÀN ĂN MỚI
-   * POST /api/tables/:storeId/tables
-   */
-  fastify.post("/:storeId/tables", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { zoneId, name, code } = request.body as { zoneId: string; name: string; code?: string };
-
-    if (!zoneId || !name || !name.trim()) {
-      return reply.status(400).send({ success: false, error: "Khu vực và tên bàn là bắt buộc" });
-    }
-
-    const trimmedName = name.trim();
-    const finalCode = code && code.trim() ? code.trim().toUpperCase() : generateDefaultTableCode(trimmedName);
-
-    try {
-      const table = await prisma.table.create({
-        data: {
-          storeId,
-          zoneId,
-          name: trimmedName,
-          code: finalCode,
-          status: "EMPTY",
-        },
-      });
-      const { orderUrl, qrCodeUrl } = buildTableOrderQr(storeId, finalCode, table.id);
-      return {
-        success: true,
-        message: `Đã thêm "${table.name}" (Mã: ${finalCode})`,
-        data: { ...table, code: finalCode, pin: getTablePin(table), orderUrl, qrCodeUrl },
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.post("/:storeId/tables", async request => {
+    const input = tableInput.parse(request.body);
+    const storeId = currentStore(request);
+    return { success: true, data: await command(request, storeId, "TABLE_CREATE", async tx => {
+      const store = await checkLicense(tx, storeId);
+      requireValue(await tx.tableZone.findFirst({ where: { id: input.zoneId, storeId } }), "Khu vực không tồn tại");
+      const count = await tx.table.count({ where: { storeId, archivedAt: null } });
+      if (count >= store.license!.maxTables) throw new AppError(403, "Đã đạt giới hạn số bàn của gói");
+      const table = await tx.table.create({ data: { ...input, code: (input.code || generateDefaultTableCode(input.name)).toUpperCase(), storeId } });
+      return { id: table.id, name: table.name, code: table.code, capacity: table.capacity, status: table.status, pin: getTablePin(table), ...buildTableOrderQr(storeId, table.code!, table.id) };
+    }) };
   });
-
-  /**
-   * 6. CẬP NHẬT TRẠNG THÁI / ĐỔI TÊN BÀN / MÃ BÀN
-   * PATCH /api/tables/:storeId/tables/:tableId
-   */
-  fastify.patch("/:storeId/tables/:tableId", async (request, reply) => {
-    const { tableId } = request.params as { storeId: string; tableId: string };
-    const { name, status, zoneId, code } = request.body as { name?: string; status?: string; zoneId?: string; code?: string };
-
-    try {
-      const updated = await prisma.table.update({
-        where: { id: tableId },
-        data: {
-          ...(name ? { name: name.trim() } : {}),
-          ...(status ? { status } : {}),
-          ...(zoneId ? { zoneId } : {}),
-          ...(code !== undefined ? { code: code.trim().toUpperCase() } : {}),
-        },
-      });
-      const finalCode = updated.code || generateDefaultTableCode(updated.name, updated.id);
-      const { orderUrl, qrCodeUrl } = buildTableOrderQr(updated.storeId, finalCode, updated.id);
-      return {
-        success: true,
-        data: { ...updated, code: finalCode, pin: getTablePin(updated), orderUrl, qrCodeUrl },
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+  app.patch("/:storeId/tables/:tableId", async request => {
+    const { tableId } = request.params as { tableId: string };
+    const input = tableInput.partial().extend({ status: z.enum(["EMPTY", "OCCUPIED", "WAITING_FOOD", "SERVED", "PAYMENT_PENDING"]).optional() }).parse(request.body);
+    const storeId = currentStore(request);
+    return { success: true, data: await command(request, storeId, "TABLE_UPDATE", async tx => {
+      const table = await lockTable(tx, storeId, tableId);
+      if (input.status && input.status !== table.status) throw new AppError(409, "Đổi trạng thái bàn qua thao tác mở bàn hoặc thanh toán");
+      if (input.zoneId) requireValue(await tx.tableZone.findFirst({ where: { id: input.zoneId, storeId } }));
+      const updated = await tx.table.update({ where: { id_storeId: { id: tableId, storeId } }, data: { ...input, code: input.code?.toUpperCase() } });
+      return { id: updated.id, name: updated.name, code: updated.code, status: updated.status, capacity: updated.capacity, pin: getTablePin(updated), ...buildTableOrderQr(storeId, updated.code || generateDefaultTableCode(updated.name), updated.id) };
+    }) };
   });
-
-  /**
-   * 7. XÓA BÀN ĂN
-   * DELETE /api/tables/:storeId/tables/:tableId
-   */
-  fastify.delete("/:storeId/tables/:tableId", async (request, reply) => {
-    const { tableId } = request.params as { storeId: string; tableId: string };
-    try {
-      await prisma.table.delete({
-        where: { id: tableId },
-      });
-      return { success: true, message: "Đã xóa bàn ăn thành công" };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 8. KIỂM TRA TRẠNG THÁI PHIÊN BÀN (Dành cho khách quét QR vào /order)
-   * GET /api/tables/:storeId/session/:tableCode
-   */
-  fastify.get("/:storeId/session/:tableCode", async (request, reply) => {
-    const { storeId, tableCode } = request.params as { storeId: string; tableCode: string };
-
-    try {
-      let table = await prisma.table.findFirst({
-        where: {
-          storeId,
-          OR: [
-            { code: tableCode.toUpperCase() },
-            { id: tableCode },
-            { name: { equals: tableCode, mode: "insensitive" } },
-          ],
-        },
-        include: {
-          zone: true,
-          orderSessions: {
-            where: { status: "ACTIVE" },
-            orderBy: { checkInAt: "desc" },
-            take: 1,
-          },
-        },
-      });
-
-      // Nếu chưa tìm thấy theo code trong DB, duyệt tìm theo mã mặc định
-      if (!table) {
-        const allStoreTables = await prisma.table.findMany({
-          where: { storeId },
-          include: {
-            zone: true,
-            orderSessions: {
-              where: { status: "ACTIVE" },
-              orderBy: { checkInAt: "desc" },
-              take: 1,
-            },
-          },
-        });
-        const matched = allStoreTables.find((t) => {
-          const defCode = generateDefaultTableCode(t.name, t.id);
-          return (
-            defCode.toUpperCase() === tableCode.toUpperCase() ||
-            t.name.toLowerCase().includes(tableCode.toLowerCase()) ||
-            t.id === tableCode
-          );
-        });
-        if (matched) {
-          table = matched;
-          if (!table.code) {
-            const autoCode = generateDefaultTableCode(table.name, table.id);
-            await prisma.table.update({ where: { id: table.id }, data: { code: autoCode } }).catch(() => {});
-            table.code = autoCode;
-          }
-        }
-      }
-
-      if (!table) {
-        return reply.status(404).send({ success: false, error: "Không tìm thấy thông tin bàn tương ứng" });
-      }
-
-      const store = await prisma.store.findUnique({
-        where: { id: storeId },
-        select: { id: true, name: true, phone: true, address: true },
-      });
-
-      const categories = await prisma.category.findMany({
-        where: { storeId },
-        include: {
-          menuItems: {
-            where: { isAvailable: true },
-            orderBy: { name: "asc" },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-      });
-
-      const activeSession = table.orderSessions[0] || null;
-      const isSessionActive = Boolean(
-        activeSession || (table.currentSessionId && table.status !== "EMPTY")
-      );
-      const isPending = pendingSessionRequests.has(`${storeId}:${table.id}`);
-
-      return {
-        success: true,
-        data: {
-          table: {
-            id: table.id,
-            name: table.name,
-            code: table.code || generateDefaultTableCode(table.name, table.id),
-            zoneName: table.zone.name,
-            status: table.status,
-            currentSessionId: activeSession?.id || table.currentSessionId,
-          },
-          store: store || { id: storeId, name: "A2Order Bistro" },
-          isSessionActive,
-          isPendingApproval: isPending,
-          categories,
-        },
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 9. KHÁCH QUÉT QR GỬI YÊU CẦU MỞ BÀN (Staff Confirmation Gate)
-   * POST /api/tables/:storeId/session/request
-   */
-  fastify.post("/:storeId/session/request", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { tableId, tableCode, guestCount } = request.body as {
-      tableId?: string;
-      tableCode?: string;
-      guestCount?: number;
-    };
-
-    try {
-      let table = await prisma.table.findFirst({
-        where: {
-          storeId,
-          OR: [
-            ...(tableId ? [{ id: tableId }] : []),
-            ...(tableCode ? [{ code: tableCode.toUpperCase() }] : []),
-          ],
-        },
-        include: { zone: true },
-      });
-
-      if (!table && tableCode) {
-        const allStoreTables = await prisma.table.findMany({
-          where: { storeId },
-          include: { zone: true },
-        });
-        const matched = allStoreTables.find((t) => {
-          const defCode = generateDefaultTableCode(t.name, t.id);
-          return defCode.toUpperCase() === tableCode.toUpperCase() || t.id === tableCode;
-        });
-        if (matched) {
-          table = matched;
-        }
-      }
-
-      if (!table) {
-        return reply.status(404).send({ success: false, error: "Bàn không tồn tại" });
-      }
-
-      // Nếu bàn đã mở phiên sẵn (ví dụ nhân viên đã mở trước)
-      if (table.currentSessionId && table.status !== "EMPTY") {
-        return {
-          success: true,
-          isSessionActive: true,
-          message: "Bàn đã ở trạng thái phục vụ",
-          data: { tableId: table.id, sessionId: table.currentSessionId },
-        };
-      }
-
-      // Lưu vào danh sách chờ duyệt
-      const reqKey = `${storeId}:${table.id}`;
-      const payload: PendingSessionRequest = {
-        tableId: table.id,
-        tableName: table.name,
-        tableCode: table.code || generateDefaultTableCode(table.name, table.id),
-        zoneName: table.zone.name,
-        storeId,
-        requestedAt: Date.now(),
-        guestCount: guestCount || 2,
-      };
-      pendingSessionRequests.set(reqKey, payload);
-
-      // Phát WebSocket thông báo tới nhân viên / thu ngân quán
-      emitToStore(storeId, SocketEvents.SESSION_REQUESTED, payload);
-
-      return {
-        success: true,
-        message: "Đã gửi yêu cầu mở bàn. Vui lòng đợi nhân viên xác nhận.",
-        data: payload,
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 10. NHÂN VIÊN BẤM DUYỆT MỞ BÀN (1-Chạm)
-   * POST /api/tables/:storeId/session/approve
-   */
-  fastify.post("/:storeId/session/approve", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { tableId, guestCount } = request.body as { tableId: string; guestCount?: number };
-
-    try {
-      const table = await prisma.table.findUnique({
-        where: { id: tableId },
-        include: { zone: true },
-      });
-
-      if (!table) {
-        return reply.status(404).send({ success: false, error: "Bàn không tồn tại" });
-      }
-
-      // Tạo OrderSession mới trong PostgreSQL
-      const session = await prisma.orderSession.create({
-        data: {
-          storeId,
-          tableId,
-          status: "ACTIVE",
-          checkInAt: new Date(),
-        },
-      });
-
-      // Cập nhật trạng thái bàn sang OCCUPIED và gắn currentSessionId
-      await prisma.table.update({
-        where: { id: tableId },
-        data: {
-          status: "OCCUPIED",
-          currentSessionId: session.id,
-        },
-      });
-
-      // Xóa khỏi danh sách chờ
-      pendingSessionRequests.delete(`${storeId}:${tableId}`);
-
-      const approvedPayload = {
-        storeId,
-        tableId,
-        sessionId: session.id,
-        tableName: table.name,
-        tableCode: table.code || generateDefaultTableCode(table.name, table.id),
-        zoneName: table.zone.name,
-        guestCount: guestCount || 2,
-      };
-
-      // Bắn WebSocket để điện thoại khách tự động nhảy vào menu ngay tức thì
-      emitToStore(storeId, SocketEvents.SESSION_APPROVED, approvedPayload);
-      emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, { storeId, tableId, status: "OCCUPIED" });
-
-      return {
-        success: true,
-        message: `Đã mở ${table.name} thành công`,
-        data: approvedPayload,
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 11. NHÂN VIÊN TỪ CHỐI YÊU CẦU MỞ BÀN (Ví dụ không có khách ngồi, spam từ bên ngoài)
-   * POST /api/tables/:storeId/session/reject
-   */
-  fastify.post("/:storeId/session/reject", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { tableId, reason } = request.body as { tableId: string; reason?: string };
-
-    pendingSessionRequests.delete(`${storeId}:${tableId}`);
-
-    emitToStore(storeId, SocketEvents.SESSION_REJECTED, {
-      storeId,
-      tableId,
-      reason: reason || "Nhân viên xác nhận bàn hiện chưa có khách ngồi thực tế",
+  app.delete("/:storeId/tables/:tableId", async request => {
+    const { tableId } = request.params as { tableId: string };
+    const storeId = currentStore(request);
+    return command(request, storeId, "TABLE_ARCHIVE", async tx => {
+      const table = await lockTable(tx, storeId, tableId);
+      if (table.currentSessionId) throw new AppError(409, "Không thể xóa bàn đang phục vụ");
+      await tx.table.update({ where: { id_storeId: { id: tableId, storeId } }, data: { archivedAt: new Date(), code: null } });
+      return { success: true };
     });
-
-    return { success: true, message: "Đã từ chối yêu cầu mở bàn" };
   });
-
-  /**
-   * 12. ĐÓNG PHIÊN BÀN (Khi thanh toán / Dọn bàn / Trả bàn)
-   * POST /api/tables/:storeId/session/close
-   */
-  fastify.post("/:storeId/session/close", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { tableId } = request.body as { tableId: string };
-
-    try {
-      const table = await prisma.table.findUnique({ where: { id: tableId } });
-      if (!table) {
-        return reply.status(404).send({ success: false, error: "Bàn không tồn tại" });
-      }
-
-      if (table.currentSessionId) {
-        await prisma.orderSession
-          .update({
-            where: { id: table.currentSessionId },
-            data: { status: "CLOSED", checkOutAt: new Date() },
-          })
-          .catch(() => {});
-      }
-
-      const updatedTable = await prisma.table.update({
-        where: { id: tableId },
-        data: {
-          status: "EMPTY",
-          currentSessionId: null,
-          qrSecret: randomUUID(),
-        },
-      });
-      const newPin = getTablePin(updatedTable);
-
-      pendingSessionRequests.delete(`${storeId}:${tableId}`);
-
-      // Bắn WebSocket thông báo phiên đã đóng -> khách ở nhà hoặc link cũ bị văng ra
-      emitToStore(storeId, SocketEvents.SESSION_CLOSED, { storeId, tableId, tableName: table.name });
-      emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, { storeId, tableId, status: "EMPTY", pin: newPin });
-
-      return { success: true, message: `Đã đóng phiên ${table.name}`, pin: newPin };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 13. LẤY DANH SÁCH YÊU CẦU MỞ BÀN ĐANG CHỜ DUYỆT
-   * GET /api/tables/:storeId/pending-requests
-   */
-  fastify.get("/:storeId/pending-requests", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const requests = Array.from(pendingSessionRequests.values()).filter((r) => r.storeId === storeId);
-    return { success: true, count: requests.length, data: requests };
-  });
-
-  /**
-   * 14. KHÁCH TỰ MỞ BÀN BẰNG MÃ PIN BẢO MẬT (Anti-Squatting / Bypass Staff Wait)
-   * POST /api/tables/:storeId/session/unlock-pin
-   */
-  fastify.post("/:storeId/session/unlock-pin", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { tableId, tableCode, pin, guestCount } = request.body as {
-      tableId?: string;
-      tableCode?: string;
-      pin?: string;
-      guestCount?: number;
-    };
-
-    if (!pin || typeof pin !== "string" || !pin.trim()) {
-      return reply.status(400).send({ success: false, error: "Vui lòng nhập mã PIN mở bàn" });
-    }
-
-    try {
-      let table = await prisma.table.findFirst({
-        where: {
-          storeId,
-          OR: [
-            ...(tableId ? [{ id: tableId }] : []),
-            ...(tableCode ? [{ code: tableCode.toUpperCase() }] : []),
-          ],
-        },
-        include: { zone: true },
-      });
-
-      if (!table && tableCode) {
-        const allStoreTables = await prisma.table.findMany({
-          where: { storeId },
-          include: { zone: true },
-        });
-        const matched = allStoreTables.find((t) => {
-          const defCode = generateDefaultTableCode(t.name, t.id);
-          return defCode.toUpperCase() === tableCode.toUpperCase() || t.id === tableCode;
-        });
-        if (matched) {
-          table = matched;
+  app.get("/:storeId/session/:tableCode", async request => {
+    const { storeId, tableCode } = request.params as { storeId: string; tableCode: string };
+    const table = requireValue(await prisma.table.findFirst({ where: { storeId, archivedAt: null, OR: [{ code: tableCode.toUpperCase() }, { id: tableCode }] }, include: { zone: true } }), "Không tìm thấy bàn");
+    const store = requireValue(await prisma.store.findUnique({ where: { id: storeId }, select: { id: true, name: true, phone: true, address: true } }));
+    const categories = await prisma.category.findMany({ where: { storeId }, include: { menuItems: { where: { isAvailable: true, archivedAt: null, OR: [{ stockCount: null }, { stockCount: { gt: 0 } }] }, select: { id: true, name: true, price: true, image: true, description: true, variants: true, customizationGroups: true } } }, orderBy: { sortOrder: "asc" } });
+    let sessionId = request.principal?.kind === "customer" && request.principal.tableId === table.id ? request.principal.sessionId : undefined;
+    let pending = false;
+    const proof = request.headers["x-session-request"];
+    if (typeof proof === "string") {
+      try {
+        const decoded = app.jwt.verify<Principal>(proof);
+        if (decoded.kind === "request" && decoded.tableId === table.id && decoded.storeId === storeId) {
+          const row = await prisma.serviceRequest.findFirst({ where: { id: decoded.requestId, storeId, tableId: table.id, type: "SESSION" } });
+          if (row?.status === "APPROVED" && row.sessionId === table.currentSessionId) sessionId = row.sessionId || undefined;
+          pending = row?.status === "PENDING";
         }
-      }
-
-      if (!table) {
-        return reply.status(404).send({ success: false, error: "Bàn không tồn tại" });
-      }
-
-      const expectedPin = getTablePin(table);
-      if (pin.trim() !== expectedPin) {
-        return reply.status(400).send({
-          success: false,
-          error: "Mã PIN không chính xác. Vui lòng kiểm tra lại thẻ bàn hoặc hỏi nhân viên.",
-        });
-      }
-
-      // Nếu bàn đã có session ACTIVE thì dùng lại session đó, nếu chưa thì tạo mới
-      let sessionId = table.currentSessionId;
-      if (!sessionId || table.status === "EMPTY") {
-        const session = await prisma.orderSession.create({
-          data: {
-            storeId,
-            tableId: table.id,
-            status: "ACTIVE",
-            checkInAt: new Date(),
-          },
-        });
-        sessionId = session.id;
-
-        await prisma.table.update({
-          where: { id: table.id },
-          data: {
-            status: "OCCUPIED",
-            currentSessionId: sessionId,
-          },
-        });
-      }
-
-      // Xóa khỏi danh sách chờ nếu có yêu cầu pending trước đó
-      pendingSessionRequests.delete(`${storeId}:${table.id}`);
-
-      const approvedPayload = {
-        storeId,
-        tableId: table.id,
-        sessionId,
-        tableName: table.name,
-        tableCode: table.code || generateDefaultTableCode(table.name, table.id),
-        zoneName: table.zone.name,
-        guestCount: guestCount || 2,
-        unlockedVia: "PIN",
-      };
-
-      // Bắn WebSocket thông báo tới mọi client & POS
-      emitToStore(storeId, SocketEvents.SESSION_APPROVED, approvedPayload);
-      emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, { storeId, tableId: table.id, status: "OCCUPIED" });
-
-      return {
-        success: true,
-        message: `Mở ${table.name} thành công bằng mã PIN`,
-        data: approvedPayload,
-      };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
+      } catch { /* Invalid requests never grant session access. */ }
     }
+    const session = sessionId ? await prisma.orderSession.findFirst({ where: { id: sessionId, storeId, tableId: table.id, status: "ACTIVE" } }) : null;
+    return { success: true, data: { table: { id: table.id, name: table.name, code: table.code, zoneName: table.zone.name, status: table.status, currentSessionId: session?.id }, store, categories, offers: await publicPromotions(storeId), sessionStartedAt: session?.checkInAt.getTime(), isSessionActive: !!session, isPendingApproval: pending, ...(session ? { customerToken: customerToken(storeId, table.id, session.id, request.principal?.userId), sessionId: session.id } : {}) } };
   });
-
-  /**
-   * 15. ĐỔI MÃ PIN MỚI CHO BÀN (Rotate PIN on Demand)
-   * POST /api/tables/:storeId/tables/:tableId/rotate-pin
-   */
-  fastify.post("/:storeId/tables/:tableId/rotate-pin", async (request, reply) => {
-    const { storeId, tableId } = request.params as { storeId: string; tableId: string };
-    try {
-      const updatedTable = await prisma.table.update({
-        where: { id: tableId },
-        data: { qrSecret: randomUUID() },
-        include: { zone: true },
-      });
-      const newPin = getTablePin(updatedTable);
-      emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, {
-        storeId,
-        tableId,
-        status: updatedTable.status,
-        pin: newPin,
-      });
-      return { success: true, pin: newPin, message: `Đã đổi mã PIN mới cho ${updatedTable.name}: ${newPin}` };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 16. KHÁCH YÊU CẦU HỖ TRỢ NHANH TẠI BÀN (Quick Service Request)
-   * POST /api/tables/:storeId/service-request
-   */
-  fastify.post("/:storeId/service-request", async (request, reply) => {
+  app.post("/:storeId/session/request", async request => {
     const { storeId } = request.params as { storeId: string };
-    const { tableId, tableCode, tableName, type, note } = (request.body || {}) as any;
-
-    const serviceTypeLabels: Record<string, string> = {
-      ICE: "Xin thêm đá 🧊",
-      TISSUE: "Xin thêm khăn giấy 🧻",
-      CLEAN: "Yêu cầu dọn bàn 🧹",
-      UTENSILS: "Xin thêm chén / muỗng / đũa 🥢",
-      WAITER: "Gọi nhân viên lại bàn 🙋",
-      BILL: "Yêu cầu tính tiền 💳",
-    };
-
-    const payload = {
-      id: `srv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      storeId,
-      tableId,
-      tableCode,
-      tableName: tableName || "Bàn",
-      type: type || "WAITER",
-      label: serviceTypeLabels[type] || "Yêu cầu hỗ trợ",
-      note: note || "",
-      requestedAt: Date.now(),
-    };
-
-    emitToStore(storeId, SocketEvents.SERVICE_REQUESTED, payload);
-    return { success: true, message: `Đã gửi yêu cầu: ${payload.label}`, data: payload };
+    const input = sessionInput.parse(request.body);
+    const result = await command(request, storeId, "SESSION_REQUEST", async tx => {
+      await checkLicense(tx, storeId, "MODULE_QR_ORDER");
+      const table = await lockTable(tx, storeId, input.tableId);
+      const row = await tx.serviceRequest.create({ data: { storeId, tableId: table.id, type: "SESSION", note: String(input.guestCount) } });
+      return { tableId: table.id, tableCode: table.code, tableName: table.name, zoneName: table.zone.name, storeId, requestedAt: row.requestedAt.getTime(), guestCount: input.guestCount, requestId: row.id };
+    });
+    emitToStore(storeId, SocketEvents.SESSION_REQUESTED, result);
+    return { success: true, data: { ...result, requestToken: app.jwt.sign({ kind: "request", userId: "request:" + result.requestId, role: "REQUEST", storeId, tableId: result.tableId, requestId: result.requestId }, { expiresIn: "12h" }) } };
+  });
+  app.post("/:storeId/session/approve", async request => {
+    const storeId = currentStore(request);
+    const input = sessionInput.parse(request.body);
+    const result = await command(request, storeId, "SESSION_OPEN", async tx => {
+      const { table, session } = await openSession(tx, storeId, input.tableId, input.guestCount);
+      await tx.serviceRequest.updateMany({ where: { storeId, tableId: table.id, type: "SESSION", status: "PENDING" }, data: { status: "APPROVED", sessionId: session.id } });
+      return { storeId, tableId: table.id, tableName: table.name, tableCode: table.code, zoneName: table.zone.name, sessionId: session.id, guestCount: session.guestCount };
+    });
+    emitToStore(storeId, SocketEvents.SESSION_APPROVED, result);
+    emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, { ...result, status: "OCCUPIED" });
+    return { success: true, data: result };
+  });
+  app.post("/:storeId/session/reject", async request => {
+    const storeId = currentStore(request);
+    const { tableId, reason } = z.object({ tableId: z.string(), reason: z.string().max(300).optional() }).parse(request.body);
+    await command(request, storeId, "SESSION_REJECT", async tx => { await lockTable(tx, storeId, tableId); await tx.serviceRequest.updateMany({ where: { storeId, tableId, type: "SESSION", status: "PENDING" }, data: { status: "REJECTED" } }); return { success: true }; });
+    emitToStore(storeId, SocketEvents.SESSION_REJECTED, { storeId, tableId, reason });
+    return { success: true };
+  });
+  app.post("/:storeId/session/close", async request => {
+    const storeId = currentStore(request);
+    const { tableId } = sessionInput.parse(request.body);
+    const result = await command(request, storeId, "SESSION_CLOSE_EMPTY", tx => closeEmptySession(tx, storeId, tableId));
+    emitToStore(storeId, SocketEvents.SESSION_CLOSED, { ...result, storeId });
+    if (result.sessionId) await disconnectSession(result.sessionId);
+    return { success: true, data: result };
+  });
+  app.get("/:storeId/pending-requests", async request => {
+    const storeId = currentStore(request);
+    const rows = await prisma.serviceRequest.findMany({ where: { storeId, type: "SESSION", status: "PENDING", requestedAt: { gt: new Date(Date.now() - 3600000) } } });
+    const tables = await prisma.table.findMany({ where: { storeId, id: { in: rows.map(r => r.tableId) } }, include: { zone: true } });
+    return { success: true, data: rows.map(row => { const table = tables.find(t => t.id === row.tableId); return { tableId: row.tableId, tableName: table?.name, tableCode: table?.code, zoneName: table?.zone.name, storeId, guestCount: Number(row.note) || 2, requestedAt: row.requestedAt.getTime() }; }) };
+  });
+  app.post("/:storeId/session/unlock-pin", async request => {
+    const { storeId } = request.params as { storeId: string };
+    const input = sessionInput.extend({ pin: z.string().regex(/^\d{4}$/) }).parse(request.body);
+    const result = await command(request, storeId, "SESSION_UNLOCK", async tx => {
+      const table = await lockTable(tx, storeId, input.tableId);
+      if (!timingSafeEqual(Buffer.from(input.pin), Buffer.from(getTablePin(table)))) throw new AppError(400, "Mã PIN không chính xác");
+      const { session } = await openSession(tx, storeId, table.id, input.guestCount);
+      return { storeId, tableId: table.id, tableName: table.name, tableCode: table.code, sessionId: session.id, guestCount: session.guestCount };
+    });
+    emitToStore(storeId, SocketEvents.SESSION_APPROVED, result);
+    return { success: true, data: { ...result, customerToken: customerToken(storeId, result.tableId, result.sessionId) } };
+  });
+  app.post("/:storeId/tables/:tableId/rotate-pin", async request => {
+    requireRoles(request, ["STORE_OWNER", "CASHIER"]);
+    const storeId = currentStore(request);
+    const { tableId } = request.params as { tableId: string };
+    return { success: true, data: await command(request, storeId, "TABLE_ROTATE_PIN", async tx => { await lockTable(tx, storeId, tableId); const table = await tx.table.update({ where: { id_storeId: { id: tableId, storeId } }, data: { qrSecret: randomUUID() } }); return { pin: getTablePin(table) }; }) };
+  });
+  app.get("/:storeId/service-requests", async request => {
+    const storeId = currentStore(request);
+    const rows = await prisma.serviceRequest.findMany({ where: { storeId, type: { not: "SESSION" }, status: "PENDING", sessionId: { not: null } }, orderBy: { requestedAt: "desc" } });
+    const tables = await prisma.table.findMany({ where: { storeId } });
+    return { success: true, data: rows.map(r => ({ ...r, tableName: tables.find(t => t.id === r.tableId)?.name, time: r.requestedAt.toISOString() })) };
+  });
+  app.post("/:storeId/service-requests/:requestId/ack", async request => {
+    const storeId = currentStore(request);
+    const { requestId } = request.params as { requestId: string };
+    return { success: true, data: await command(request, storeId, "SERVICE_ACK", async tx => {
+      const row = requireValue(await tx.serviceRequest.findFirst({ where: { id: requestId, storeId, type: { not: "SESSION" } } }));
+      return tx.serviceRequest.update({ where: { id: row.id }, data: { status: "COMPLETED" } });
+    }) };
+  });
+  app.post("/:storeId/service-request", async request => {
+    const storeId = currentStore(request);
+    const input = z.object({ tableId: z.string(), type: z.enum(["ICE", "TISSUE", "CLEAN", "UTENSILS", "WAITER", "BILL"]), note: z.string().trim().max(300).optional() }).parse(request.body);
+    const result = await command(request, storeId, "SERVICE_REQUEST", async tx => {
+      const table = await lockTable(tx, storeId, input.tableId);
+      const row = await tx.serviceRequest.create({ data: { storeId, tableId: table.id, sessionId: table.currentSessionId, type: input.type, note: input.note } });
+      return { ...row, tableName: table.name, requestedAt: row.requestedAt.getTime() };
+    });
+    emitToStore(storeId, SocketEvents.SERVICE_REQUESTED, result);
+    return { success: true, data: result };
   });
 };

@@ -30,7 +30,7 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   // Quản lý giỏ hàng theo unique ID (hỗ trợ 1 món nhiều biến thể khác nhau)
   const [selectedItems, setSelectedItems] = useState<Record<string, SelectedDishItem>>({});
   const [activeNoteItemId, setActiveNoteItemId] = useState<string | null>(null);
-  
+
   // State mở modal chi tiết món
   const [detailContext, setDetailContext] = useState<OrderMenuDetailContext | null>(null);
 
@@ -91,6 +91,7 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
 
   // Quick add từ nút + trên DishCard
   const handleQuickAdd = (dish: MenuDishItem) => {
+    if (dish.variants?.length || dish.optionGroups?.length) { setDetailContext({ dish }); return; }
     const existingEntry = Object.values(selectedItems).find((i) => i.dish.id === dish.id);
     if (existingEntry) {
       handleIncreaseQuantity(existingEntry.id);
@@ -198,10 +199,11 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
   const totalAmount = orderList.reduce((sum, item) => sum + (item.unitPrice || item.dish.price) * item.quantity, 0);
   const totalQuantity = orderList.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     if (orderList.length === 0) return;
     const cartItems: CartItem[] = orderList.map((item) => ({
       id: item.id,
+      dishId: item.dish.id,
       name: item.dish.name,
       price: item.unitPrice || item.dish.price,
       quantity: item.quantity,
@@ -209,9 +211,11 @@ export const OrderMenuModal: React.FC<OrderMenuModalProps> = ({
       selectedVariant: item.selectedVariant,
       selectedOptions: item.selectedOptions,
     }));
-    onSubmitOrder(table.name, cartItems);
-    setSelectedItems({});
-    onClose();
+    try {
+      await onSubmitOrder(table.name, cartItems);
+      setSelectedItems({});
+      onClose();
+    } catch { return; }
   };
 
   const handleHeaderBack = () => {

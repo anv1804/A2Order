@@ -1,17 +1,18 @@
-import React, { useState } from "react";
+import { useResource } from "@a2order/shared/react";
+import { getAuthUser } from "@a2order/shared";
+import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { DeepAnalyticsReport, MenuCategoryType } from "@a2order/shared";
-import { SalesBillRecord, CanceledItemRecord } from "@/types/cms.types";
+import { SalesBillRecord, CanceledItemRecord, ProfitLossPeriodRow } from "@/types/cms.types";
 
 export const CmsDeepAnalyticsView: React.FC = () => {
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const loggedStore = userStr ? JSON.parse(userStr) : null;
-  const currentStoreName = loggedStore?.storeName || "A2 Roastery & Kitchen";
-  const currentStoreAddress = loggedStore?.address || "79 Đường Hoa Sứ, Phường 7, Phú Nhuận, TP.HCM";
-  const currentStorePhone = loggedStore?.phone || "0908889999";
+  const loggedStore = getAuthUser();
+  const currentStoreName = loggedStore?.storeName || "Cửa hàng";
+  const currentStoreAddress = loggedStore?.address || "Chưa cập nhật địa chỉ";
+  const currentStorePhone = loggedStore?.phone || "Chưa cập nhật";
   const currentUserName = loggedStore?.name || "Chủ Quán";
 
   // Bộ lọc thời gian
@@ -19,12 +20,12 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   // Tab phân hệ
   const [activeTab, setActiveTab] = useState<"overview" | "bills" | "menu_cogs" | "void_audit" | "pnl">("overview");
 
-  // Export CSV mock
+  const [remoteReport, , reportError] = useResource<{ report: DeepAnalyticsReport; bills: SalesBillRecord[]; canceledItems: CanceledItemRecord[] }>(`/analytics/${loggedStore?.storeId}/deep-reports?period=${period}`, { report: { period, summary: { totalRevenue: 0, totalOrders: 0, averageOrderValue: 0, discountLossTotal: 0, canceledItemCount: 0 }, hourlyHeatmap: [], paymentDistribution: [], menuMatrix: { stars: [], plowhorses: [], puzzles: [], dogs: [] } }, bills: [], canceledItems: [] });
+  useEffect(() => { if (reportError) toast.error(reportError.message); }, [reportError?.message]);
+  // Export current filtered ledger
   const handleExportCsv = () => {
-    const csvContent = "Ma HD,Ten Ban,Thu Ngan,Tong Tien,Phuong Thuc,Trang Thai\n" +
-      "HD-001,Ban 04,Minh Tuan,850000,VIETQR,COMPLETED\n" +
-      "HD-002,Ban 08,Thu Ha,1200000,CASH,COMPLETED\n" +
-      "HD-003,Ban 02,Hong Nhung,650000,VIETQR,COMPLETED";
+    const cell = (value: unknown) => '"' + String(value ?? "").replace(/^[=+@-]/, "'$&").replace(/"/g, '""') + '"';
+    const csvContent = "\uFEFF" + [["Mã HD", "Tên bàn", "Thu ngân", "Tổng tiền", "Phương thức", "Trạng thái"], ...filteredBills.map(b => [b.billCode, b.tableName, b.cashierName, b.finalAmount, b.paymentMethod, b.status])].map(row => row.map(cell).join(",")).join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -48,10 +49,10 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   const [isZReportOpen, setIsZReportOpen] = useState(false);
 
   // Sổ chi tiết hóa đơn bán hàng (Sales Audit Ledger)
-  const [bills, setBills] = usePersistentState<SalesBillRecord[]>("sales_bills_data", []);
+  const bills = remoteReport.bills;
 
   // Nhật ký món bị hủy sau khi in bếp (Void / Waste Audit)
-  const [canceledItems] = usePersistentState<CanceledItemRecord[]>("void_audit_canceled_items", []);
+  const canceledItems = remoteReport.canceledItems;
 
   // Báo cáo tổng hợp – tính động từ dữ liệu hóa đơn thực tế
   const totalRevenue = bills.reduce((sum, b) => sum + b.finalAmount, 0);
@@ -59,19 +60,12 @@ export const CmsDeepAnalyticsView: React.FC = () => {
   const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
   const discountLossTotal = bills.reduce((sum, b) => sum + (b.discountAmount || 0), 0);
 
-  const report: DeepAnalyticsReport = {
-    period: period === "yesterday" ? "today" : period,
-    summary: {
-      totalRevenue,
-      totalOrders,
-      averageOrderValue,
-      discountLossTotal,
-      canceledItemCount: canceledItems.length,
-    },
-    hourlyHeatmap: [],
-    paymentDistribution: [],
-    menuMatrix: { stars: [], plowhorses: [], puzzles: [], dogs: [] },
-  };
+  const report = remoteReport.report;
+  const vietQr = report.paymentDistribution.find(p => p.method === "VIETQR");
+  const cash = report.paymentDistribution.find(p => p.method === "CASH");
+  const voidSaleAmount = canceledItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const peak = [...report.hourlyHeatmap].sort((a, b) => b.revenue - a.revenue)[0];
+  const periodLabel = { today: "Hôm nay", yesterday: "Hôm qua", week: "Tuần này", month: "Tháng này" }[period];
 
   // Doanh thu theo ca (Shift Revenue Breakdown) – tính động
   const shiftGroups = bills.reduce<Record<string, { orderCount: number; vietQrAmount: number; cashAmount: number; totalRevenue: number }>>((acc, b) => {
@@ -79,8 +73,10 @@ export const CmsDeepAnalyticsView: React.FC = () => {
     if (!acc[shift]) acc[shift] = { orderCount: 0, vietQrAmount: 0, cashAmount: 0, totalRevenue: 0 };
     acc[shift].orderCount++;
     acc[shift].totalRevenue += b.finalAmount;
-    if (b.paymentMethod === "VIETQR") acc[shift].vietQrAmount += b.finalAmount;
-    else if (b.paymentMethod === "CASH") acc[shift].cashAmount += b.finalAmount;
+    for (const payment of b.payments || []) {
+      if (payment.method === "VIETQR") acc[shift].vietQrAmount += payment.amount;
+      if (payment.method === "CASH") acc[shift].cashAmount += payment.amount;
+    }
     return acc;
   }, {});
   const shiftData = Object.entries(shiftGroups).map(([shiftId, data]) => ({
@@ -89,7 +85,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
     inCharge: "",
     ...data,
     cashDifference: 0,
-    status: "Đang diễn ra",
+    status: "Theo giờ thanh toán",
   }));
 
   // Lọc hóa đơn bán hàng
@@ -163,7 +159,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                 <Icon name="activity" size={12} className="text-blue-300" />
-                <span>VietQR: 72.8%</span>
+                <span>VietQR: {vietQr?.percentage || 0}%</span>
               </span>
             </div>
           </div>
@@ -175,7 +171,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 px-3.5 sm:px-4 text-xs font-black text-slate-950 shadow-sm transition active:scale-95 shrink-0"
             >
               <Icon name="fileText" size={14} />
-              <span>Chốt Ca (Z-Report)</span>
+              <span>Xem Tổng Kết Kỳ</span>
             </button>
 
             <button
@@ -199,7 +195,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               <Icon name="banknote" size={16} />
             </span>
             <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-md">
-              +18% kỳ trước
+              Theo kỳ đã chọn
             </span>
           </div>
           <div>
@@ -251,10 +247,10 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               Tỷ Lệ VietQR Napas
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              72.8% <span className="text-xs font-bold text-slate-400">doanh thu</span>
+              {vietQr?.percentage || 0}% <span className="text-xs font-bold text-slate-400">doanh thu</span>
             </p>
             <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
-              11.55tr chuyển khoản tức thời
+              {(vietQr?.totalAmount || 0).toLocaleString("vi-VN")} đ chuyển khoản
             </p>
           </div>
         </article>
@@ -265,18 +261,18 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               <Icon name="alert" size={16} />
             </span>
             <span className="text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-md">
-              Thất thoát
+              Món hủy
             </span>
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Hao Hụt & Món Hủy
+              Giá Bán Món Hủy
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {report.summary.discountLossTotal.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
+              {voidSaleAmount.toLocaleString("vi-VN")} <span className="text-xs font-bold text-slate-400">đ</span>
             </p>
             <p className="text-[10px] font-semibold text-amber-600 mt-1 truncate">
-              {report.summary.canceledItemCount} món hủy sau bếp
+              {report.summary.canceledItemCount} lượt hủy món
             </p>
           </div>
         </article>
@@ -397,7 +393,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
 
                   <div className="flex items-center justify-between text-[11px] text-ink-muted pt-1">
                     <span>Lượt đơn: <strong>{shift.orderCount} hóa đơn</strong></span>
-                    <span className="text-emerald-700 font-bold">✓ Khớp két 100%</span>
+                    <span className="text-emerald-700 font-bold">Chưa kiểm kê két</span>
                   </div>
                 </div>
               ))}
@@ -443,7 +439,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                                 ? "bg-gradient-to-r from-orange-500 to-amber-500"
                                 : "bg-brand-800"
                             }`}
-                            style={{ width: `${Math.min(100, (slot.revenue / 7000000) * 100)}%` }}
+                            style={{ width: `${Math.min(100, (slot.revenue / Math.max(1, peak?.revenue || 0)) * 100)}%` }}
                           />
                         </div>
                       </div>
@@ -452,7 +448,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 mt-4">
-                  💡 <strong>Gợi ý vận hành:</strong> Khung giờ trưa 11:00 - 13:30 chiếm 41% tổng doanh thu. Chuẩn bị sẵn 60 bát tái nạm để phục vụ nhanh nhất.
+                  💡 <strong>Gợi ý vận hành:</strong> {peak?.revenue ? `Khung giờ ${peak.hourLabel} có doanh thu cao nhất trong kỳ: ${peak.revenue.toLocaleString("vi-VN")} đ.` : "Chưa đủ dữ liệu để xác định giờ cao điểm."}
                 </div>
               </Panel>
             </div>
@@ -499,7 +495,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
 
                 <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900 mt-4 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-                  <span>100% giao dịch VietQR đã được đối soát khớp mã Napas tự động.</span>
+                  <span>Số liệu theo các khoản thu đã ghi nhận; kiểm kê két và đối chiếu sao kê do quán thực hiện.</span>
                 </div>
               </Panel>
             </div>
@@ -641,7 +637,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                           }`}
                         >
                           <Icon name={b.paymentMethod === "VIETQR" ? "vietqr" : "banknote"} className="w-3 h-3" />
-                          <span>{b.paymentMethod === "VIETQR" ? "VietQR" : "Tiền mặt"}</span>
+                          <span>{b.paymentMethod === "VIETQR" ? "VietQR" : b.paymentMethod === "MIXED" ? "Kết hợp" : "Tiền mặt"}</span>
                         </span>
                       </td>
                       <td className="py-3 px-4 text-center">
@@ -923,7 +919,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               <div className="flex justify-between text-[11px] text-ink-muted pt-1">
                 <span>Phương thức:</span>
                 <span className="font-black text-emerald-800 uppercase">
-                  {selectedBill.paymentMethod === "VIETQR" ? "Chuyển khoản VietQR" : "Tiền mặt"}
+                  {selectedBill.paymentMethod === "VIETQR" ? "Chuyển khoản VietQR" : selectedBill.paymentMethod === "MIXED" ? "Kết hợp" : "Tiền mặt"}
                 </span>
               </div>
             </div>
@@ -949,7 +945,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                 size="sm"
                 className="w-1/2 rounded-xl bg-brand-900 text-white text-xs gap-1.5 shadow-sm"
                 onClick={() => {
-                  toast.success(`Đã gửi lệnh in lại hóa đơn ${selectedBill.billCode} ra máy in nhiệt 80mm`);
+                  toast.info("Chưa kết nối máy in vật lý. Lệnh in chưa được gửi.");
                   setSelectedBill(null);
                 }}
               >
@@ -971,7 +967,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                   <Icon name="fileText" className="w-4 h-4 text-brand-900" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-ink-primary">Báo Cáo Chốt Ca (Z-Report)</h3>
+                  <h3 className="text-base font-black text-ink-primary">Báo Cáo Xem Tổng Kết Kỳ</h3>
                   <p className="text-xs text-ink-muted">Tổng kết doanh số & kiểm kê két tiền mặt F&B</p>
                 </div>
               </div>
@@ -991,8 +987,8 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                   <span className="text-ink-primary">{currentStoreName}</span>
                 </div>
                 <div className="flex justify-between font-bold">
-                  <span className="text-ink-muted">Ngày kết ca:</span>
-                  <span className="text-ink-primary">{new Date().toLocaleDateString("vi-VN")}</span>
+                  <span className="text-ink-muted">Kỳ báo cáo:</span>
+                  <span className="text-ink-primary">{periodLabel}</span>
                 </div>
                 <div className="flex justify-between font-bold">
                   <span className="text-ink-muted">Người lập báo cáo:</span>
@@ -1002,24 +998,24 @@ export const CmsDeepAnalyticsView: React.FC = () => {
 
               <div className="space-y-2 border-t border-surface-border pt-3">
                 <div className="flex justify-between text-sm font-black text-ink-primary">
-                  <span>TỔNG THỰC THU TRONG NGÀY:</span>
+                  <span>TỔNG THỰC THU TRONG KỲ:</span>
                   <span className="text-brand-900">{report.summary.totalRevenue.toLocaleString("vi-VN")} đ</span>
                 </div>
                 <div className="flex justify-between text-xs text-emerald-800 font-bold">
                   <span>- Chuyển khoản VietQR (Napas 247):</span>
-                  <span>11.550.000 đ</span>
+                  <span>{(vietQr?.totalAmount || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
                 <div className="flex justify-between text-xs text-amber-800 font-bold">
-                  <span>- Tiền mặt thực tế tại két bàn giao:</span>
-                  <span>3.800.000 đ</span>
+                  <span>- Tiền mặt đã ghi nhận trên hệ thống:</span>
+                  <span>{(cash?.totalAmount || 0).toLocaleString("vi-VN")} đ</span>
                 </div>
                 <div className="flex justify-between text-xs text-ink-muted">
                   <span>- Tổng lượt bàn phục vụ:</span>
                   <span>{report.summary.totalOrders} lượt</span>
                 </div>
                 <div className="flex justify-between text-xs text-rose-700">
-                  <span>- Món bị hủy bếp (Thất thoát):</span>
-                  <span>{report.summary.discountLossTotal.toLocaleString("vi-VN")} đ (3 món)</span>
+                  <span>- Giá bán món đã hủy:</span>
+                  <span>{voidSaleAmount.toLocaleString("vi-VN")} đ ({canceledItems.length} lượt hủy)</span>
                 </div>
               </div>
             </div>
@@ -1039,7 +1035,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                 size="sm"
                 className="rounded-xl bg-brand-900 text-white text-xs px-5 shadow-sm gap-1.5"
                 onClick={() => {
-                  toast.success("Đã in phiếu Z-Report chốt ca thành công ra máy in nhiệt!");
+                  toast.info("Chưa kết nối máy in vật lý. Lệnh in chưa được gửi.");
                   setIsZReportOpen(false);
                 }}
               >
@@ -1052,36 +1048,31 @@ export const CmsDeepAnalyticsView: React.FC = () => {
       )}
       {/* TAB P&L: Lãi / Lỗ */}
       {activeTab === "pnl" && (() => {
-        const pnlWeeks = [
-          { week: "Tuần 1 (01-07/09)", revenue: 62500000, cogs: 22800000, staff: 12000000, other: 3500000 },
-          { week: "Tuần 2 (08-14/09)", revenue: 71200000, cogs: 26100000, staff: 12000000, other: 3200000 },
-          { week: "Tuần 3 (15-21/09)", revenue: 68900000, cogs: 24500000, staff: 12000000, other: 3800000 },
-          { week: "Tuần 4 (22-28/09)", revenue: 79400000, cogs: 29200000, staff: 12000000, other: 4100000 },
-        ];
-        const totals = pnlWeeks.reduce((a, w) => ({ revenue: a.revenue + w.revenue, cogs: a.cogs + w.cogs, staff: a.staff + w.staff, other: a.other + w.other }), { revenue: 0, cogs: 0, staff: 0, other: 0 });
-        const totalProfit = totals.revenue - totals.cogs - totals.staff - totals.other;
-        const profitMargin = ((totalProfit / totals.revenue) * 100).toFixed(1);
+        const pnlWeeks: ProfitLossPeriodRow[] = [];
+        const totals = pnlWeeks.reduce((a, w) => ({ revenue: a.revenue + w.revenue, cogs: a.cogs + w.cogs, staff: a.staff + w.staff, other: a.other + w.other }), { revenue: totalRevenue, cogs: 0, staff: 0, other: 0 });
+        const totalProfit = pnlWeeks.length ? totals.revenue - totals.cogs - totals.staff - totals.other : null;
+        const profitMargin = totalProfit !== null && totals.revenue ? ((totalProfit / totals.revenue) * 100).toFixed(1) : "—";
         return (
           <div className="space-y-5">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <Panel variant="featured" padding="md" className="flex flex-col justify-between">
                 <span className="text-xs font-bold text-brand-200">Tổng Doanh Thu</span>
                 <div className="my-2"><span className="text-2xl font-black tracking-tight">{(totals.revenue / 1000000).toFixed(1)}M</span><span className="text-xs text-brand-200 ml-1">đ</span></div>
-                <span className="text-[11px] font-bold text-emerald-300">Tháng 9/2026</span>
+                <span className="text-[11px] font-bold text-emerald-300">{periodLabel}</span>
               </Panel>
               <Panel variant="default" padding="md" className="flex flex-col justify-between">
                 <span className="text-xs font-bold text-ink-muted">Chi Phí Nguyên Liệu</span>
-                <div className="my-2"><span className="text-2xl font-black text-rose-600 tracking-tight">{(totals.cogs / 1000000).toFixed(1)}M</span><span className="text-xs text-ink-muted ml-1">đ</span></div>
-                <span className="text-[11px] font-bold text-rose-600">{((totals.cogs / totals.revenue) * 100).toFixed(0)}% doanh thu</span>
+                <div className="my-2"><span className="text-2xl font-black text-rose-600 tracking-tight">{pnlWeeks.length ? (totals.cogs / 1000000).toFixed(1) + "M" : "—"}</span><span className="text-xs text-ink-muted ml-1">đ</span></div>
+                <span className="text-[11px] font-bold text-rose-600">Chưa có dữ liệu chi phí</span>
               </Panel>
               <Panel variant="default" padding="md" className="flex flex-col justify-between">
                 <span className="text-xs font-bold text-ink-muted">Chi Phí Nhân Sự</span>
-                <div className="my-2"><span className="text-2xl font-black text-amber-600 tracking-tight">{(totals.staff / 1000000).toFixed(1)}M</span><span className="text-xs text-ink-muted ml-1">đ</span></div>
-                <span className="text-[11px] font-bold text-amber-600">{((totals.staff / totals.revenue) * 100).toFixed(0)}% doanh thu</span>
+                <div className="my-2"><span className="text-2xl font-black text-amber-600 tracking-tight">{pnlWeeks.length ? (totals.staff / 1000000).toFixed(1) + "M" : "—"}</span><span className="text-xs text-ink-muted ml-1">đ</span></div>
+                <span className="text-[11px] font-bold text-amber-600">Chưa có dữ liệu chi phí</span>
               </Panel>
               <Panel variant="default" padding="md" className="flex flex-col justify-between bg-emerald-50/50 border-emerald-200">
                 <span className="text-xs font-bold text-emerald-700">Lợi Nhuận Ròng</span>
-                <div className="my-2"><span className="text-2xl font-black text-emerald-700 tracking-tight">{(totalProfit / 1000000).toFixed(1)}M</span><span className="text-xs text-emerald-600 ml-1">đ</span></div>
+                <div className="my-2"><span className="text-2xl font-black text-emerald-700 tracking-tight">{totalProfit === null ? "—" : (totalProfit / 1000000).toFixed(1) + "M"}</span><span className="text-xs text-emerald-600 ml-1">đ</span></div>
                 <span className="text-[11px] font-bold text-emerald-700">Biên lãi: {profitMargin}%</span>
               </Panel>
             </div>
@@ -1089,7 +1080,7 @@ export const CmsDeepAnalyticsView: React.FC = () => {
             <Panel variant="default" padding="lg">
               <h3 className="text-sm font-black text-ink-primary mb-4 flex items-center gap-2">
                 <Icon name="trending" className="w-4 h-4 text-brand-800" />
-                Bảng Lãi/Lỗ Theo Tuần (Tháng 9/2026)
+                Bảng Lãi/Lỗ — Chưa Có Sổ Chi Phí
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
@@ -1123,12 +1114,12 @@ export const CmsDeepAnalyticsView: React.FC = () => {
                       );
                     })}
                     <tr className="border-t-2 border-brand-200 bg-brand-50/30 font-black">
-                      <td className="py-3 pr-4 text-brand-900">Tổng Tháng</td>
+                      <td className="py-3 pr-4 text-brand-900">Tổng Kỳ</td>
                       <td className="py-3 px-3 text-right text-brand-900">{totals.revenue.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-rose-700">-{totals.cogs.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-amber-700">-{totals.staff.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-slate-600">-{totals.other.toLocaleString("vi-VN")}</td>
-                      <td className="py-3 px-3 text-right text-emerald-800">{totalProfit.toLocaleString("vi-VN")}</td>
+                      <td className="py-3 px-3 text-right text-rose-700">{pnlWeeks.length ? "-" + totals.cogs.toLocaleString("vi-VN") : "—"}</td>
+                      <td className="py-3 px-3 text-right text-amber-700">{pnlWeeks.length ? "-" + totals.staff.toLocaleString("vi-VN") : "—"}</td>
+                      <td className="py-3 px-3 text-right text-slate-600">{pnlWeeks.length ? "-" + totals.other.toLocaleString("vi-VN") : "—"}</td>
+                      <td className="py-3 px-3 text-right text-emerald-800">{totalProfit?.toLocaleString("vi-VN") ?? "—"}</td>
                       <td className="py-3 pl-3 text-right"><span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-200 text-emerald-900 font-black">{profitMargin}%</span></td>
                     </tr>
                   </tbody>
@@ -1136,8 +1127,8 @@ export const CmsDeepAnalyticsView: React.FC = () => {
               </div>
               <div className="mt-4 p-3 rounded-xl bg-surface-canvas border border-surface-border text-[10px] text-ink-muted space-y-1">
                 <p className="font-bold text-ink-primary text-xs">Ghi chú kế toán:</p>
-                <p>• COGS = tổng phiếu nhập hàng trong kỳ. Nhân sự = lương cố định + thưởng ca. Chi phí khác = điện nước, mặt bằng phân bổ.</p>
-                <p>• Biên lãi thuần (Net Margin) mục tiêu ngành F&B Việt Nam: 20-35%.</p>
+                <p>Chưa cấu hình sổ chi phí và bảng lương. Báo cáo chưa xác định lợi nhuận ròng; doanh thu lấy từ bill đã thanh toán trong kỳ.</p>
+                <p>Không dùng dữ liệu nhập kho thay cho giá vốn đã tiêu thụ. Cần bổ sung dữ liệu chi phí trước khi lập báo cáo P&L.</p>
               </div>
             </Panel>
           </div>
@@ -1147,5 +1138,3 @@ export const CmsDeepAnalyticsView: React.FC = () => {
     </div>
   );
 };
-
-
