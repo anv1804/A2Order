@@ -12,7 +12,7 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
   storeId = "store-demo-central",
   storeName = "A2Order Restaurant & Cafe",
 }) => {
-  const [authMode, setAuthMode] = useState<"account" | "pin">("account");
+  const [authMode, setAuthMode] = useState<"pin" | "account">("pin");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -22,6 +22,26 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
   // PIN mode state
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [pin, setPin] = useState<string>("");
+
+  const handleQuickFill = (role: "WAITER" | "CASHIER" | "CHEF" | "STORE_OWNER") => {
+    if (role === "WAITER") {
+      setEmail("waiter@a2order.vn");
+      setPassword("Staff@123456");
+      setPin("1234");
+    } else if (role === "CASHIER") {
+      setEmail("cashier@a2order.vn");
+      setPassword("Cashier@123456");
+      setPin("5678");
+    } else if (role === "CHEF") {
+      setEmail("chef@a2order.vn");
+      setPassword("Chef@123456");
+      setPin("3333");
+    } else {
+      setEmail("owner@a2order.vn");
+      setPassword("Owner@123456");
+      setPin("8888");
+    }
+  };
 
   const handleAccountLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -35,14 +55,13 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
 
     setIsSubmitting(true);
     try {
-      // 1. Gửi request lên Backend API xác thực
       const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-owner", {
         method: "POST",
         body: JSON.stringify({ email: trimmedEmail, password: password || "A2Order@2026" }),
       });
       await onLoginSuccess(result.user, result.token);
     } catch {
-      // 2. Fallback offline: Tự động phân luồng theo tài khoản bảo mật
+      // Graceful offline fallback
       const lower = trimmedEmail.toLowerCase();
       let role = "WAITER";
       let name = "Lê Hoàng Long (Phục Vụ)";
@@ -137,154 +156,187 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-screen bg-[#07130e] flex items-center justify-center p-3 sm:p-6 relative overflow-hidden select-none font-sans">
-      {/* Background Glow Orbs */}
-      <div className="absolute top-[-15%] left-[-10%] w-[550px] h-[550px] rounded-full blur-[140px] pointer-events-none bg-emerald-600/20" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[600px] h-[600px] rounded-full blur-[150px] pointer-events-none bg-brand-800/25" />
+    <div className="min-h-[100dvh] w-full bg-surface-canvas flex flex-col md:items-center md:justify-center md:p-6 select-none font-sans text-ink-primary">
+      {/* ============================================================== */}
+      {/* KHUNG TRUNG TÂM: NATIVE TOÀN MÀN HÌNH TRÊN MOBILE, CARD TRÊN DESKTOP */}
+      {/* ============================================================== */}
+      <div className="w-full flex-1 md:flex-initial md:max-w-4xl bg-white md:rounded-3xl md:shadow-2xl md:border md:border-surface-border overflow-hidden grid md:grid-cols-[1fr_1.15fr] min-h-[100dvh] md:min-h-[580px]">
+        {/* ============================================================== */}
+        {/* CỘT TRÁI (DESKTOP) / BANNER TRÊN (MOBILE): BRANDING SANG TRỌNG */}
+        {/* ============================================================== */}
+        <header className="relative bg-gradient-to-br from-[#0c261d] via-[#12372A] to-[#194B3A] p-5 sm:p-8 text-white flex flex-col justify-between shrink-0 overflow-hidden">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-[-30%] right-[-20%] w-48 h-48 rounded-full bg-emerald-400/15 blur-2xl pointer-events-none" />
+          <div className="absolute bottom-[-30%] left-[-20%] w-48 h-48 rounded-full bg-brand-600/20 blur-2xl pointer-events-none" />
 
-      {/* Grid Pattern Overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.035] pointer-events-none"
-        style={{
-          backgroundImage: "radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)",
-          backgroundSize: "28px 28px",
-        }}
-      />
-
-      {/* Main Glassmorphic Portal Card */}
-      <div className="w-full max-w-4xl bg-surface-card/95 backdrop-blur-2xl border border-surface-border rounded-3xl shadow-[0_32px_100px_rgba(0,0,0,.6)] overflow-hidden grid lg:grid-cols-[1fr_1.1fr] relative z-10 animate-scaleUp">
-        {/* Left Side: Brand Showcase & Enterprise Security */}
-        <aside className="hidden lg:flex relative min-h-[540px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0a1e16] via-[#12372A] to-[#194B3A] p-8 text-white">
-          <div className="absolute -right-20 top-20 h-64 w-64 rounded-full border border-white/10" />
-          <div className="absolute -right-10 top-36 h-48 w-48 rounded-full border border-white/10" />
-          <div className="absolute -bottom-20 -left-16 h-60 w-60 rounded-full bg-emerald-400/10 blur-3xl" />
-
-          {/* Brand Header */}
+          {/* Top: Logo & Title */}
           <div className="relative z-10 flex items-center gap-3">
             <img
               src="/logo-symbol.jpg"
               alt="A2Order"
-              className="h-11 w-11 rounded-2xl object-cover ring-2 ring-white/20 shadow-lg"
+              className="w-11 h-11 rounded-2xl object-cover ring-2 ring-white/20 shadow-md shrink-0"
             />
-            <div>
-              <span className="block text-lg font-black tracking-tight">A2Order</span>
-              <span className="text-[10px] font-bold tracking-[.18em] text-emerald-200 uppercase">
-                F&B Smart Ecosystem
+            <div className="min-w-0">
+              <span className="block font-black text-base sm:text-lg tracking-tight leading-tight">
+                A2Order
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-bold text-emerald-200 uppercase tracking-widest block truncate">
+                F&B Smart Platform
               </span>
             </div>
           </div>
 
-          {/* Central Enterprise Message */}
-          <div className="relative z-10 py-6">
-            <span className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-100">
+          {/* Desktop Only: Enterprise Highlights */}
+          <div className="hidden md:block relative z-10 py-6">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[10px] font-extrabold text-emerald-200 uppercase tracking-wider mb-3">
               <Icon name="shield" size={12} />
               Bảo Mật Phân Quyền Vai Trò
             </span>
-            <h2 className="text-2xl font-black leading-snug tracking-tight">
-              Cổng Đăng Nhập Vận Hành Chuẩn Hóa
+            <h2 className="text-xl lg:text-2xl font-black leading-snug tracking-tight">
+              Hệ Sinh Thái Vận Hành & Quản Trị Nhà Hàng
             </h2>
             <p className="mt-2 text-xs text-emerald-100/80 leading-relaxed">
-              Hệ thống tự động nhận diện danh tính và mở chính xác giao diện nghiệp vụ theo vai trò được cấp quyền.
+              Tự động phân luồng đúng phân hệ làm việc theo quyền hạn được cấp: Phục Vụ Bàn, Quầy Thu Ngân, Bếp KDS hoặc Chủ Quán.
             </p>
 
-            {/* Architecture Highlights */}
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-emerald-400/20 text-emerald-300 flex items-center justify-center shrink-0">
-                  <Icon name="checkCircle" size={16} />
-                </div>
-                <div className="text-xs leading-tight">
-                  <span className="font-bold text-white block">Tự động phân luồng:</span>
-                  <span className="text-emerald-100/75 text-[11px]">Đúng người - Đúng việc - Đúng quyền hạn</span>
-                </div>
+            <div className="mt-6 space-y-2.5">
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+                <Icon name="checkCircle" size={16} className="text-emerald-300 shrink-0" />
+                <span className="text-emerald-50">Tối ưu công thái học di động & quầy POS</span>
               </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
-                <div className="w-8 h-8 rounded-xl bg-teal-400/20 text-teal-300 flex items-center justify-center shrink-0">
-                  <Icon name="smartphone" size={16} />
-                </div>
-                <div className="text-xs leading-tight">
-                  <span className="font-bold text-white block">Tối ưu công thái học:</span>
-                  <span className="text-emerald-100/75 text-[11px]">Cầm tay di động, POS quầy & Màn hình KDS bếp</span>
-                </div>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10 text-xs">
+                <Icon name="lock" size={16} className="text-emerald-300 shrink-0" />
+                <span className="text-emerald-50">Cách ly dữ liệu đa thuê Multi-Tenant</span>
               </div>
             </div>
           </div>
 
-          {/* Footer Security Badge */}
-          <div className="relative z-10 flex items-center justify-between pt-4 border-t border-white/10 text-[10px] text-emerald-200/70">
-            <span className="flex items-center gap-1.5">
-              <Icon name="lock" size={12} className="text-emerald-400" />
-              Mã hóa phiên làm việc đa thuê
-            </span>
-            <span className="font-mono">A2Order v7.0</span>
+          {/* Bottom Version Tag */}
+          <div className="relative z-10 flex items-center justify-between pt-2 border-t border-white/10 text-[10px] text-emerald-200/70 mt-2 md:mt-0">
+            <span>{storeName}</span>
+            <span className="font-mono">v7.0 Stable</span>
           </div>
-        </aside>
+        </header>
 
-        {/* Right Side: Login Form */}
-        <div className="p-6 sm:p-8 flex flex-col justify-between overflow-y-auto max-h-[92vh] no-scrollbar">
+        {/* ============================================================== */}
+        {/* CỘT PHẢI: FORM ĐĂNG NHẬP CHÍNH THỨC                             */}
+        {/* ============================================================== */}
+        <main className="flex-1 bg-white p-5 sm:p-8 flex flex-col justify-between overflow-y-auto no-scrollbar">
           <div>
-            {/* Header */}
-            <div className="text-left mb-5">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">
-                  Đăng Nhập Hệ Thống
-                </h3>
-                <span className="px-2.5 py-1 rounded-full bg-brand-100 text-brand-800 text-[10px] font-extrabold uppercase">
-                  A2Order POS
-                </span>
-              </div>
-              <p className="text-xs text-ink-muted mt-1">
-                Nhập tài khoản hoặc mã PIN vào ca để bắt đầu làm việc.
+            {/* Header Form */}
+            <div className="mb-4">
+              <h3 className="text-lg sm:text-xl font-black text-ink-primary tracking-tight">
+                Đăng Nhập Ca Làm Việc
+              </h3>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Nhập mã PIN hoặc tài khoản để mở giao diện làm việc.
               </p>
             </div>
 
-            {/* Auth Mode Toggle Pill */}
+            {/* Tab Switcher: Mã PIN (Ưu tiên nhân viên) | Tài Khoản (Quản lý) */}
             <div className="p-1 bg-surface-canvas rounded-2xl flex text-xs font-bold gap-1 mb-5 border border-surface-border">
               <button
                 type="button"
-                onClick={() => setAuthMode("account")}
-                className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  authMode === "account"
+                onClick={() => setAuthMode("pin")}
+                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  authMode === "pin"
                     ? "bg-brand-900 text-white shadow-xs font-extrabold"
-                    : "text-ink-muted hover:text-ink-primary hover:bg-white/50"
+                    : "text-ink-muted hover:text-ink-primary hover:bg-white/60"
                 }`}
               >
-                <Icon name="mail" size={14} />
-                <span>Tài Khoản & Mật Khẩu</span>
+                <Icon name="key" size={14} />
+                <span>Mã PIN Ca</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => setAuthMode("pin")}
-                className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  authMode === "pin"
+                onClick={() => setAuthMode("account")}
+                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  authMode === "account"
                     ? "bg-brand-900 text-white shadow-xs font-extrabold"
-                    : "text-ink-muted hover:text-ink-primary hover:bg-white/50"
+                    : "text-ink-muted hover:text-ink-primary hover:bg-white/60"
                 }`}
               >
-                <Icon name="key" size={14} />
-                <span>Mã PIN Vào Ca (4 Số)</span>
+                <Icon name="mail" size={14} />
+                <span>Tài Khoản</span>
               </button>
             </div>
 
-            {/* Mode 1: Account Login */}
-            {authMode === "account" ? (
-              <form onSubmit={handleAccountLogin} className="space-y-4 text-left">
+            {/* TAB 1: MÃ PIN VÀO CA (Chuyên dụng cho Phục vụ, Thu ngân, Bếp) */}
+            {authMode === "pin" ? (
+              <div className="space-y-4">
+                {/* Staff Select Chips (nếu có danh sách nhân viên) */}
+                {staffList.length > 0 && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-ink-muted mb-1.5 text-left">
+                      Nhân viên ca trực:
+                    </label>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                      {staffList.slice(0, 5).map((st) => (
+                        <button
+                          key={st.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStaff(st);
+                            setPin("");
+                          }}
+                          className={`px-3 py-1.5 rounded-full border text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                            selectedStaff?.id === st.id
+                              ? "bg-brand-900 text-white border-brand-900 shadow-xs"
+                              : "bg-surface-canvas border-surface-border text-ink-primary hover:bg-brand-50"
+                          }`}
+                        >
+                          {st.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* PIN Dots Display */}
+                <div className="text-center py-2">
+                  <span className="text-xs font-bold text-ink-muted block mb-2">
+                    {selectedStaff ? `Nhập PIN cho: ${selectedStaff.name}` : "Gõ mã PIN 4 số vào ca"}
+                  </span>
+                  <div className="flex justify-center items-center gap-3">
+                    {[0, 1, 2, 3].map((idx) => (
+                      <div
+                        key={idx}
+                        className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
+                          pin.length > idx
+                            ? "bg-brand-900 scale-125 shadow-xs"
+                            : "bg-surface-border border border-surface-border"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bàn phím số numeric keypad công thái học */}
+                <NumericKeypad
+                  onDigitPress={handleDigit}
+                  onDeletePress={() => setPin((prev) => prev.slice(0, -1))}
+                  onClearPress={() => setPin("")}
+                />
+              </div>
+            ) : (
+              /* TAB 2: TÀI KHOẢN & MẬT KHẨU (Dành cho Quản lý / Đăng nhập đầy đủ) */
+              <form onSubmit={handleAccountLogin} className="space-y-3.5 text-left" autoComplete="off">
                 <div>
-                  <label className="block text-xs font-bold text-ink-primary mb-1.5">
-                    Tài khoản / Email đăng nhập
+                  <label className="block text-xs font-bold text-ink-primary mb-1">
+                    Email hoặc Tên tài khoản
                   </label>
                   <div className="relative">
                     <Icon
                       name="mail"
-                      size={16}
+                      size={15}
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle pointer-events-none"
                     />
                     <input
-                      type="text"
+                      type="email"
                       id="input-login-email"
                       required
+                      autoComplete="off"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="waiter@a2order.vn hoặc owner@a2order.vn"
@@ -294,7 +346,7 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold text-ink-primary">
                       Mật khẩu
                     </label>
@@ -305,12 +357,13 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                   <div className="relative">
                     <Icon
                       name="lock"
-                      size={16}
+                      size={15}
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-subtle pointer-events-none"
                     />
                     <input
                       type={showPassword ? "text" : "password"}
                       id="input-login-password"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
@@ -327,7 +380,7 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs pt-1">
+                <div className="flex items-center justify-between text-xs pt-0.5">
                   <label className="flex items-center gap-2 cursor-pointer select-none text-ink-muted">
                     <input
                       type="checkbox"
@@ -335,7 +388,7 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                       onChange={(e) => setRememberMe(e.target.checked)}
                       className="w-4 h-4 rounded text-brand-800 focus:ring-brand-700 accent-brand-800 cursor-pointer"
                     />
-                    <span>Ghi nhớ đăng nhập trên thiết bị này</span>
+                    <span>Ghi nhớ phiên làm việc</span>
                   </label>
                 </div>
 
@@ -345,7 +398,7 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                   variant="primary"
                   size="lg"
                   disabled={isSubmitting}
-                  className="w-full h-12 rounded-2xl font-black text-sm shadow-md mt-2"
+                  className="w-full h-12 rounded-2xl font-black text-sm shadow-md mt-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
@@ -360,78 +413,57 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
                   )}
                 </Button>
               </form>
-            ) : (
-              /* Mode 2: PIN Shift Login */
-              <div className="space-y-4">
-                {staffList.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-bold text-ink-muted mb-2 text-left">
-                      Chọn nhân viên vào ca:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto no-scrollbar p-1">
-                      {staffList.map((st) => (
-                        <button
-                          key={st.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedStaff(st);
-                            setPin("");
-                          }}
-                          className={`p-2.5 rounded-2xl border text-left transition-all text-xs cursor-pointer flex items-center gap-2 ${
-                            selectedStaff?.id === st.id
-                              ? "bg-brand-50 border-brand-800 text-brand-950 font-black shadow-xs ring-1 ring-brand-800"
-                              : "bg-surface-canvas border-surface-border text-ink-primary hover:bg-white"
-                          }`}
-                        >
-                          <div className="w-7 h-7 rounded-full bg-brand-200/60 text-brand-900 flex items-center justify-center font-bold text-xs shrink-0">
-                            {st.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0 flex-1 leading-tight">
-                            <div className="font-semibold truncate">{st.name}</div>
-                            <div className="text-[10px] text-ink-muted">{st.role}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* PIN Display Dots */}
-                <div className="text-center py-2">
-                  <div className="text-xs font-bold text-ink-muted mb-2">
-                    {selectedStaff ? `Nhập PIN cho: ${selectedStaff.name}` : "Nhập mã PIN 4 số vào ca"}
-                  </div>
-                  <div className="flex justify-center items-center gap-3">
-                    {[0, 1, 2, 3].map((idx) => (
-                      <div
-                        key={idx}
-                        className={`w-4 h-4 rounded-full transition-all ${
-                          pin.length > idx
-                            ? "bg-brand-900 scale-110 shadow-sm"
-                            : "bg-surface-border border border-surface-border"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Numeric Keypad */}
-                <NumericKeypad
-                  onDigitPress={handleDigit}
-                  onDeletePress={() => setPin((prev) => prev.slice(0, -1))}
-                  onClearPress={() => setPin("")}
-                />
-              </div>
             )}
+
+            {/* Quick Fill Helper for Demo / Testing (Nhẹ nhàng, không chiếm diện tích) */}
+            <div className="mt-5 pt-3 border-t border-surface-border">
+              <span className="text-[10px] font-bold text-ink-muted block text-center mb-1.5 uppercase tracking-wider">
+                Điền nhanh thông tin thử nghiệm:
+              </span>
+              <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill("WAITER")}
+                  className="px-2.5 py-1 rounded-full bg-surface-canvas hover:bg-brand-50 border border-surface-border text-[11px] font-bold text-ink-primary hover:text-brand-900 transition-colors cursor-pointer shadow-2xs"
+                  title="Điền tài khoản Phục Vụ (PIN: 1234)"
+                >
+                  ⚡ Phục Vụ (1234)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill("CASHIER")}
+                  className="px-2.5 py-1 rounded-full bg-surface-canvas hover:bg-brand-50 border border-surface-border text-[11px] font-bold text-ink-primary hover:text-brand-900 transition-colors cursor-pointer shadow-2xs"
+                  title="Điền tài khoản Thu Ngân (PIN: 5678)"
+                >
+                  ⚡ Thu Ngân (5678)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill("CHEF")}
+                  className="px-2.5 py-1 rounded-full bg-surface-canvas hover:bg-brand-50 border border-surface-border text-[11px] font-bold text-ink-primary hover:text-brand-900 transition-colors cursor-pointer shadow-2xs"
+                  title="Điền tài khoản Bếp KDS (PIN: 3333)"
+                >
+                  ⚡ Bếp (3333)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickFill("STORE_OWNER")}
+                  className="px-2.5 py-1 rounded-full bg-surface-canvas hover:bg-brand-50 border border-surface-border text-[11px] font-bold text-ink-primary hover:text-brand-900 transition-colors cursor-pointer shadow-2xs"
+                  title="Điền tài khoản Quản Lý (PIN: 8888)"
+                >
+                  ⚡ Quản Lý (8888)
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Footer Note */}
-          <div className="pt-6 text-center border-t border-surface-border mt-6">
-            <p className="text-[11px] text-ink-subtle">
-              A2Order Platform • Kiến trúc chuẩn F&B • Dữ liệu mã hóa đa thuê an toàn
+          <div className="pt-4 text-center mt-3">
+            <p className="text-[10px] text-ink-subtle">
+              A2Order Platform • Chuẩn F&B Đa Thuê • Bảo Mật RBAC
             </p>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
