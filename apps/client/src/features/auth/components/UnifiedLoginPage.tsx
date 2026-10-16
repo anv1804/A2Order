@@ -234,31 +234,31 @@ export const UnifiedLoginPage: React.FC<UnifiedLoginPageProps> = ({
             </div>
 
             {/* Tab Switcher: Mã PIN (Ưu tiên nhân viên) | Tài Khoản (Quản lý) */}
-            <div className="p-1 bg-surface-canvas rounded-2xl flex text-xs font-bold gap-1 mb-5 border border-surface-border">
+            <div className="p-1 bg-surface-canvas rounded-2xl flex text-xs font-bold gap-1 mb-4 border border-surface-border">
               <button
                 type="button"
                 onClick={() => setAuthMode("pin")}
-                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   authMode === "pin"
                     ? "bg-brand-900 text-white shadow-xs font-extrabold"
                     : "text-ink-muted hover:text-ink-primary hover:bg-white/60"
                 }`}
               >
-                <Icon name="key" size={14} />
-                <span>Mã PIN Ca</span>
+                <Icon name="key" size={13} />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Mã PIN Vào Ca</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setAuthMode("account")}
-                className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   authMode === "account"
                     ? "bg-brand-900 text-white shadow-xs font-extrabold"
                     : "text-ink-muted hover:text-ink-primary hover:bg-white/60"
                 }`}
               >
-                <Icon name="mail" size={14} />
-                <span>Tài Khoản</span>
+                <Icon name="mail" size={13} />
+                <span className="whitespace-nowrap text-[11px] sm:text-xs">Tài Khoản</span>
               </button>
             </div>
 
