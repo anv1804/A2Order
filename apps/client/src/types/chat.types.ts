@@ -9,6 +9,7 @@ export interface IntercomMessage {
   timestamp: string;
   type: "TEXT" | "QUICK_ALERT" | "VOICE_NOTE";
   audioDurationSec?: number;
+  audioUrl?: string;
 }
 
 export interface StaffIntercomWidgetProps {
@@ -54,5 +55,3 @@ export interface ChannelAlertItem {
   icon: any;
   color: string;
 }
-
-

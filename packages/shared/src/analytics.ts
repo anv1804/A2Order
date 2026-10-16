@@ -69,7 +69,7 @@ export interface PaymentBreakdown {
 }
 
 export interface DeepAnalyticsReport {
-  period: "today" | "week" | "month";
+  period: "today" | "yesterday" | "week" | "month";
   summary: {
     totalRevenue: number;
     totalOrders: number;

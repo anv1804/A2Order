@@ -1,3 +1,4 @@
+import { browserRequest } from "@a2order/shared";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { SaasDashboard } from "./SaasDashboard";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
@@ -120,9 +121,11 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         storeApi.getStores(),
         storeApi.getLicenses(),
         storeApi.getInvoices(),
+        browserRequest<SystemAuditLogRecord[]>("/stores/audit/system"),
       ]);
       let refreshed = 0;
-      const [storeResult, licenseResult, invoiceResult] = results;
+      const [storeResult, licenseResult, invoiceResult, auditResult] = results;
+      if (auditResult.status === "fulfilled") setAuditLogs(auditResult.value);
       const sources: string[] = [];
 
       if (storeResult.status === "fulfilled" && storeResult.value) {
@@ -157,7 +160,7 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
       setConnectedSources(sources);
 
       if (isManual) {
-        if (refreshed === results.length) toast.success("Dữ liệu đối tác, license và hóa đơn đã được cập nhật.");
+        if (refreshed === 3) toast.success("Dữ liệu đối tác, license và hóa đơn đã được cập nhật.");
         else if (refreshed > 0) toast.warning(`Đã cập nhật ${refreshed}/3 nguồn dữ liệu. Một số dịch vụ chưa phản hồi.`);
         else toast.error("Không thể kết nối máy chủ để làm mới dữ liệu.");
       }
@@ -229,6 +232,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     durationMonths: number;
     maxDevices: number;
   }) => {
+    if (!connectedSources.includes("licenses")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     const randomHex = Math.random().toString(36).substring(2, 8).toUpperCase();
     const keyCode = `A2-${data.plan}-${randomHex}`;
     const targetStore = stores.find((s) => s.id === data.storeId);
@@ -342,6 +347,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   };
 
   const handleRevokeKey = async (lic: LicenseKeyRecord) => {
+    if (!connectedSources.includes("licenses")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     const ok = await confirmDialog({
       title: `Thu Hồi License Key ${lic.keyCode}?`,
       message: `Khi thu hồi, các máy POS/KDS thuộc key này sẽ bị ngắt kết nối bản quyền ngay lập tức.`,
@@ -377,6 +384,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
   // Xác nhận thanh toán hóa đơn cước
   const handleConfirmInvoice = async (inv: SoftwareInvoiceRecord) => {
+    if (!connectedSources.includes("invoices")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     if (!connectedSources.includes("invoices")) {
       toast.error("Máy chủ chưa kết nối. Không thể xác nhận thanh toán trên dữ liệu xem trước.");
       return;
@@ -432,6 +441,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
     durationMonths: number;
     finalAmount: number;
   }) => {
+    if (!connectedSources.includes("invoices")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     const store = stores.find((s) => s.id === payload.storeId);
     if (!store) return;
 
@@ -480,6 +491,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   };
 
   const handleConfirmToggleStoreStatus = async (store: TenantStoreRecord) => {
+    if (!connectedSources.includes("stores")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     const isSuspending = store.status !== "SUSPENDED";
     const newStatus = isSuspending ? "SUSPENDED" : "ACTIVE";
     if (!connectedSources.includes("stores")) {
@@ -504,6 +517,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
   // Xóa vĩnh viễn cửa hàng (Bảo mật bằng mã hồ sơ / license key)
   const handleDeleteStore = async (store: TenantStoreRecord) => {
+    if (!connectedSources.includes("stores")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     if (!connectedSources.includes("stores")) {
       toast.error("Máy chủ chưa kết nối. Không thể xóa cửa hàng trên dữ liệu xem trước.");
       return;
@@ -525,6 +540,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
 
   // Bật / Tắt module tính năng (Feature Flags) cho quán (Cập nhật lạc quan - Optimistic UI phản hồi 0ms)
   const handleToggleStoreModule = async (storeId: string, modId: AppModule) => {
+    if (!connectedSources.includes("stores")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return; }
+
     if (modId === AppModule.CORE_POS) {
       toast.warning("Module Vận Hành Bàn & Đơn (Core POS) là module lõi bắt buộc, không thể tắt!");
       return;
@@ -584,6 +601,8 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
   const handleCreateNewStoreSubmit = async (
     storeData: StoreOnboardSubmitData
   ): Promise<TenantStoreRecord | null> => {
+    if (!connectedSources.includes("stores")) { toast.error("Chưa kết nối máy chủ; thao tác chưa được thực hiện"); return null; }
+
     const {
       name,
       owner,
@@ -633,12 +652,12 @@ export const CmsSuperAdminView: React.FC<CmsSuperAdminViewProps> = ({
         setInvoices(latestInvoices);
       }
 
-      toast.success(`Đã khởi tạo thành công quán "${name}" và kích hoạt bản quyền!`);
+      toast.success(`Đã khởi tạo thành công quán "${name}" và tạo hóa đơn chờ thanh toán!`);
       return createdStore;
     } catch (error: any) {
       const msg = error instanceof Error ? error.message : "Không thể tạo cửa hàng trên máy chủ.";
       toast.error(msg);
-      throw new Error(msg);
+      throw Object.assign(new Error(msg), { cause: error });
     }
   };
 

@@ -48,10 +48,10 @@ export const CmsPromotionsManagement: React.FC = () => {
   }, [promotions, statusFilter, searchQuery]);
 
   // Bật / Tắt trạng thái voucher
-  const handleToggleActive = (p: PromotionVoucherRecord) => {
-    setPromotions((prev) =>
+  const handleToggleActive = async (p: PromotionVoucherRecord) => {
+    if (!(await setPromotions((prev) =>
       prev.map((item) => (item.id === p.id ? { ...item, isActive: !item.isActive } : item))
-    );
+    ))) return;
     toast.info(`Đã ${p.isActive ? "tạm dừng" : "kích hoạt"} chương trình [${p.code}]`);
   };
 
@@ -102,7 +102,7 @@ export const CmsPromotionsManagement: React.FC = () => {
   };
 
   // Lưu voucher
-  const handleSavePromotion = (e: React.FormEvent) => {
+  const handleSavePromotion = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!promoForm.code.trim() || !promoForm.title.trim()) {
       toast.error("Vui lòng nhập mã và tiêu đề chương trình khuyến mãi");
@@ -110,7 +110,7 @@ export const CmsPromotionsManagement: React.FC = () => {
     }
 
     if (editingPromotion) {
-      setPromotions((prev) =>
+      if (!(await setPromotions((prev) =>
         prev.map((item) =>
           item.id === editingPromotion.id
             ? {
@@ -130,7 +130,7 @@ export const CmsPromotionsManagement: React.FC = () => {
               }
             : item
         )
-      );
+      ))) return;
       toast.success(`Đã cập nhật chương trình [${promoForm.code}]`);
     } else {
       const newPromo: PromotionVoucherRecord = {
@@ -150,7 +150,7 @@ export const CmsPromotionsManagement: React.FC = () => {
         happyHourTimeRange: promoForm.happyHourTimeRange,
         isActive: true,
       };
-      setPromotions((prev) => [newPromo, ...prev]);
+      if (!(await setPromotions((prev) => [newPromo, ...prev]))) return;
       toast.success(`Đã tạo chương trình khuyến mãi mới [${newPromo.code}]`);
     }
 
@@ -168,7 +168,7 @@ export const CmsPromotionsManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setPromotions((prev) => prev.filter((item) => item.id !== p.id));
+    if (!(await setPromotions((prev) => prev.filter((item) => item.id !== p.id)))) return;
     toast.info(`Đã xóa khuyến mãi ${p.code}`);
   };
 

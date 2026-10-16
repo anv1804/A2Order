@@ -111,13 +111,13 @@ export const CustomerOrderConfirmModal: React.FC<CustomerOrderConfirmModalProps>
 
               {customerPhone && (
                 <div className="flex items-center justify-between text-cyan-700 font-bold text-[11px]">
-                  <span>Tích điểm SĐT {customerPhone}:</span>
-                  <span>+{Math.floor(finalCartTotal / 10000)} điểm</span>
+                  <span>SĐT liên hệ:</span>
+                  <span>{customerPhone}</span>
                 </div>
               )}
 
               <div className="border-t border-slate-200 pt-1.5 flex items-center justify-between font-black text-sm text-slate-900">
-                <span>Tổng thanh toán:</span>
+                <span>Tạm tính dự kiến:</span>
                 <span className="text-emerald-800">{finalCartTotal.toLocaleString("vi-VN")} đ</span>
               </div>
             </div>

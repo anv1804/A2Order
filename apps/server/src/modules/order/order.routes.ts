@@ -1,254 +1,134 @@
-import { FastifyInstance, FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
+import { SocketEvents, AdjustmentSchema } from "@a2order/shared";
+import { command } from "../../core/security/commands.js";
+import { currentStore, requireRoles } from "../../core/security/access.js";
+import { AppError, requireValue } from "../../core/security/errors.js";
 import { prisma } from "../../core/database/prismaClient.js";
 import { emitToStore } from "../../core/websocket/socketServer.js";
-import { SocketEvents } from "@a2order/shared";
+import { submitBatch, changeBatch, cancelItem, tableSnapshot, pendingOrders, customerOrders, lockTable, checkLicense, transferSession } from "./order.service.js";
 
-// Bộ đệm lưu trữ các đơn chờ duyệt từ khách QR
-interface PendingOrder {
-  orderId: string;
-  storeId: string;
-  tableId: string;
-  tableCode: string;
-  tableName: string;
-  items: Array<{
-    id: string;
-    dishId?: string;
-    name: string;
-    price: number;
-    quantity: number;
-    notes?: string;
-    category?: string;
-    status: "PENDING_APPROVAL" | "COOKING" | "SERVED" | "CANCELLED";
-  }>;
-  voucherCode?: string;
-  discountAmount?: number;
-  customerPhone?: string;
-  totalAmount: number;
-  finalAmount: number;
-  submittedAt: number;
-  status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
-}
-
-const pendingOrders = new Map<string, PendingOrder>();
-
-// Tự động dọn dẹp các đơn chờ bị bỏ quên quá 12 tiếng để tránh tích lũy RAM server
-const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Mỗi 1 giờ
-const ORDER_TTL_MS = 12 * 60 * 60 * 1000; // 12 tiếng
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, order] of pendingOrders.entries()) {
-    if (now - order.submittedAt > ORDER_TTL_MS) {
-      pendingOrders.delete(id);
-    }
-  }
-}, CLEANUP_INTERVAL_MS).unref?.();
-
-export const orderRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
-  /**
-   * 1. KHÁCH GỬI ĐƠN GỌI MÓN (Chờ quán duyệt trước khi vào bếp)
-   * POST /api/orders/submit
-   */
-  fastify.post("/submit", async (request, reply) => {
-    const {
-      storeId,
-      tableId,
-      tableCode,
-      tableName,
-      items,
-      voucherCode,
-      discountAmount = 0,
-      customerPhone,
-      totalAmount,
-      notes,
-    } = (request.body || {}) as any;
-
-    if (!storeId || !tableId || !items || !Array.isArray(items) || items.length === 0) {
-      return reply.status(400).send({ success: false, error: "Thông tin đơn hàng không hợp lệ" });
-    }
-
-    const orderId = `ord-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    const finalAmount = Math.max(0, (totalAmount || 0) - (discountAmount || 0));
-
-    const formattedItems = items.map((it: any, idx: number) => ({
-      id: it.id || `item-${Date.now()}-${idx}`,
-      dishId: it.dishId,
-      name: it.name,
-      price: it.price,
-      quantity: it.quantity || 1,
-      notes: it.notes || notes || "",
-      category: it.category || "Món gọi",
-      status: "PENDING_APPROVAL" as const,
-    }));
-
-    const newOrder: PendingOrder = {
-      orderId,
-      storeId,
-      tableId,
-      tableCode: tableCode || "TB",
-      tableName: tableName || "Bàn",
-      items: formattedItems,
-      voucherCode: voucherCode || undefined,
-      discountAmount: discountAmount || 0,
-      customerPhone: customerPhone || undefined,
-      totalAmount: totalAmount || 0,
-      finalAmount,
-      submittedAt: Date.now(),
-      status: "PENDING_APPROVAL",
-    };
-
-    pendingOrders.set(orderId, newOrder);
-
-    // Bắn WebSocket thông báo tới nhân viên / POS: Có đơn cần duyệt!
-    emitToStore(storeId, SocketEvents.ORDER_APPROVAL_REQUESTED, newOrder);
-
-    return {
-      success: true,
-      message: "Đơn hàng đã gửi thành công, đang chờ nhân viên quán xác nhận vào bếp",
-      data: newOrder,
-    };
+export const orderRoutes: FastifyPluginAsync = async app => {
+  app.post("/:storeId/transfer", async request => {
+    const input = z.object({ fromTableId: z.string(), toTableId: z.string(), mode: z.enum(["MOVE", "MERGE"]) }).parse(request.body);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "TABLE_TRANSFER", tx => transferSession(tx, storeId, input.fromTableId, input.toTableId, input.mode));
+    emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, result);
+    return { success: true, data: result };
   });
-
-  /**
-   * 2. LẤY DANH SÁCH ĐƠN CHỜ DUYỆT CỦA QUÁN
-   * GET /api/orders/:storeId/pending
-   */
-  fastify.get("/:storeId/pending", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const orders = Array.from(pendingOrders.values()).filter(
-      (o) => o.storeId === storeId && o.status === "PENDING_APPROVAL"
-    );
-    return { success: true, count: orders.length, data: orders };
-  });
-
-  /**
-   * 3. NHÂN VIÊN DUYỆT ĐƠN VÀO BẾP
-   * POST /api/orders/:storeId/:orderId/approve
-   */
-  fastify.post("/:storeId/:orderId/approve", async (request, reply) => {
-    const { storeId, orderId } = request.params as { storeId: string; orderId: string };
-    const order = pendingOrders.get(orderId);
-
-    if (!order) {
-      return reply.status(404).send({ success: false, error: "Đơn hàng không tồn tại hoặc đã xử lý" });
-    }
-
-    order.status = "APPROVED";
-    order.items = order.items.map((i) =>
-      i.status === "PENDING_APPROVAL" ? { ...i, status: "COOKING" } : i
-    );
-
-    // Bắn WebSocket tới mọi máy (POS, Khách, KDS Bếp)
-    emitToStore(storeId, SocketEvents.ORDER_APPROVED, {
-      ...order,
-      approvedAt: Date.now(),
+  app.post("/:storeId/adjustment", async request => {
+    requireRoles(request, ["STORE_OWNER"]);
+    const { tableId, adjustment } = z.object({ tableId: z.string(), adjustment: AdjustmentSchema }).parse(request.body);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "TABLE_ADJUSTMENT", async tx => {
+      await checkLicense(tx, storeId);
+      await lockTable(tx, storeId, tableId);
+      const session = requireValue(await tx.orderSession.findFirst({ where: { storeId, tableId, status: "ACTIVE" } }));
+      if (await tx.bill.count({ where: { orderSessionId: session.id, paymentStatus: { in: ["PENDING", "PAID"] } } })) throw new AppError(409, "Không đổi điều chỉnh sau khi lập hóa đơn");
+      if ((adjustment.fixedDiscount || adjustment.discountPercent || adjustment.surchargeAmount) && !adjustment.discountReason) throw new AppError(400, "Cần lý do điều chỉnh tiền");
+      await tx.orderSession.update({ where: { id: session.id }, data: { adjustments: adjustment } });
+      return { tableId, adjustment };
     });
-
-    // Cũng bắn ORDER_SUBMITTED cho POS và KDS tương thích
-    emitToStore(storeId, SocketEvents.ORDER_SUBMITTED, {
-      storeId,
-      tableId: order.tableId,
-      tableName: order.tableName,
-      tableCode: order.tableCode,
-      items: order.items.filter((i) => i.status === "COOKING"),
-      voucherCode: order.voucherCode,
-      discountAmount: order.discountAmount,
-      customerPhone: order.customerPhone,
-      totalAmount: order.totalAmount,
-    });
-
-    return { success: true, message: `Đã duyệt đơn ${order.tableName} vào bếp`, data: order };
+    emitToStore(storeId, SocketEvents.TABLE_STATUS_UPDATED, result);
+    return { success: true, data: result };
   });
-
-  /**
-   * 4. NHÂN VIÊN TỪ CHỐI ĐƠN
-   * POST /api/orders/:storeId/:orderId/reject
-   */
-  fastify.post("/:storeId/:orderId/reject", async (request, reply) => {
-    const { storeId, orderId } = request.params as { storeId: string; orderId: string };
-    const { reason } = (request.body || {}) as { reason?: string };
-    const order = pendingOrders.get(orderId);
-
-    if (!order) {
-      return reply.status(404).send({ success: false, error: "Đơn hàng không tồn tại" });
-    }
-
-    order.status = "REJECTED";
-    pendingOrders.delete(orderId);
-
-    emitToStore(storeId, SocketEvents.ORDER_REJECTED, {
-      orderId,
-      storeId,
-      tableId: order.tableId,
-      tableName: order.tableName,
-      reason: reason || "Quán không thể phục vụ đơn này vào thời điểm hiện tại",
-    });
-
-    return { success: true, message: "Đã từ chối đơn hàng", data: { orderId } };
-  });
-
-  /**
-   * 5. KHÁCH HỦY MÓN KHI CHƯA CHẾ BIẾN (Nếu bếp chưa làm)
-   * POST /api/orders/:storeId/cancel-item
-   */
-  fastify.post("/:storeId/cancel-item", async (request, reply) => {
-    const { storeId } = request.params as { storeId: string };
-    const { orderId, itemId, tableId } = (request.body || {}) as {
-      orderId?: string;
-      itemId: string;
-      tableId: string;
-    };
-
-    if (orderId && pendingOrders.has(orderId)) {
-      const order = pendingOrders.get(orderId)!;
-      const targetItem = order.items.find((i) => i.id === itemId);
-
-      if (!targetItem) {
-        return reply.status(404).send({ success: false, error: "Món không tồn tại trong đơn" });
+  app.post("/:storeId/remake", async request => {
+    requireRoles(request, ["STORE_OWNER"]);
+    const { itemId, reason } = z.object({ itemId: z.string(), reason: z.string().trim().min(1).max(300) }).parse(request.body);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ITEM_REMAKE", async tx => {
+      await checkLicense(tx, storeId);
+      const item = requireValue(await tx.orderItem.findFirst({ where: { id: itemId, orderBatch: { orderSession: { storeId, status: "ACTIVE" } } }, include: { orderBatch: { include: { orderSession: true } }, menuItem: true } }));
+      await lockTable(tx, storeId, item.orderBatch.orderSession.tableId);
+      if (item.status !== "SERVED" && item.status !== "DONE") throw new AppError(409, "Chỉ làm lại món đã hoàn thành");
+      if (await tx.bill.count({ where: { orderSessionId: item.orderBatch.orderSessionId, paymentStatus: { in: ["PAID", "PENDING"] } } })) throw new AppError(409, "Bàn đã lập hóa đơn");
+      if (item.menuItem.stockCount !== null) {
+        const stock = await tx.menuItem.updateMany({ where: { id: item.menuItemId, storeId, stockCount: { gte: item.quantity } }, data: { stockCount: { decrement: item.quantity } } });
+        if (!stock.count) throw new AppError(409, "Không đủ tồn kho để làm lại");
       }
-
-      if (targetItem.status !== "PENDING_APPROVAL") {
-        return reply.status(400).send({
-          success: false,
-          error: "Bếp đã bắt đầu chế biến món này, không thể hủy. Vui lòng liên hệ nhân viên phục vụ.",
-        });
-      }
-
-      targetItem.status = "CANCELLED";
-
-      emitToStore(storeId, SocketEvents.ORDER_ITEM_CANCELLED, {
-        orderId,
-        itemId,
-        dishName: targetItem.name,
-        tableId,
-        tableName: order.tableName,
-        storeId,
+      await tx.orderItem.update({ where: { id: itemId }, data: { status: "QUEUED", costSnapshot: item.costSnapshot + item.menuItem.costPrice, notes: [item.notes, "Làm lại: " + reason].filter(Boolean).join(" · ") } });
+      return { itemId, reason, tableId: item.orderBatch.orderSession.tableId };
+    });
+    emitToStore(storeId, SocketEvents.ORDER_ITEM_STATUS_CHANGED, result);
+    return { success: true, data: result };
+  });
+  app.post("/submit", async request => {
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ORDER_SUBMIT", tx => submitBatch(tx, request.principal!, request.body));
+    emitToStore(storeId, result.status === "PENDING_APPROVAL" ? SocketEvents.ORDER_APPROVAL_REQUESTED : SocketEvents.ORDER_SUBMITTED, result);
+    return { success: true, data: result };
+  });
+  app.get("/:storeId/pending", async request => { requireRoles(request, ["STORE_OWNER", "CASHIER", "WAITER"]); return { success: true, data: await pendingOrders(currentStore(request)) }; });
+  app.get("/:storeId/snapshot", async request => { requireRoles(request, ["STORE_OWNER", "CASHIER", "WAITER", "ACCOUNTANT"]); return { success: true, data: await tableSnapshot(currentStore(request)) }; });
+  app.get("/:storeId/customer-snapshot", async request => ({ success: true, data: await customerOrders(request.principal!) }));
+  app.post("/:storeId/:orderId/approve", async request => {
+    const { orderId } = z.object({ orderId: z.string().min(1) }).parse(request.params);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ORDER_APPROVE", tx => changeBatch(tx, storeId, orderId, "APPROVED"));
+    emitToStore(storeId, SocketEvents.ORDER_APPROVED, result);
+    emitToStore(storeId, SocketEvents.ORDER_SUBMITTED, result);
+    return { success: true, data: result };
+  });
+  app.post("/:storeId/:orderId/reject", async request => {
+    const { orderId } = z.object({ orderId: z.string().min(1) }).parse(request.params);
+    const { reason } = z.object({ reason: z.string().trim().max(300).optional() }).parse(request.body || {});
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ORDER_REJECT", tx => changeBatch(tx, storeId, orderId, "REJECTED", reason));
+    emitToStore(storeId, SocketEvents.ORDER_REJECTED, { ...result, reason });
+    return { success: true, data: result };
+  });
+  app.post("/:storeId/cancel-item", async request => {
+    const { itemId, reason } = z.object({ itemId: z.string().min(1), reason: z.string().max(300).optional() }).parse(request.body);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ORDER_CANCEL_ITEM", tx => cancelItem(tx, request.principal!, itemId, reason));
+    emitToStore(storeId, SocketEvents.ORDER_ITEM_CANCELLED, { ...result, storeId });
+    return { success: true, data: result };
+  });
+  app.get("/kds/tickets", async request => {
+    const storeId = currentStore(request);
+    const license = await prisma.storeLicense.findUnique({ where: { storeId } });
+    if (!license?.enabledModules.split(",").includes("MODULE_KDS")) throw new AppError(403, "Gói hiện tại chưa có KDS");
+    const batches = await prisma.orderBatch.findMany({ where: { status: "APPROVED", orderSession: { storeId }, items: { some: { status: { in: ["QUEUED", "COOKING", "DONE"] } } } }, include: { orderSession: { include: { table: true } }, items: { where: { status: { in: ["QUEUED", "COOKING", "DONE"] } } } }, orderBy: { createdAt: "asc" } });
+    const tickets = batches.flatMap(batch => {
+      const stations = [...new Set(batch.items.map(i => i.station))];
+      return stations.map(station => {
+        const items = batch.items.filter(i => i.station === station);
+        return { id: batch.id + ":" + station, ticketCode: "#" + batch.orderSession.table.code + "-" + batch.batchNumber, tableId: batch.orderSession.tableId, tableName: batch.orderSession.table.name, orderTime: batch.createdAt.toISOString(), orderTimestamp: batch.createdAt.getTime(), status: items.every(i => i.status === "DONE") ? "DONE" : items.some(i => i.status !== "QUEUED") ? "IN_PROGRESS" : "NEW", station, waiterName: "", priority: "NORMAL", items: items.map(i => ({ id: i.id, dishId: i.menuItemId, dishName: i.nameSnapshot, quantity: i.quantity, notes: i.notes, status: i.status === "QUEUED" ? "WAITING" : i.status === "DONE" ? "READY" : i.status, station })) };
       });
-
-      return {
-        success: true,
-        message: `Đã hủy món ${targetItem.name}`,
-        data: { itemId, orderId },
-      };
-    }
-
-    // Nếu không có orderId tạm, vẫn phát socket để POS đồng bộ
-    emitToStore(storeId, SocketEvents.ORDER_ITEM_CANCELLED, {
-      orderId,
-      itemId,
-      tableId,
-      storeId,
     });
-
-    return { success: true, message: "Đã gửi yêu cầu hủy món" };
+    return { success: true, data: tickets };
   });
-
-  // Màn hình KDS Bếp: Lấy danh sách món đang cần nấu
-  fastify.get("/kds/tickets", async (request, reply) => {
-    return { success: true, data: [] };
+  app.get("/kds/metrics", async request => {
+    const storeId = currentStore(request);
+    const now = new Date(Date.now() + 25200000);
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 25200000);
+    const logs = await prisma.auditLog.findMany({ where: { storeId, action: "ITEM_DONE", createdAt: { gte: start } } });
+    const completions = new Map<string, number>();
+    for (const row of logs) { try { const id = JSON.parse(row.details || "{}").itemId; if (typeof id === "string" && !completions.has(id)) completions.set(id, row.createdAt.getTime()); } catch {} }
+    const items = await prisma.orderItem.findMany({ where: { id: { in: [...completions.keys()] }, orderBatch: { orderSession: { storeId } } } });
+    const durations = items.map(i => Math.max(0, (completions.get(i.id)! - i.createdAt.getTime()) / 60000));
+    return { success: true, data: { completedCount: new Set(items.map(i => i.orderBatchId + ":" + i.station)).size, averageMinutes: durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length * 10) / 10 : null } };
   });
-
-  // Bếp cập nhật trạng thái món: Đang nấu -> Xong
-  fastify.patch("/items/:itemId/status", async (request, reply) => {
-    return { success: true };
+  app.patch("/items/:itemId/status", async request => {
+    const { itemId } = z.object({ itemId: z.string().min(1) }).parse(request.params);
+    const { status } = z.object({ status: z.enum(["COOKING", "DONE", "SERVED"]) }).parse(request.body);
+    if (status === "SERVED") requireRoles(request, ["STORE_OWNER", "WAITER", "CASHIER", "CHEF"]);
+    else requireRoles(request, ["STORE_OWNER", "CHEF"]);
+    const storeId = currentStore(request);
+    const result = await command(request, storeId, "ITEM_" + status, async tx => {
+      await checkLicense(tx, storeId);
+      const item = requireValue(await tx.orderItem.findFirst({ where: { id: itemId, orderBatch: { status: "APPROVED", orderSession: { storeId, status: { in: ["ACTIVE", "COMPLETED"] } } } }, include: { orderBatch: { include: { orderSession: true } } } }));
+      await lockTable(tx, storeId, item.orderBatch.orderSession.tableId);
+      const transitions: Record<string, string> = { QUEUED: "COOKING", COOKING: "DONE", DONE: "SERVED" };
+      if (item.status !== status && transitions[item.status] !== status) throw new AppError(409, "Trạng thái món đã thay đổi, vui lòng tải lại");
+      await tx.orderItem.update({ where: { id: itemId }, data: { status } });
+      if (status === "SERVED" && item.orderBatch.orderSession.status === "ACTIVE") {
+        const remaining = await tx.orderItem.count({ where: { status: { notIn: ["SERVED", "CANCELLED"] }, orderBatch: { status: "APPROVED", orderSessionId: item.orderBatch.orderSessionId } } });
+        if (!remaining) await tx.table.updateMany({ where: { id: item.orderBatch.orderSession.tableId, storeId, currentSessionId: item.orderBatch.orderSessionId, status: { not: "PAYMENT_PENDING" } }, data: { status: "SERVED" } });
+      }
+      return { itemId, status, tableId: item.orderBatch.orderSession.tableId, sessionId: item.orderBatch.orderSessionId, storeId };
+    });
+    emitToStore(storeId, SocketEvents.ORDER_ITEM_STATUS_CHANGED, result);
+    return { success: true, data: result };
   });
 };

@@ -11,9 +11,9 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   variant = "full",
 }) => {
   const isFull = variant === "full";
-  
+
   return (
-    <div 
+    <div
       className={`flex-1 overflow-y-auto bg-surface-canvas/30 ${
         isFull ? "p-4 space-y-3 min-h-0" : "p-3.5 space-y-2.5 max-h-[300px]"
       }`}
@@ -44,8 +44,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
               <div
                 className={`${
-                  isFull 
-                    ? "max-w-[85%] sm:max-w-[70%] p-3 text-xs sm:text-sm" 
+                  isFull
+                    ? "max-w-[85%] sm:max-w-[70%] p-3 text-xs sm:text-sm"
                     : "max-w-[85%] p-2.5 text-xs"
                 } rounded-2xl leading-relaxed ${
                   msg.type === "QUICK_ALERT"
@@ -60,7 +60,7 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
                 {msg.type === "VOICE_NOTE" && (
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => sound.playWalkieBeep("press")}
+                      onClick={() => { if (msg.audioUrl) void new Audio(msg.audioUrl).play().catch(() => undefined); }}
                       className={`${
                         isFull ? "w-7 h-7" : "w-6 h-6"
                       } rounded-full bg-emerald-600 text-white flex items-center justify-center`}

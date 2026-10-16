@@ -42,7 +42,7 @@ const createInitialForm = (): StoreOnboardSubmitData => ({
   owner: "",
   ownerEmail: "",
   ownerPassword: "",
-  ownerPin: "1234",
+  ownerPin: "",
   phone: "",
   address: "",
   businessType: "COFFEE_SHOP" as BusinessType,
@@ -147,8 +147,8 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
       setErrorMessage("Vui lòng nhập email hợp lệ cho tài khoản chủ quán.");
       return;
     }
-    if (!form.ownerPassword || form.ownerPassword.length < 6) {
-      setErrorMessage("Mật khẩu tài khoản phải có ít nhất 6 ký tự.");
+    if (!form.ownerPassword || form.ownerPassword.length < 10) {
+      setErrorMessage("Mật khẩu tài khoản phải có ít nhất 10 ký tự.");
       return;
     }
     if (!form.ownerPin || form.ownerPin.trim().length !== 4) {

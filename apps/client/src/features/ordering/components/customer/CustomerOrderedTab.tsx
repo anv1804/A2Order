@@ -88,10 +88,10 @@ export const CustomerOrderedTab: React.FC<CustomerOrderedTabProps> = ({
                       ⏳ Chờ Quán Duyệt
                     </span>
                   )}
-                  {item.status === "COOKING" && (
+                  {["COOKING", "QUEUED", "READY"].includes(item.status) && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-800 text-[11px] font-black">
                       <Icon name="flame" size={12} />
-                      <span>Bếp Đang Nấu</span>
+                      <span>{item.status === "QUEUED" ? "Bếp Đã Nhận" : item.status === "READY" ? "Món Đã Xong" : "Bếp Đang Nấu"}</span>
                     </span>
                   )}
                   {item.status === "SERVED" && (

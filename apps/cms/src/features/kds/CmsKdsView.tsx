@@ -1,3 +1,5 @@
+import { browserRequest, getAuthUser } from "@a2order/shared";
+import { useResource, useAntiSpamAction } from "@a2order/shared/react";
 import React, { useState, useEffect } from "react";
 import { Button, Badge, Icon } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
@@ -12,7 +14,17 @@ function minutesAgo(ts: number): number {
 }
 
 export const CmsKdsView: React.FC = () => {
-  const [tickets, setTickets] = usePersistentState<CmsKdsTicket[]>("kds_tickets_data", []);
+  const [metrics] = useResource<{ completedCount: number; averageMinutes: number | null }>("/orders/kds/metrics", { completedCount: 0, averageMinutes: null });
+  const [tickets, refreshTickets] = useResource<CmsKdsTicket[]>("/orders/kds/tickets", []);
+  const updateTicket = useAntiSpamAction("kds-ticket", async ({ ticket, target }: { ticket: CmsKdsTicket; target: string }, key) => {
+    for (const item of ticket.items) {
+      if (target === "COOKING" && item.status !== "WAITING") continue;
+      if (target === "DONE" && item.status === "READY") continue;
+      if (target === "DONE" && item.status === "WAITING") await browserRequest(`/orders/items/${item.id}/status`, { method: "PATCH", headers: { "x-idempotency-key": key + item.id + "start" }, body: JSON.stringify({ status: "COOKING" }) });
+      await browserRequest(`/orders/items/${item.id}/status`, { method: "PATCH", headers: { "x-idempotency-key": key + item.id + target }, body: JSON.stringify({ status: target }) });
+    }
+    return true;
+  });
   const [stationFilter, setStationFilter] = usePersistentState<"ALL" | KdsStation>("kds_station_filter", "ALL");
   const [soundEnabled, setSoundEnabled] = usePersistentState<boolean>("kds_sound_enabled", true);
   const [now, setNow] = useState(Date.now());
@@ -22,26 +34,11 @@ export const CmsKdsView: React.FC = () => {
     return () => clearInterval(t);
   }, []);
 
-  const handleStartCooking = (ticket: CmsKdsTicket) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
-    );
-    toast.info(`Bếp đã nhận chế biến vé ${ticket.ticketCode} - ${ticket.tableName}`);
-  };
+  const handleStartCooking = async (ticket: CmsKdsTicket) => { try { const result = await updateTicket.execute({ ticket, target: "COOKING" }); if (result) { await refreshTickets(); toast.success("Đã cập nhật trạng thái món"); } } catch (e: any) { toast.error(e.message); await refreshTickets().catch(() => undefined); } };
 
-  const handleDone = (ticket: CmsKdsTicket) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticket.id ? { ...t, status: "DONE" } : t))
-    );
-    toast.success(`Vé ${ticket.ticketCode} đã xong! Phục vụ mang ra bàn.`);
-  };
+  const handleDone = async (ticket: CmsKdsTicket) => { try { const result = await updateTicket.execute({ ticket, target: "DONE" }); if (result) { await refreshTickets(); toast.success("Đã cập nhật trạng thái món"); } } catch (e: any) { toast.error(e.message); await refreshTickets().catch(() => undefined); } };
 
-  const handleRecall = (ticket: CmsKdsTicket) => {
-    setTickets((prev) =>
-      prev.map((t) => (t.id === ticket.id ? { ...t, status: "IN_PROGRESS" } : t))
-    );
-    toast.info(`Đã thu hồi vé ${ticket.ticketCode} về trạng thái Đang Chế Biến`);
-  };
+  const handleRecall = async (ticket: CmsKdsTicket) => { try { const result = await updateTicket.execute({ ticket, target: "SERVED" }); if (result) { await refreshTickets(); toast.success("Đã cập nhật trạng thái món"); } } catch (e: any) { toast.error(e.message); await refreshTickets().catch(() => undefined); } };
 
   const filtered =
     stationFilter === "ALL"
@@ -122,7 +119,7 @@ export const CmsKdsView: React.FC = () => {
           <span className="text-slate-300">•</span>
           <span>Phục vụ: {ticket.waiterName}</span>
           <span className="text-slate-300">•</span>
-          <span className="font-bold text-slate-700">{ticket.orderTime}</span>
+          <span className="font-bold text-slate-700">{new Date(ticket.orderTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
         </div>
 
         {/* Cảnh báo làm lại khẩn cấp nếu có */}
@@ -197,7 +194,7 @@ export const CmsKdsView: React.FC = () => {
               onClick={() => handleRecall(ticket)}
               className="text-[11px] text-slate-500 hover:text-rose-700 font-bold w-full text-center hover:underline py-1 transition-colors"
             >
-              ↩ Thu hồi (làm lại vé này)
+              Đã Bưng Ra Bàn
             </button>
           )}
         </div>
@@ -322,13 +319,13 @@ export const CmsKdsView: React.FC = () => {
           </div>
           <div>
             <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-0.5 truncate">
-              Đã Ra Bàn Ca Này
+              Hoàn Tất Hôm Nay
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              {doneTickets.length} <span className="text-xs font-bold text-slate-400">vé</span>
+              {metrics.completedCount} <span className="text-xs font-bold text-slate-400">vé</span>
             </p>
             <p className="text-[10px] font-semibold text-emerald-600 mt-1 truncate">
-              Đã phục vụ khách dùng
+              Vé bếp đã hoàn thành
             </p>
           </div>
         </article>
@@ -347,10 +344,10 @@ export const CmsKdsView: React.FC = () => {
               Tốc Độ Ra Món TB
             </h4>
             <p className="text-base sm:text-xl font-black text-slate-900 tracking-tight leading-tight truncate">
-              8.5 <span className="text-xs font-bold text-slate-400">phút/món</span>
+              {metrics.averageMinutes ?? "—"} <span className="text-xs font-bold text-slate-400">phút/món</span>
             </p>
             <p className="text-[10px] font-semibold text-blue-600 mt-1 truncate">
-              Đạt chuẩn vận hành (&lt; 12p)
+              {metrics.averageMinutes === null ? "Chưa có dữ liệu hoàn thành" : metrics.averageMinutes < 12 ? "Đạt chuẩn vận hành (< 12p)" : "Cần kiểm tra thời gian chế biến"}
             </p>
           </div>
         </article>

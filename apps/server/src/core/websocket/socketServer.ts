@@ -1,135 +1,78 @@
-import { Server as HttpServer } from "http";
-import { Server as SocketIOServer, Socket } from "socket.io";
+import type { Server as HttpServer } from "node:http";
+import { Server as SocketIOServer } from "socket.io";
+import type { FastifyInstance } from "fastify";
 import { SocketEvents } from "@a2order/shared";
+import { verifyPrincipal, limitAttempts } from "../security/access.js";
 
 let io: SocketIOServer | null = null;
 
-// Lưu trữ latency & telemetry tạm thời theo từng quán
-interface StorePingStat {
-  storeId: string;
-  socketId: string;
-  latencyMs: number;
-  lastPingAt: number;
-}
-const activeStorePings = new Map<string, StorePingStat>();
-
-export function initSocketServer(httpServer: HttpServer): SocketIOServer {
-  io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-    },
-    transports: ["websocket", "polling"],
+export function initSocketServer(httpServer: HttpServer, app: FastifyInstance, origins: string[] = []) {
+  io = new SocketIOServer(httpServer, { cors: { origin: origins, methods: ["GET", "POST"] }, maxHttpBufferSize: 100000 });
+  io.use(async (socket, next) => {
+    try {
+      limitAttempts("socket:" + socket.handshake.address, 60);
+      socket.data.principal = await verifyPrincipal(app, String(socket.handshake.auth?.token || ""));
+      next();
+    } catch { next(new Error("UNAUTHORIZED")); }
   });
-
-  io.on("connection", (socket: Socket) => {
-    let currentStoreId: string | null = null;
-
-    // Client tham gia vào Room riêng biệt của Quán mình
-    socket.on(SocketEvents.JOIN_STORE, (storeId: string) => {
-      if (storeId) {
-        currentStoreId = storeId;
-        const roomName = `store:${storeId}`;
-        socket.join(roomName);
-        console.log(`[Socket] Client ${socket.id} joined ${roomName}`);
-      }
+  io.on("connection", socket => {
+    const join = async () => {
+      const user = await verifyPrincipal(app, String(socket.handshake.auth?.token || ""));
+      socket.data.principal = user;
+      for (const room of socket.rooms) if (room !== socket.id) await socket.leave(room);
+      if (user.kind === "customer") await socket.join("session:" + user.sessionId);
+      else await socket.join("store:" + user.storeId);
+    };
+    void join().catch(() => socket.disconnect(true));
+    socket.use(async (_packet, next) => {
+      try { await verifyPrincipal(app, String(socket.handshake.auth?.token || "")); next(); }
+      catch { next(new Error("UNAUTHORIZED")); socket.disconnect(true); }
     });
-
-    // Chuyển tiếp đơn gọi món từ khách tới các thiết bị nhân viên/bếp của quán
-    socket.on(SocketEvents.ORDER_SUBMITTED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.ORDER_SUBMITTED, payload);
-      }
+    socket.on(SocketEvents.JOIN_STORE, async (storeId, acknowledge) => {
+      try {
+        if (storeId !== socket.data.principal.storeId) throw new Error("FORBIDDEN");
+        await join();
+        if (typeof acknowledge === "function") acknowledge({ success: true });
+      } catch { if (typeof acknowledge === "function") acknowledge({ success: false }); }
     });
-
-    // Khách gửi đơn chờ quán duyệt trước khi vào bếp
-    socket.on(SocketEvents.ORDER_APPROVAL_REQUESTED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.ORDER_APPROVAL_REQUESTED, payload);
-      }
+    socket.on(SocketEvents.PING, timestamp => {
+      socket.emit(SocketEvents.PONG, { clientSentAt: timestamp, serverTime: Date.now() });
     });
-
-    // Quán duyệt đơn vào bếp
-    socket.on(SocketEvents.ORDER_APPROVED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.ORDER_APPROVED, payload);
-      }
-    });
-
-    // Quán từ chối đơn
-    socket.on(SocketEvents.ORDER_REJECTED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.ORDER_REJECTED, payload);
-      }
-    });
-
-    // Khách hủy món khi chưa làm
-    socket.on(SocketEvents.ORDER_ITEM_CANCELLED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.ORDER_ITEM_CANCELLED, payload);
-      }
-    });
-
-    // Khách gửi yêu cầu hỗ trợ nhanh (đá, giấy, dọn bàn...)
-    socket.on(SocketEvents.SERVICE_REQUESTED, (payload: any) => {
-      const targetStore = payload?.storeId || currentStoreId;
-      if (targetStore) {
-        emitToStore(targetStore, SocketEvents.SERVICE_REQUESTED, payload);
-      }
-    });
-
-    // Đo tốc độ đường truyền (Heartbeat Ping/Pong) cho Super Admin & Quán
-    socket.on(SocketEvents.PING, (timestamp: number) => {
-      const now = Date.now();
-      const latencyMs = Math.max(1, now - timestamp);
-      if (currentStoreId) {
-        activeStorePings.set(socket.id, {
-          storeId: currentStoreId,
-          socketId: socket.id,
-          latencyMs,
-          lastPingAt: now,
-        });
-      }
-      socket.emit(SocketEvents.PONG, { clientSentAt: timestamp, serverTime: now, latencyMs });
-    });
-
-    socket.on("disconnect", () => {
-      activeStorePings.delete(socket.id);
-      console.log(`[Socket] Client ${socket.id} disconnected`);
-    });
+    const timer = setInterval(() => { void verifyPrincipal(app, String(socket.handshake.auth?.token || "")).catch(() => socket.disconnect(true)); }, 30000);
+    timer.unref();
+    socket.once("disconnect", () => clearInterval(timer));
   });
-
   return io;
 }
 
-export function getSocketServer(): SocketIOServer {
-  if (!io) {
-    throw new Error("Socket.io chưa được khởi tạo!");
-  }
+export function getSocketServer() {
+  if (!io) throw new Error("Socket server is not initialized");
   return io;
 }
 
-/**
- * Lấy báo cáo thống kê Telemetry tốc độ đường truyền cho Super Admin
- */
 export function getStoreTelemetryStats(storeId?: string) {
-  const stats = Array.from(activeStorePings.values());
-  if (storeId) {
-    return stats.filter((s) => s.storeId === storeId);
-  }
-  return stats;
+  if (!io) return [];
+  return [...io.sockets.sockets.values()].filter(s => s.data.principal?.kind === "staff" && (!storeId || s.data.principal.storeId === storeId)).map(s => ({ storeId: s.data.principal.storeId, socketId: s.id, latencyMs: null, lastPingAt: null }));
 }
 
-/**
- * Phát sự kiện thời gian thực chỉ đến các thiết bị trong cùng 1 nhà hàng
- */
 export function emitToStore(storeId: string, event: string, payload: unknown) {
-  if (io) {
-    io.to(`store:${storeId}`).emit(event, payload);
+  for (const socket of io?.sockets.sockets.values() || []) {
+    if (!socket.rooms.has("store:" + storeId)) continue;
+    if (socket.data.principal?.role === "CHEF") {
+      const value = payload as Record<string, unknown>;
+      socket.emit(event, Object.fromEntries(Object.entries(value || {}).filter(([key]) => ["storeId", "tableId", "sessionId", "itemId", "orderId", "status"].includes(key))));
+    } else socket.emit(event, payload);
   }
+  const data = payload as { sessionId?: string; customerPhone?: string };
+  if (data?.sessionId) {
+    const { customerPhone: _privatePhone, ...publicPayload } = data;
+    io?.to("session:" + data.sessionId).emit(event, publicPayload);
+  }
+}
+
+export async function disconnectSession(sessionId: string) {
+  io?.in("session:" + sessionId).disconnectSockets(true);
+}
+export function disconnectStaff(userId: string) {
+  for (const socket of io?.sockets.sockets.values() || []) if (socket.data.principal?.kind === "staff" && socket.data.principal.userId === userId) socket.disconnect(true);
 }

@@ -7,6 +7,16 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "default": "./dist/react.js"
+    },
+    "./socket-client": {
+      "types": "./dist/socket-client.d.ts",
+      "import": "./dist/socket-client.js",
+      "default": "./dist/socket-client.js"
+    },
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts",
@@ -18,6 +28,8 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
+    "react": "^18.2.0",
+    "socket.io-client": "^4.7.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {

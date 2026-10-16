@@ -31,11 +31,6 @@ export const CustomerOffersTab: React.FC<CustomerOffersTabProps> = ({
   onSavePhone,
   orderedItems,
 }) => {
-  const pointsEstimate = Math.floor(
-    orderedItems
-      .filter((it) => it.status !== "CANCELLED")
-      .reduce((s, it) => s + it.price * it.quantity, 0) / 10000
-  );
 
   return (
     <div className="space-y-3 animate-fadeIn">
@@ -133,8 +128,8 @@ export const CustomerOffersTab: React.FC<CustomerOffersTabProps> = ({
             <Icon name="phone" size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-900">Tích Điểm Thành Viên</h3>
-            <p className="text-[11px] text-slate-400">10.000 đ = 1 điểm thưởng đổi quà</p>
+            <h3 className="text-sm font-black text-slate-900">Thông Tin Liên Hệ</h3>
+            <p className="text-[11px] text-slate-400">Gắn số điện thoại với đơn hàng</p>
           </div>
         </div>
 
@@ -161,12 +156,12 @@ export const CustomerOffersTab: React.FC<CustomerOffersTabProps> = ({
         {isPhoneSaved && customerPhone && (
           <div className="p-3 bg-gradient-to-r from-cyan-900 to-slate-900 text-white rounded-xl shadow-xs space-y-1">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-cyan-300 uppercase">Thẻ Thành Viên A2</span>
-              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-bold">Standard</span>
+              <span className="text-[10px] font-bold text-cyan-300 uppercase">Số điện thoại của bạn</span>
+              <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white font-bold">Đã lưu</span>
             </div>
             <p className="text-sm font-black tracking-wider font-mono">{customerPhone}</p>
             <p className="text-[10px] text-cyan-200">
-              Số điểm tích lũy dự kiến: +{pointsEstimate} điểm
+              Chưa tự động tích điểm hoặc đổi quà.
             </p>
           </div>
         )}

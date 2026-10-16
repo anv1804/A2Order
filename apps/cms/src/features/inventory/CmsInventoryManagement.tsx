@@ -1,3 +1,5 @@
+import { browserRequest, getAuthUser } from "@a2order/shared";
+import { useAntiSpamAction } from "@a2order/shared/react";
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -79,66 +81,12 @@ export const CmsInventoryManagement: React.FC = () => {
     );
   };
 
+  const receiptAction = useAntiSpamAction("inventory-receipt", (payload: unknown, key) => browserRequest("/workforce/inventory-receipt", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
   // Submit tạo phiếu nhập kho
-  const handleSubmitReceipt = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (receiptItems.length === 0) {
-      toast.warning("Phiếu nhập phải có ít nhất 1 mặt hàng");
-      return;
-    }
-
-    const calculatedItems: InwardReceiptItem[] = receiptItems.map((rItem) => {
-      const ing = ingredients.find((i) => i.id === rItem.ingredientId);
-      const name = ing ? ing.name : "Nguyên liệu";
-      const unit = ing ? ing.unit : "kg";
-      return {
-        ingredientId: rItem.ingredientId,
-        ingredientName: name,
-        quantity: Number(rItem.quantity) || 1,
-        unit: unit,
-        unitPrice: Number(rItem.unitPrice) || 0,
-        subtotal: (Number(rItem.quantity) || 1) * (Number(rItem.unitPrice) || 0),
-      };
-    });
-
-    const total = calculatedItems.reduce((acc, cur) => acc + cur.subtotal, 0);
-    const newReceipt: InwardReceipt = {
-      id: `rc-${Date.now()}`,
-      code: `PNK-2026-00${receipts.length + 1}`,
-      supplierName: receiptSupplier,
-      receivedDate: new Date().toLocaleDateString("vi-VN") + " " + new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-      receivedBy: currentUserName,
-      items: calculatedItems,
-      totalAmount: total,
-      paymentStatus: "PAID",
-      notes: receiptNotes || "Nhập bổ sung kho nhà hàng",
-      createdAt: new Date().toISOString(),
-    };
-
-    // Tự động cộng tồn kho cho các nguyên liệu
-    setIngredients((prev) =>
-      prev.map((ing) => {
-        const added = calculatedItems.find((ci) => ci.ingredientId === ing.id);
-        if (added) {
-          const newStock = ing.currentStock + added.quantity;
-          return {
-            ...ing,
-            currentStock: Math.round(newStock * 100) / 100,
-            updatedAt: "Vừa cập nhật",
-          };
-        }
-        return ing;
-      })
-    );
-
-    setReceipts((prev) => [newReceipt, ...prev]);
-    setIsCreateReceiptOpen(false);
-    setReceiptNotes("");
-    toast.success(`Đã lưu phiếu nhập ${newReceipt.code} thành công! Tồn kho đã được cộng dồn.`);
-  };
+  const handleSubmitReceipt = async (e: React.FormEvent) => { e.preventDefault(); try { const result = await receiptAction.execute({ supplierName: receiptSupplier, notes: receiptNotes, items: receiptItems }); if (!result) return; setIsCreateReceiptOpen(false); setReceiptNotes(""); setReceiptItems([]); toast.success("Đã lưu phiếu nhập và cập nhật tồn kho"); } catch (e: any) { toast.error(e.message); } };
 
   // Submit thêm nguyên liệu mới
-  const handleAddIngredientSubmit = (e: React.FormEvent) => {
+  const handleAddIngredientSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newIngName.trim()) {
       toast.error("Vui lòng nhập tên nguyên liệu");
@@ -159,7 +107,7 @@ export const CmsInventoryManagement: React.FC = () => {
       updatedAt: "Vừa tạo",
     };
 
-    setIngredients((prev) => [newIng, ...prev]);
+    if (!(await setIngredients((prev) => [newIng, ...prev]))) return;
     setIsAddIngredientOpen(false);
     setNewIngName("");
     setNewIngCode("");

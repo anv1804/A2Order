@@ -1,11 +1,9 @@
-const { test } = require("node:test");
-const assert = require("node:assert");
-const {
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
   AppModule,
   calculateContractPrice,
-  DEFAULT_PERIOD_DISCOUNTS,
-  APP_MODULE_CATALOG,
-} = require("../dist/index.js");
+} from "../dist/index.js";
 
 test("calculateContractPrice - 1 month basic core pos", () => {
   const result = calculateContractPrice([AppModule.CORE_POS], 1);

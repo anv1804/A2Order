@@ -28,6 +28,8 @@ export type KdsStation = "KITCHEN" | "BAR" | "DESSERT";
 export type KdsStatus = "NEW" | "IN_PROGRESS" | "DONE";
 
 export interface KdsOrderItem {
+  id: string;
+  status: string;
   dishName: string;
   quantity: number;
   notes?: string;

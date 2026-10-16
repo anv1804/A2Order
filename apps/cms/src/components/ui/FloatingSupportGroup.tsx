@@ -2,6 +2,9 @@ import React, { useState, useEffect } from "react";
 import { Icon } from "./Icon";
 import { Portal } from "./Portal";
 import { toast } from "@/stores/notificationStore";
+import { useResource } from "@a2order/shared/react";
+import { requestApi } from "@/services/api/apiClient";
+import { useAntiSpamAction } from "@/hooks/useAntiSpamAction";
 
 import {
   FloatingSupportGroupProps,
@@ -13,8 +16,8 @@ import { CHANNELS, INITIAL_MESSAGES, ROLE_BADGES } from "@/data/chatConstants";
 
 
 export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
-  storeName = "A2 Roastery & Kitchen",
-  storeId = "store-a2-kitchen",
+  storeName = "Cửa hàng",
+  storeId = "",
   currentUser,
 }) => {
   // 1. Back to Top state
@@ -60,37 +63,21 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [activeChannel, setActiveChannel] = useState<StoreChannelId>("ALL");
   const [chatInput, setChatInput] = useState("");
-  const [channelMessages, setChannelMessages] = useState<Record<StoreChannelId, StaffChatMessage[]>>(INITIAL_MESSAGES);
+  const [messages, refreshMessages] = useResource<any[]>(isChatOpen && storeId ? "/workforce/intercom" : null, []);
+  const channelRoles: Record<StoreChannelId, string> = { ALL: "ALL", KITCHEN: "KITCHEN", CASHIER_BAR: "CASHIER", SERVICE: "WAITER" };
+  const send = useAntiSpamAction("intercom", (payload: unknown, key) => requestApi("/workforce/intercom", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
 
   const activeChannelDef = CHANNELS.find((c) => c.id === activeChannel) || CHANNELS[0];
-  const currentMessages = channelMessages[activeChannel] || [];
+  const currentMessages: StaffChatMessage[] = messages.filter(m => m.targetRole === channelRoles[activeChannel]).map(m => ({ id: m.id, senderName: m.senderName, senderRole: m.senderRole, text: m.type === "VOICE_NOTE" ? "Tin nhắn thoại — nghe trong màn hình bộ đàm" : m.content, time: m.timestamp, isCurrentUser: m.senderId === currentUser?.id }));
 
-  const handleSendMessage = (e?: React.FormEvent, customText?: string) => {
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
     if (e) e.preventDefault();
     const textToSend = customText || chatInput;
     const trimmed = textToSend.trim();
     if (!trimmed) return;
 
-    const userRole = currentUser?.role === "STORE_OWNER" ? "Chủ Quán" : (currentUser?.role || "Chủ Quán");
-    const userName = currentUser?.name || "Chủ Quán";
-
-    const newMsg: StaffChatMessage = {
-      id: `msg-${Date.now()}`,
-      senderName: userName,
-      senderRole: userRole,
-      text: trimmed,
-      time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-      isCurrentUser: true,
-    };
-
-    setChannelMessages((prev) => ({
-      ...prev,
-      [activeChannel]: [...(prev[activeChannel] || []), newMsg],
-    }));
-
-    if (!customText) {
-      setChatInput("");
-    }
+    try { const result = await send.execute({ targetRole: channelRoles[activeChannel], type: "TEXT", content: trimmed }); if (!result) return; if (!customText) setChatInput(""); await refreshMessages(); }
+    catch (error: any) { toast.error(error.message); }
   };
 
   // 3. Admin Request Modal state (Nút cảnh báo Warning)
@@ -110,20 +97,7 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
       return;
     }
 
-    setIsSubmittingAdmin(true);
-    setTimeout(() => {
-      setIsSubmittingAdmin(false);
-      setIsAdminModalOpen(false);
-      setAdminForm({
-        category: "TECH_SUPPORT",
-        priority: "NORMAL",
-        contactPhone: "",
-        content: "",
-      });
-      toast.success(
-        "Đã gửi yêu cầu khẩn cấp tới Quản Trị Viên A2Order! Đội ngũ kỹ thuật trung tâm sẽ liên hệ xử lý ngay."
-      );
-    }, 700);
+    toast.info("Kênh gửi yêu cầu hỗ trợ chưa được cấu hình. Yêu cầu chưa được gửi; vui lòng liên hệ đơn vị triển khai.");
   };
 
   return (
@@ -426,4 +400,3 @@ export const FloatingSupportGroup: React.FC<FloatingSupportGroupProps> = ({
     </>
   );
 };
-

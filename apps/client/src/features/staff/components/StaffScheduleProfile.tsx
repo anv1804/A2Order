@@ -18,8 +18,8 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
   );
   const isClockedIn = !!currentRecord;
 
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 1)); // Tháng 9/2026
-  const [selectedDayNum, setSelectedDayNum] = useState(29);
+  const [currentDate, setCurrentDate] = useState(new Date()); // Tháng 9/2026
+  const [selectedDayNum, setSelectedDayNum] = useState(new Date().getDate());
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
@@ -40,18 +40,13 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
   const calendarGrid = Array.from({ length: Math.ceil((daysInMonth + startOffset) / 7) * 7 }).map((_, i) => {
     const dayNum = i - startOffset + 1;
     if (dayNum < 1 || dayNum > daysInMonth) return null;
-    
-    // Mock logic
-    const isFuture = currentYear > 2026 || (currentYear === 2026 && currentMonth > 8) || (currentYear === 2026 && currentMonth === 8 && dayNum > 29);
-    const isToday = currentYear === 2026 && currentMonth === 8 && dayNum === 29;
-    
-    let status = "UPCOMING";
-    if (isToday) {
-      status = isClockedIn ? "WORKING" : "UPCOMING";
-    } else if (!isFuture) {
-      status = dayNum % 6 === 0 ? "OFF" : "WORKED"; // Nghỉ mỗi 6 ngày
-    }
-    
+
+    const date = new Date(currentYear, currentMonth, dayNum);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const isToday = date.getTime() === today.getTime(), isFuture = date > today;
+    const dayKey = [currentYear, String(currentMonth + 1).padStart(2, "0"), String(dayNum).padStart(2, "0")].join("-");
+    const logs = attendanceRecords.filter(r => r.staffId === currentStaff?.id && r.date === dayKey);
+    const status = logs.some(r => r.status === "ACTIVE") ? "WORKING" : logs.length ? "WORKED" : "UPCOMING";
     return { dayNum, status, isToday, isFuture };
   });
 
@@ -252,7 +247,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
            <h4 className="text-[10px] font-black text-ink-muted mb-3 uppercase tracking-wider">
              Lịch trình • Ngày {selectedDayNum}/{currentMonth + 1}/{currentYear}
            </h4>
-           
+
            <div className="space-y-2.5">
              {calendarGrid.find(c => c?.dayNum === selectedDayNum)?.status === "OFF" ? (
                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">

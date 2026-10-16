@@ -86,65 +86,22 @@ export const CmsDeliveryIntegrations: React.FC = () => {
   });
 
   // Chấp nhận đơn hàng
-  const handleAcceptOrder = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: "COOKING", estimatedPickupTime: "Đang nấu (Khoảng 12 phút)" } : o))
-    );
-    toast.success("Đã xác nhận đơn hàng và tự động bắn vào Màn Hình Bếp (KDS)!");
-  };
+  const handleAcceptOrder = (_orderId?: string) => { toast.error("Chưa kết nối đối tác giao hàng trên máy chủ"); };
 
   // Báo món hoàn tất sẵn sàng bàn giao cho tài xế
-  const handleReadyForPickup = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: "READY_FOR_PICKUP", estimatedPickupTime: "Chờ tài xế lấy hàng" } : o))
-    );
-    toast.success("Món đã nấu xong! Đã gửi thông báo tới ứng dụng của tài xế.");
-  };
+  const handleReadyForPickup = (_orderId?: string) => { toast.error("Chưa kết nối đối tác giao hàng trên máy chủ"); };
 
   // Hoàn tất bàn giao đơn cho shipper
-  const handleCompleteDelivery = (orderId: string) => {
-    setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, status: "COMPLETED" } : o))
-    );
-    toast.success("Đã bàn giao đơn hàng cho tài xế thành công!");
-  };
+  const handleCompleteDelivery = (_orderId?: string) => { toast.error("Chưa kết nối đối tác giao hàng trên máy chủ"); };
 
   // Giả lập đơn hàng mới bay tới từ Grab / ShopeeFood
-  const handleSimulateNewOrder = () => {
-    const randomPlatform: DeliveryPlatform = Math.random() > 0.5 ? "GRAB_FOOD" : "SHOPEE_FOOD";
-    const newCode = `${randomPlatform === "GRAB_FOOD" ? "GF" : "SPF"}-${Math.floor(100000 + Math.random() * 900000)}`;
-    const newOrder: DeliveryOrderRecord = {
-      id: `do-${Date.now()}`,
-      platform: randomPlatform,
-      platformOrderCode: newCode,
-      customerName: "Khách Hàng Trực Tuyến",
-      customerPhone: "090" + Math.floor(1000000 + Math.random() * 9000000),
-      driverName: "Tài Xế " + (randomPlatform === "GRAB_FOOD" ? "Grab" : "Shopee"),
-      driverPhone: "093" + Math.floor(1000000 + Math.random() * 9000000),
-      driverPlate: "29A-" + Math.floor(100 + Math.random() * 900) + "." + Math.floor(10 + Math.random() * 90),
-      status: "WAITING_ACCEPT",
-      items: menuDishes.length > 0
-        ? menuDishes.slice(0, 2).map((d) => ({ name: d.name, quantity: 1, price: d.price || 50000 }))
-        : [{ name: "Món Đặt Trực Tuyến", quantity: 1, price: 50000 }],
-      subtotal: 100000,
-      shippingFee: 20000,
-      discountAmount: 0,
-      totalAmount: 200000,
-      platformCommission: 40000,
-      netPayout: 160000,
-      orderTime: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
-      estimatedPickupTime: "Tài xế đang đến (khoảng 8 phút)",
-    };
-
-    setOrders((prev) => [newOrder, ...prev]);
-    toast.success(`Ting Ting! Có đơn giao hàng mới [${newCode}] từ ${randomPlatform === "GRAB_FOOD" ? "GrabFood" : "ShopeeFood"}!`);
-  };
+  const handleSimulateNewOrder = () => { toast.error("Chưa kết nối đối tác giao hàng trên máy chủ"); };
 
   // Lưu cấu hình kênh
-  const handleSaveChannelConfig = (e: React.FormEvent) => {
+  const handleSaveChannelConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingChannel) return;
-    setChannels((prev) => prev.map((c) => (c.id === editingChannel.id ? editingChannel : c)));
+    if (!(await setChannels((prev) => prev.map((c) => (c.id === editingChannel.id ? editingChannel : c))))) return;
     setEditingChannel(null);
     toast.success(`Đã lưu cấu hình kênh ${editingChannel.name} thành công!`);
   };
@@ -475,7 +432,7 @@ export const CmsDeliveryIntegrations: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      toast.success(`Đã đồng bộ lại thực đơn sang ${channel.name}!`);
+                      toast.error("Chưa kết nối API đối tác giao hàng");
                     }}
                     className="text-xs text-emerald-700 border-emerald-300"
                   >
@@ -502,7 +459,7 @@ export const CmsDeliveryIntegrations: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => toast.success("Đã đồng bộ toàn bộ 28 món sang GrabFood & ShopeeFood thành công!")}
+              onClick={() => toast.error("Chưa kết nối API đối tác giao hàng")}
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
             >
               <Icon name="refresh" size={14} className="mr-1" />

@@ -3,11 +3,17 @@ import { Button, Icon, Pagination, Portal } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { Reservation } from "@/types/cms.types";
 import { usePersistentState } from "@/hooks/usePersistentState";
+import { useResource } from "@a2order/shared/react";
+import { getAuthUser } from "@a2order/shared";
+import { requestApi } from "@/services/api/apiClient";
+import { useAntiSpamAction } from "@/hooks/useAntiSpamAction";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
 
 export const CmsReservationsManagement: React.FC = () => {
   const [reservations, setReservations] = usePersistentState<Reservation[]>("reservations_data", []);
-  const [zonesData] = usePersistentState<any[]>("tables_zones_data", []);
+  const storeId = getAuthUser()?.storeId;
+  const [zonesData] = useResource<any[]>(storeId ? "/tables/" + storeId : null, []);
+  const arrival = useAntiSpamAction("reservation-arrive", (payload: unknown, key) => requestApi("/workforce/reservation-arrive", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
   const availableTables = useMemo(() => {
     if (!zonesData || zonesData.length === 0) return [];
     return zonesData.flatMap((z) => (z.tables || []).map((t: any) => `${t.name} (${z.name || "Khu vực"} - ${t.capacity || 4} chỗ)`));
@@ -60,7 +66,7 @@ export const CmsReservationsManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === res.id
           ? {
@@ -71,7 +77,7 @@ export const CmsReservationsManagement: React.FC = () => {
             }
           : r
       )
-    );
+    ))) return;
     toast.success(`Đã xác nhận và giữ bàn cho khách ${res.guestName}!`);
   };
 
@@ -86,17 +92,17 @@ export const CmsReservationsManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setReservations((prev) =>
-      prev.map((r) => (r.id === res.id ? { ...r, status: "ARRIVED" } : r))
-    );
-    toast.success(`Khách ${res.guestName} đã đến! Đã chuyển trạng thái bàn ${res.tableAssigned}`);
+    const table = zonesData.flatMap(z => z.tables || []).find((t: any) => res.tableAssigned === t.name || res.tableAssigned?.startsWith(t.name + " ("));
+    if (!table) { toast.warning("Vui lòng gán một bàn hợp lệ trước khi đón khách"); return; }
+    try { if (await arrival.execute({ reservationId: res.id, tableId: table.id })) toast.success(`Đã mở bàn đón khách ${res.guestName}`); }
+    catch (error: any) { toast.error(error.message); }
   };
 
   // Gia hạn giữ bàn +15 phút (Extend Hold Time SOP)
-  const handleExtendReservation = (res: Reservation) => {
+  const handleExtendReservation = async (res: Reservation) => {
     const currentExt = res.extendedMinutes || 0;
     const newExt = currentExt + 15;
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === res.id
           ? {
@@ -106,13 +112,13 @@ export const CmsReservationsManagement: React.FC = () => {
             }
           : r
       )
-    );
+    ))) return;
     toast.success(`Đã gia hạn giữ bàn thêm +15 phút cho khách ${res.guestName}! (Đã gia hạn: +${newExt} phút)`);
   };
 
   // Đánh dấu khách báo trễ giờ (Grace Period 15p)
-  const handleMarkLate = (res: Reservation) => {
-    setReservations((prev) =>
+  const handleMarkLate = async (res: Reservation) => {
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === res.id
           ? {
@@ -122,7 +128,7 @@ export const CmsReservationsManagement: React.FC = () => {
             }
           : r
       )
-    );
+    ))) return;
     toast.warning(`Đã chuyển khách ${res.guestName} sang trạng thái TRỄ GIỜ. Đang tính thời gian ân hạn giữ chỗ 15p.`);
   };
 
@@ -133,13 +139,14 @@ export const CmsReservationsManagement: React.FC = () => {
   };
 
   // Xác nhận nhả bàn & xử lý cọc No-Show
-  const handleConfirmNoShow = () => {
+  const handleConfirmNoShow = async () => {
     if (!noShowModalTarget) return;
     const target = noShowModalTarget;
     const hasDeposit = (target.depositAmount || 0) > 0 && target.depositStatus === "PAID";
+    if (hasDeposit && depositResolution === "VOUCHER_CREDIT") { toast.info("Chưa hỗ trợ bảo lưu cọc tự động thành voucher"); return; }
     const assignedTable = target.tableAssigned || "Bàn";
 
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === target.id
           ? {
@@ -153,12 +160,12 @@ export const CmsReservationsManagement: React.FC = () => {
                     ? "Thu tiền cọc do vi phạm quá hạn giữ bàn (No-Show)"
                     : depositResolution === "VOUCHER_CREDIT"
                     ? `Đã tạo voucher bảo lưu cọc ${(target.depositAmount || 0).toLocaleString("vi-VN")}đ hạn 30 ngày`
-                    : "Đã hoàn trả tiền cọc cho khách"
+                    : "Quán ghi nhận đã hoàn cọc thủ công cho khách"
                   : "Khách không đến, đã nhả bàn đón khách khác"),
             }
           : r
       )
-    );
+    ))) return;
 
     if (hasDeposit) {
       if (depositResolution === "FORFEIT_PENALTY") {
@@ -186,9 +193,9 @@ export const CmsReservationsManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) => (r.id === res.id ? { ...r, status: "CANCELLED" } : r))
-    );
+    ))) return;
     toast.warning(`Đã từ chối lịch đặt bàn của khách ${res.guestName}.`);
   };
 
@@ -203,9 +210,9 @@ export const CmsReservationsManagement: React.FC = () => {
   };
 
   // Lưu gán bàn an toàn
-  const handleSaveTableAssignment = () => {
+  const handleSaveTableAssignment = async () => {
     if (!tableAssignTarget) return;
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === tableAssignTarget.id
           ? {
@@ -215,7 +222,7 @@ export const CmsReservationsManagement: React.FC = () => {
             }
           : r
       )
-    );
+    ))) return;
     toast.success(`Đã gán bàn ${selectedTable} cho khách ${tableAssignTarget.guestName}`);
     setTableAssignTarget(null);
   };
@@ -232,16 +239,16 @@ export const CmsReservationsManagement: React.FC = () => {
     });
     if (!ok) return;
 
-    setReservations((prev) =>
+    if (!(await setReservations((prev) =>
       prev.map((r) =>
         r.id === res.id ? { ...r, depositStatus: nextStatus } : r
       )
-    );
+    ))) return;
     toast.success(`Đã cập nhật tiền cọc khách ${res.guestName} thành công!`);
   };
 
   // Thêm mới đặt bàn
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.guestName.trim() || !formData.phone.trim()) {
       toast.error("Vui lòng điền tên và số điện thoại khách hàng");
@@ -265,7 +272,7 @@ export const CmsReservationsManagement: React.FC = () => {
       createdAt: "Vừa xong",
     };
 
-    setReservations([newRes, ...reservations]);
+    if (!(await setReservations([newRes, ...reservations]))) return;
     setIsModalOpen(false);
     toast.success(`Đã tạo lịch đặt bàn mới cho ${newRes.guestName} thành công!`);
     setFormData({
@@ -1169,7 +1176,7 @@ export const CmsReservationsManagement: React.FC = () => {
                           3. Hoàn trả lại tiền cọc (Lý do bất khả kháng)
                         </div>
                         <p className="text-[11px] text-slate-600 leading-snug">
-                          Khách báo gặp sự cố khẩn cấp, thời tiết xấu hoặc lý do bất khả kháng. Quán hoàn lại 100% cọc qua tài khoản.
+                          Khách báo gặp sự cố khẩn cấp, thời tiết xấu hoặc lý do bất khả kháng. Chỉ xác nhận sau khi quán đã hoàn cọc thủ công; hệ thống không tự chuyển tiền.
                         </p>
                       </div>
                     </button>

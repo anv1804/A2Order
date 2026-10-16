@@ -18,6 +18,8 @@ export interface DishOptionGroup {
   name: string;
   type?: "SINGLE" | "MULTIPLE";
   required?: boolean;
+  minSelect?: number;
+  maxSelect?: number;
   options: DishOption[];
 }
 
@@ -52,5 +54,3 @@ export interface MenuDashboardProps {
   menuItems: (MenuItemData & { category: string })[];
   onToggleStock: (id: string, available: boolean) => void;
 }
-
-

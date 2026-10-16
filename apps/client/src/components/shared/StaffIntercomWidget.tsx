@@ -1,3 +1,5 @@
+import { browserRequest } from "@a2order/shared";
+import { useResource, useAntiSpamAction } from "@a2order/shared/react";
 import React, { useState, useRef, useEffect } from "react";
 import { Icon, Button, Badge } from "@/components/ui";
 import { sound } from "@/lib/sound";
@@ -23,7 +25,14 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
   const [pttSeconds, setPttSeconds] = useState(0);
   const pttTimerRef = useRef<any>(null);
 
-  const [messages, setMessages] = useState<IntercomMessage[]>(INITIAL_MESSAGES);
+  const [messages, refreshMessages] = useResource<IntercomMessage[]>("/workforce/intercom", []);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const mediaStream = useRef<MediaStream | null>(null);
+  const recordingStarted = useRef(0);
+  const recordingRequested = useRef(false);
+  const recordingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const send = useAntiSpamAction("intercom", (payload: unknown, key) => browserRequest("/workforce/intercom", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
+  const transmit = async (payload: unknown) => { try { const result = await send.execute(payload); if (!result) return false; await refreshMessages(); return true; } catch (e: any) { toast.error(e.message); return false; } };
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +46,7 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
   // Dọn dẹp timer khi component unmount
   useEffect(() => {
     return () => {
+      recordingRequested.current = false; if (recordingTimeout.current) clearTimeout(recordingTimeout.current); if (recorder.current) recorder.current.onstop = null; mediaStream.current?.getTracks().forEach(track => track.stop());
       if (pttTimerRef.current) {
         clearInterval(pttTimerRef.current);
       }
@@ -44,65 +54,34 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
   }, []);
 
   // Push to talk start
-  const handleStartPTT = () => {
-    setIsTalkingPTT(true);
-    setPttSeconds(0);
-    sound.playWalkieBeep("press");
-    pttTimerRef.current = setInterval(() => {
-      setPttSeconds((s) => s + 1);
-    }, 1000);
+  const handleStartPTT = async () => {
+ if (recordingRequested.current || recorder.current?.state === "recording") return;
+ if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return toast.error("Trình duyệt cần HTTPS và hỗ trợ ghi âm");
+ recordingRequested.current = true;
+ try {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  if (!recordingRequested.current) { stream.getTracks().forEach(t => t.stop()); return; }
+  mediaStream.current = stream; const chunks: BlobPart[] = [];
+  const type = ["audio/webm;codecs=opus", "audio/ogg;codecs=opus", "audio/mp4"].find(t => MediaRecorder.isTypeSupported(t));
+  const device = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 24000 }); recorder.current = device;
+  device.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+  device.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop()); mediaStream.current = null;
+    const duration = Math.max(1, Math.min(30, Math.round((Date.now() - recordingStarted.current) / 1000)));
+    const blob = new Blob(chunks, { type: device.mimeType });
+    if (!blob.size || blob.size > 220000) return toast.error("Bản ghi quá lớn hoặc không có âm thanh");
+    const reader = new FileReader(); reader.onload = () => { void transmit({ targetRole: activeChannel, type: "VOICE_NOTE", content: "", audioUrl: String(reader.result), audioDurationSec: duration }).then(ok => { if (ok) toast.success("Đã gửi bản ghi âm"); }); }; reader.readAsDataURL(blob);
   };
+  recordingStarted.current = Date.now(); setIsTalkingPTT(true); setPttSeconds(0); device.start();
+  pttTimerRef.current = setInterval(() => setPttSeconds(Math.min(30, Math.round((Date.now() - recordingStarted.current) / 1000))), 1000);
+  recordingTimeout.current = setTimeout(() => handleStopPTT(), 30000);
+ } catch { recordingRequested.current = false; toast.error("Không thể truy cập micro"); }
+};
 
   // Push to talk end
-  const handleStopPTT = () => {
-    if (!isTalkingPTT) return;
-    setIsTalkingPTT(false);
-    if (pttTimerRef.current) {
-      clearInterval(pttTimerRef.current);
-      pttTimerRef.current = null;
-    }
-    sound.playWalkieBeep("release");
+  const handleStopPTT = () => { recordingRequested.current = false; setIsTalkingPTT(false); if (pttTimerRef.current) clearInterval(pttTimerRef.current); if (recordingTimeout.current) clearTimeout(recordingTimeout.current); if (recorder.current?.state === "recording") recorder.current.stop(); };
 
-    const duration = Math.max(1, pttSeconds);
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    const newVoiceMsg: IntercomMessage = {
-      id: `v-${Date.now()}`,
-      senderName: currentStaffName,
-      senderRole: currentStaffRole,
-      targetRole: activeChannel,
-      content: `[Tin nhắn thoại đàm thoại bộ đàm: ${duration}s]`,
-      timestamp: timeStr,
-      type: "VOICE_NOTE",
-      audioDurationSec: duration,
-    };
-
-    setMessages((prev) => [...prev, newVoiceMsg]);
-    toast.success(`Đã phát bộ đàm (${duration}s) đến kênh ${activeChannel === "ALL" ? "Toàn Bộ" : activeChannel}!`);
-  };
-
-  const handleSendMessage = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!inputText.trim()) return;
-
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    const newMsg: IntercomMessage = {
-      id: `m-${Date.now()}`,
-      senderName: currentStaffName,
-      senderRole: currentStaffRole,
-      targetRole: activeChannel,
-      content: inputText.trim(),
-      timestamp: timeStr,
-      type: inputText.trim().startsWith("[") ? "QUICK_ALERT" : "TEXT",
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
-    setInputText("");
-    sound.playKitchenChime();
-  };
+  const handleSendMessage = async (e?: React.FormEvent) => { e?.preventDefault(); const content = inputText.trim(); if (!content) return; if (await transmit({ content, targetRole: activeChannel, type: content.startsWith("[") ? "QUICK_ALERT" : "TEXT" })) setInputText(value => value.trim() === content ? "" : value); };
 
   const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [pendingAlert, setPendingAlert] = useState<{text: string, target: string} | null>(null);
@@ -112,33 +91,7 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
     setIsTableModalOpen(true);
   };
 
-  const handleSelectTableForAlert = (tableName: string) => {
-    if (!pendingAlert) return;
-    
-    const finalAlertText = tableName === "Không xác định" 
-      ? `[${pendingAlert.text}]` 
-      : `[${pendingAlert.text}] - ${tableName}`;
-      
-    const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-
-    const newMsg: IntercomMessage = {
-      id: `qa-${Date.now()}`,
-      senderName: currentStaffName,
-      senderRole: currentStaffRole,
-      targetRole: pendingAlert.target as any,
-      content: finalAlertText,
-      timestamp: timeStr,
-      type: "QUICK_ALERT",
-    };
-
-    setMessages((prev) => [...prev, newMsg]);
-    sound.playIntercomRing();
-    toast.info(`Đã phát tín hiệu khẩn: "${finalAlertText}"`);
-    
-    setIsTableModalOpen(false);
-    setPendingAlert(null);
-  };
+  const handleSelectTableForAlert = async (tableName: string) => { if (!pendingAlert) return; const content = "[" + pendingAlert.text + "]" + (tableName === "Không xác định" ? "" : " - " + tableName); if (await transmit({ content, targetRole: pendingAlert.target, type: "QUICK_ALERT" })) { setIsTableModalOpen(false); setPendingAlert(null); toast.success("Đã gửi tín hiệu"); } };
 
   const filteredMessages = messages.filter((m) => {
     if (activeChannel === "ALL") return true;
@@ -149,23 +102,23 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
 
   const renderSharedComponents = () => (
     <>
-      <ChatChannelTabs 
-        activeChannel={activeChannel} 
-        setActiveChannel={setActiveChannel} 
-        variant={variant} 
+      <ChatChannelTabs
+        activeChannel={activeChannel}
+        setActiveChannel={setActiveChannel}
+        variant={variant}
       />
-      <ChatMessageList 
-        messages={filteredMessages} 
-        currentStaffName={currentStaffName} 
-        messagesEndRef={messagesEndRef} 
-        variant={variant} 
+      <ChatMessageList
+        messages={filteredMessages}
+        currentStaffName={currentStaffName}
+        messagesEndRef={messagesEndRef}
+        variant={variant}
       />
-      <QuickAlertBar 
-        activeChannel={activeChannel} 
-        onSendAlert={handleSendQuickAlert} 
-        variant={variant} 
+      <QuickAlertBar
+        activeChannel={activeChannel}
+        onSendAlert={handleSendQuickAlert}
+        variant={variant}
       />
-      <ChatInputBar 
+      <ChatInputBar
         activeChannel={activeChannel}
         isTalkingPTT={isTalkingPTT}
         pttSeconds={pttSeconds}
@@ -186,7 +139,7 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
                 <Icon name="x" className="w-4 h-4" />
               </button>
             </div>
-            
+
             <div className="p-4 bg-brand-50 shrink-0 border-b border-brand-100">
               <p className="text-sm font-bold text-brand-900 mb-1">
                 Cảnh báo: <span className="text-rose-600">[{pendingAlert.text}]</span>
@@ -195,7 +148,7 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
                 Hệ thống đang tự động lọc các bàn phù hợp. Chọn một bàn bên dưới để gửi lệnh ngay lập tức!
               </p>
             </div>
-            
+
             <div className="p-4 overflow-y-auto flex-1 grid grid-cols-2 gap-2.5">
               {(!tables || tables.length === 0 || tables.filter((t: any) => t.status !== "EMPTY").length === 0) ? (
                 <div className="col-span-2 text-center text-ink-muted text-xs py-8">
@@ -213,7 +166,7 @@ export const StaffIntercomWidget: React.FC<StaffIntercomWidgetProps> = ({
                   </button>
                 ))
               )}
-              
+
               <div className="col-span-2 mt-2 pt-4 border-t border-surface-border">
                 <button
                   onClick={() => handleSelectTableForAlert("Không xác định")}

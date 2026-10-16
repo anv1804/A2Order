@@ -1,285 +1,79 @@
-import { FastifyInstance } from "fastify";
+import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod";
+import { AppModule } from "@a2order/shared";
 import { prisma } from "../../core/database/prismaClient.js";
+import { command } from "../../core/security/commands.js";
+import { currentStore } from "../../core/security/access.js";
+import { AppError, requireValue } from "../../core/security/errors.js";
 import { licenseRepository, invoiceRepository } from "../../core/database/repositoryFactory.js";
-import { LicensePlan, LicenseStatus, InvoiceStatus, AppModule, APP_MODULE_CATALOG, SoftwareInvoiceRecord } from "@a2order/shared";
+import { subscriptionQuote, reserveSubscriptionQuote, releaseSubscriptionVoucher, addMonths } from "../config/pricing.service.js";
 
-export async function licenseRoutes(fastify: FastifyInstance) {
-  /**
-   * 0. LẤY TẤT CẢ GIẤY PHÉP BẢN QUYỀN
-   * GET /api/licenses
-   */
-  fastify.get("/", async (_request, reply) => {
-    try {
-      const licenses = await licenseRepository.getAll();
-      return { success: true, count: licenses.length, data: licenses };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+export const licenseRoutes: FastifyPluginAsync = async app => {
+  app.get("/", async () => ({ success: true, data: await licenseRepository.getAll() }));
+  app.post("/", async request => {
+    const input = z.object({ keyCode: z.string().trim().min(8).max(100), storeId: z.string().optional(), plan: z.enum(["STARTER", "GROWTH", "PRO"]), maxDevices: z.number().int().min(1).max(10000), durationMonths: z.number().int().min(1).max(120) }).parse(request.body);
+    const data = await command(request, input.storeId || currentStore(request), "LICENSE_CREATE", async tx => {
+      if (input.storeId && await tx.storeLicense.findUnique({ where: { storeId: input.storeId } })) throw new AppError(409, "Cửa hàng đã có license");
+      const row = await tx.storeLicense.create({ data: { licenseKey: input.keyCode, storeId: input.storeId, planType: input.plan, enabledModules: "CORE_POS", maxTables: input.maxDevices, endDate: addMonths(new Date(), input.durationMonths), status: input.storeId ? "EXPIRED" : "UNASSIGNED" }, include: { store: true } });
+      return { id: row.id, keyCode: row.licenseKey, storeId: row.storeId, storeName: row.store?.name, plan: row.planType, maxDevices: row.maxTables, durationMonths: input.durationMonths, status: row.status, issuedAt: row.startDate, expiresAt: row.endDate };
+    });
+    return { success: true, data };
   });
-
-  /**
-   * TẠO MỚI GIẤY PHÉP BẢN QUYỀN
-   * POST /api/licenses
-   */
-  fastify.post("/", async (request, reply) => {
-    try {
-      const body = request.body as any;
-      if (!body?.keyCode || !body?.plan || !body?.maxDevices || !body?.durationMonths) {
-        return reply.status(400).send({ success: false, error: "Thiếu mã key, gói, số thiết bị hoặc thời hạn." });
-      }
-      if (body.storeId) {
-        const existingLicense = await prisma.storeLicense.findUnique({ where: { storeId: body.storeId } });
-        if (existingLicense) {
-          return reply.status(409).send({ success: false, error: "Cửa hàng đã có license. Hãy tạo key dự phòng chưa gán." });
-        }
-      }
-      const created = await licenseRepository.create(body);
-      return { success: true, data: created };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * GIA HẠN GIẤY PHÉP BẢN QUYỀN
-   * POST /api/licenses/:keyCode/renew
-   */
-  fastify.post("/:keyCode/renew", async (request, reply) => {
+  app.post("/:keyCode/renew", async () => { throw new AppError(409, "Vui lòng lập hóa đơn gia hạn và xác nhận đã nhận tiền", "INVOICE_REQUIRED"); });
+  app.post("/:keyCode/revoke", async request => {
     const { keyCode } = request.params as { keyCode: string };
-    const { durationMonths } = (request.body as { durationMonths?: number }) || {};
-    try {
-      const renewed = await licenseRepository.renew(keyCode, durationMonths || 12);
-      if (!renewed) return reply.status(404).send({ success: false, error: "License not found" });
-      return { success: true, data: renewed };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
+    const target = requireValue(await prisma.storeLicense.findUnique({ where: { licenseKey: keyCode } }));
+    const data = await command(request, target.storeId || currentStore(request), "LICENSE_REVOKE", async tx => {
+      const row = await tx.storeLicense.update({ where: { id: target.id }, data: { status: "REVOKED" } });
+      return { id: row.id, keyCode: row.licenseKey, storeId: row.storeId, plan: row.planType, status: row.status };
+    });
+    return { success: true, data };
   });
-
-  /** Thu hồi giấy phép và ngắt quyền sử dụng mã license. */
-  fastify.post("/:keyCode/revoke", async (request, reply) => {
-    const { keyCode } = request.params as { keyCode: string };
-    try {
-      const revoked = await licenseRepository.revoke(keyCode);
-      if (!revoked) return reply.status(404).send({ success: false, error: "License not found" });
-      return { success: true, data: revoked };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * LẤY TOÀN BỘ HÓA ĐƠN SAAS
-   * GET /api/licenses/invoices/all
-   */
-  fastify.get("/invoices/all", async (_request, reply) => {
-    try {
-      const invoices = await invoiceRepository.getAll();
-      return { success: true, count: invoices.length, data: invoices };
-    } catch (err: any) {
-      return reply.status(500).send({ success: false, error: err.message });
-    }
-  });
-
-  /**
-   * 1. LẤY THÔNG TIN LICENSE & CÁC MODULE KÍCH HOẠT CỦA QUÁN
-   */
-  fastify.get("/:storeId/info", async (request, reply) => {
+  app.get("/invoices/all", async () => ({ success: true, data: await invoiceRepository.getAll() }));
+  app.get("/:storeId/info", async request => {
     const { storeId } = request.params as { storeId: string };
-
-    let license = await prisma.storeLicense.findUnique({
-      where: { storeId },
-      include: {
-        invoices: {
-          orderBy: { createdAt: "desc" },
-          take: 5,
-        },
-      },
-    });
-
-    if (!license) {
-      const now = new Date();
-      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      license = await prisma.storeLicense.create({
-        data: {
-          storeId,
-          licenseKey: `A2-PRO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-          planType: LicensePlan.PRO,
-          enabledModules: "CORE_POS,MODULE_KDS,MODULE_ACCOUNTING,MODULE_QR_ORDER,MODULE_ADVANCED_ANALYTICS",
-          status: LicenseStatus.ACTIVE,
-          startDate: now,
-          endDate: end,
-          maxTables: 30,
-          maxStaff: 20,
-        },
-        include: { invoices: true },
-      });
-    }
-
-    const now = new Date();
-    const daysRemaining = Math.max(0, Math.ceil((new Date(license.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-    const enabledModules = license.enabledModules ? (license.enabledModules.split(",") as AppModule[]) : [AppModule.CORE_POS];
-
-    return {
-      storeId,
-      licenseKey: license.licenseKey,
-      planType: license.planType,
-      enabledModules,
-      status: daysRemaining === 0 ? LicenseStatus.EXPIRED : license.status,
-      startDate: license.startDate,
-      endDate: license.endDate,
-      daysRemaining,
-      maxTables: license.maxTables,
-      maxStaff: license.maxStaff,
-      recentInvoices: license.invoices,
-    };
+    const row = requireValue(await prisma.storeLicense.findUnique({ where: { storeId }, include: { invoices: { orderBy: { createdAt: "desc" }, take: 10 } } }), "Cửa hàng chưa có license");
+    const expired = row.endDate <= new Date();
+    return { storeId, licenseKey: row.licenseKey, planType: row.planType, enabledModules: row.enabledModules.split(","), status: ["REVOKED", "SUSPENDED"].includes(row.status) ? row.status : expired ? "EXPIRED" : row.status, daysRemaining: Math.max(0, Math.ceil((row.endDate.getTime() - Date.now()) / 86400000)), startDate: row.startDate, endDate: row.endDate, maxTables: row.maxTables, maxStaff: row.maxStaff, recentInvoices: row.invoices };
   });
-
-  /**
-   * 2. TÍNH TOÁN GIÁ HỢP ĐỒNG LINH HOẠT THEO CÁC MODULE ĐƯỢC CHỌN
-   */
-  fastify.post("/calculate-pricing", async (request, reply) => {
-    const body = request.body as {
-      selectedModules: AppModule[];
-      durationMonths: number;
-    };
-
-    const modules = body.selectedModules || [AppModule.CORE_POS];
-    const duration = Number(body.durationMonths) || 1;
-
-    // Tính tổng giá hàng tháng từ danh mục catalog
-    const monthlyTotal = modules.reduce((sum, modId) => {
-      const item = APP_MODULE_CATALOG.find((m) => m.id === modId);
-      return sum + (item ? item.monthlyPrice : 0);
-    }, 0);
-
-    // Chiết khấu: 6 tháng giảm 10%, 12 tháng giảm 20%
-    let discountPercent = 0;
-    if (duration >= 12) discountPercent = 20;
-    else if (duration >= 6) discountPercent = 10;
-
-    const rawTotal = monthlyTotal * duration;
-    const discountAmount = Math.round((rawTotal * discountPercent) / 100);
-    const finalAmount = rawTotal - discountAmount;
-
-    return {
-      selectedModules: modules,
-      durationMonths: duration,
-      monthlyTotal,
-      rawTotal,
-      discountPercent,
-      discountAmount,
-      finalAmount,
-      breakdown: modules.map((modId) => {
-        const item = APP_MODULE_CATALOG.find((m) => m.id === modId);
-        return {
-          id: modId,
-          name: item?.name || modId,
-          monthlyPrice: item?.monthlyPrice || 0,
-        };
-      }),
-    };
-  });
-
-  /**
-   * 3. SUPER ADMIN: TẠO HÓA ĐƠN THUÊ PHẦN MỀM CHO CHỦ QUÁN
-   */
-  fastify.post("/invoice/create", async (request, reply) => {
-    const body = request.body as {
-      storeId: string;
-      durationMonths: number;
-      amount: number;
-      enabledModules?: AppModule[];
-    };
-
-    const license = await prisma.storeLicense.findUnique({
-      where: { storeId: body.storeId },
+  app.post("/calculate-pricing", async request => ({ success: true, data: await subscriptionQuote(prisma, request.body) }));
+  app.post("/invoice/create", async request => {
+    const input = z.object({ storeId: z.string(), durationMonths: z.number().int().min(1).max(120), enabledModules: z.array(z.nativeEnum(AppModule)).min(1), voucherCode: z.string().optional() }).parse(request.body);
+    const invoice = await command(request, input.storeId, "SUBSCRIPTION_INVOICE_CREATE", async tx => {
+      const license = requireValue(await tx.storeLicense.findUnique({ where: { storeId: input.storeId } }));
+      const quote = await reserveSubscriptionQuote(tx, { selectedModules: input.enabledModules, durationMonths: input.durationMonths, voucherCode: input.voucherCode });
+      return tx.softwareInvoice.create({ data: { storeLicenseId: license.id, invoiceCode: "INV-" + crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase(), amount: quote.finalAmount, durationMonths: input.durationMonths, periodStart: new Date(), periodEnd: addMonths(new Date(), input.durationMonths), status: "PENDING", requestedModules: input.enabledModules.join(","), voucherCode: input.voucherCode } });
     });
-
-    if (!license) {
-      return reply.status(404).send({ error: "Store License not found" });
-    }
-
-    const periodStart = new Date();
-    const periodEnd = new Date(periodStart);
-    periodEnd.setMonth(periodEnd.getMonth() + body.durationMonths);
-
-    const invoiceCode = `INV-${Date.now().toString().slice(-6)}`;
-
-    // Nếu có cập nhật module thì lưu lại vào license
-    if (body.enabledModules && body.enabledModules.length > 0) {
-      await prisma.storeLicense.update({
-        where: { id: license.id },
-        data: { enabledModules: body.enabledModules.join(",") },
-      });
-    }
-
-    const invoice = await prisma.softwareInvoice.create({
-      data: {
-        storeLicenseId: license.id,
-        invoiceCode,
-        amount: body.amount,
-        durationMonths: body.durationMonths,
-        periodStart,
-        periodEnd,
-        status: InvoiceStatus.PENDING,
-        paymentMethod: "VIETQR",
-      },
-    });
-
-    return {
-      success: true,
-      message: "Đã tạo hóa đơn thuê phần mềm thành công!",
-      invoice,
-    };
+    return { success: true, data: invoice };
   });
-
-  /**
-   * 4. GIA HẠN KHI THANH TOÁN THÀNH CÔNG
-   */
-  fastify.post("/invoice/:invoiceId/confirm-payment", async (request, reply) => {
+  app.post("/invoice/:invoiceId/confirm-payment", async request => {
     const { invoiceId } = request.params as { invoiceId: string };
-
-    const result = await prisma.$transaction(async (transaction) => {
-      const invoice = await transaction.softwareInvoice.findUnique({
-        where: { id: invoiceId },
-        include: { license: true },
-      });
-      if (!invoice) return null;
-
-      // Chỉ chuyển PENDING sang PAID một lần để retry không cộng hạn nhiều lần.
-      const claimed = await transaction.softwareInvoice.updateMany({
-        where: { id: invoiceId, status: InvoiceStatus.PENDING },
-        data: { status: InvoiceStatus.PAID, paidAt: new Date() },
-      });
-      if (claimed.count === 0) {
-        const latest = await transaction.softwareInvoice.findUnique({
-          where: { id: invoiceId },
-          include: { license: true },
-        });
-        if (!latest || latest.status !== InvoiceStatus.PAID) {
-          throw new Error("Hóa đơn không ở trạng thái chờ thanh toán.");
-        }
-        return { endDate: latest.license.endDate, alreadyPaid: true };
-      }
-
-      const now = new Date();
-      const newEnd = new Date(Math.max(invoice.license.endDate.getTime(), now.getTime()));
-      newEnd.setMonth(newEnd.getMonth() + invoice.durationMonths);
-      const updatedLicense = await transaction.storeLicense.update({
-        where: { id: invoice.license.id },
-        data: { endDate: newEnd, status: LicenseStatus.ACTIVE },
-      });
-      return { endDate: updatedLicense.endDate, alreadyPaid: false };
+    const target = requireValue(await prisma.softwareInvoice.findUnique({ where: { id: invoiceId }, include: { license: true } }));
+    const result = await command(request, target.license.storeId || currentStore(request), "SUBSCRIPTION_PAYMENT_CONFIRM", async tx => {
+      await tx.$queryRaw`SELECT id FROM "StoreLicense" WHERE id = ${target.storeLicenseId} FOR UPDATE`;
+      const invoice = requireValue(await tx.softwareInvoice.findUnique({ where: { id: invoiceId }, include: { license: true } }));
+      if (invoice.status === "PAID") return { newEndDate: invoice.license.endDate, alreadyPaid: true };
+      if (invoice.status !== "PENDING" || !invoice.license.storeId) throw new AppError(409, "Hóa đơn không thể xác nhận");
+      const start = new Date(Math.max(Date.now(), invoice.license.endDate.getTime()));
+      const endDate = addMonths(start, invoice.durationMonths);
+      await tx.softwareInvoice.update({ where: { id: invoiceId }, data: { status: "PAID", paidAt: new Date(), periodStart: start, periodEnd: endDate } });
+      await tx.storeLicense.update({ where: { id: invoice.license.id }, data: { endDate, status: "ACTIVE", ...(invoice.requestedModules ? { enabledModules: invoice.requestedModules } : {}) } });
+      return { newEndDate: endDate, alreadyPaid: false };
     });
-
-    if (!result) return reply.status(404).send({ error: "Invoice not found" });
-    return {
-      success: true,
-      message: result.alreadyPaid
-        ? "Hóa đơn đã được xác nhận trước đó."
-        : "Đã gia hạn thành công giấy phép thuê phần mềm!",
-      newEndDate: result.endDate,
-    };
+    return { success: true, message: "Đã ghi nhận thanh toán và cập nhật bản quyền", ...result };
   });
-}
+  app.post("/invoice/:invoiceId/cancel", async request => {
+    const { invoiceId } = z.object({ invoiceId: z.string().min(1) }).parse(request.params);
+    const target = requireValue(await prisma.softwareInvoice.findUnique({ where: { id: invoiceId }, include: { license: true } }));
+    const data = await command(request, target.license.storeId || currentStore(request), "SUBSCRIPTION_CANCEL", async tx => {
+      await tx.$queryRaw`SELECT id FROM "StoreLicense" WHERE id = ${target.storeLicenseId} FOR UPDATE`;
+      const invoice = requireValue(await tx.softwareInvoice.findUnique({ where: { id: invoiceId } }));
+      if (invoice.status === "CANCELLED") return { invoiceId };
+      if (invoice.status !== "PENDING") throw new AppError(409, "Chỉ có thể hủy hóa đơn chưa thanh toán");
+      if (invoice.voucherCode) await releaseSubscriptionVoucher(tx, invoice.voucherCode);
+      await tx.softwareInvoice.update({ where: { id: invoiceId }, data: { status: "CANCELLED" } });
+      return { invoiceId };
+    });
+    return { success: true, data };
+  });
+};

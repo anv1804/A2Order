@@ -1,3 +1,5 @@
+import { readAuth, saveAuth, clearAuth, ApiError } from "@a2order/shared";
+import { requestApi } from "@/services/api/apiClient";
 import React, { useState, useEffect, useRef } from "react";
 import { CmsLayout } from "@/components/layout/CmsLayout";
 import { CmsRouteRenderer } from "@/components/layout/CmsRouteRenderer";
@@ -26,15 +28,9 @@ runStorageCleanup();
 export const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
-  const [currentRole, setCurrentRole] = usePersistentState<CmsAppRole>("currentRole", "STORE_OWNER");
+  const [currentRole, setCurrentRole] = useState<CmsAppRole>("WAITER");
   const [activeMenu, setActiveMenu] = usePersistentState<string>("activeMenu", "dashboard");
-  const [enabledModules, setEnabledModules] = usePersistentState<AppModule[]>("enabledModules", [
-    AppModule.CORE_POS,
-    AppModule.MODULE_KDS,
-    AppModule.MODULE_QR_ORDER,
-    AppModule.MODULE_ADVANCED_ANALYTICS,
-    AppModule.MODULE_LANDING_PAGE,
-  ]);
+  const [enabledModules, setEnabledModules] = useState<AppModule[]>([]);
   const confirmingNavigation = useRef(false);
 
   // Quản lý URL nội bộ cho SPA
@@ -76,65 +72,43 @@ export const App: React.FC = () => {
     }
   }, [currentRole, currentUser, activeMenu, setActiveMenu]);
 
-  // Kiểm tra phiên đăng nhập đã lưu
   useEffect(() => {
-    const verifySavedAuth = async () => {
-      const savedToken = localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
-      const savedUserStr = localStorage.getItem(AUTH_USER_KEY) || sessionStorage.getItem(AUTH_USER_KEY);
-
-      if (!savedToken) {
-        setIsInitializing(false);
-        return;
-      }
-
+    let active = true;
+    const verify = async () => {
+      const previousAuth = readAuth();
+      if (!previousAuth) { setCurrentUser(null); setEnabledModules([]); setIsInitializing(false); return; }
       try {
-        if (savedUserStr) {
-          const parsed = JSON.parse(savedUserStr);
-          setCurrentUser(parsed);
-          const mappedRole = normalizeAppRole(parsed.role);
-          setCurrentRole(mappedRole);
-        }
-
-        const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: { Authorization: `Bearer ${savedToken}` },
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.user) {
-            setCurrentUser(data.user);
-            const mappedRole = normalizeAppRole(data.user.role);
-            setCurrentRole(mappedRole);
-          }
-        } else {
-          localStorage.removeItem(AUTH_TOKEN_KEY);
-          localStorage.removeItem(AUTH_USER_KEY);
-          sessionStorage.removeItem(AUTH_TOKEN_KEY);
-          sessionStorage.removeItem(AUTH_USER_KEY);
-          setCurrentUser(null);
-        }
-      } catch (err) {
-        console.warn("Không thể kết nối xác thực server:", err);
-      } finally {
-        setIsInitializing(false);
-      }
+        const result = await requestApi<{ user: AuthUser }>("/auth/me");
+        if (!active || readAuth()?.token !== previousAuth.token) return;
+        const auth = readAuth();
+        if (!auth) return;
+        setCurrentUser(result.user);
+        setCurrentRole(normalizeAppRole(result.user.role));
+      } catch (error) { if (active && readAuth()?.token === previousAuth.token) { if (error instanceof ApiError && [401, 403].includes(error.status)) { clearAuth(false); setCurrentUser(null); } else toast.error("Chưa thể xác minh phiên đăng nhập. Hệ thống sẽ thử kết nối lại."); } }
+      finally { if (active) setIsInitializing(false); }
     };
-
-    verifySavedAuth();
+    void verify();
+    const changed = () => { void verify(); };
+    window.addEventListener("a2order:auth", changed);
+    window.addEventListener("online", changed);
+    const timer = setInterval(changed, 30000);
+    return () => { active = false; clearInterval(timer); window.removeEventListener("online", changed); window.removeEventListener("a2order:auth", changed); };
   }, []);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role === "SUPER_ADMIN") return;
+    let active = true;
+    requestApi<{ enabledModules: AppModule[] }>("/licenses/" + currentUser.storeId + "/info")
+      .then(result => { if (active) setEnabledModules(result.enabledModules); })
+      .catch(error => toast.error(error.message));
+    return () => { active = false; };
+  }, [currentUser?.storeId, currentUser?.role]);
 
   const handleLoginSuccess = (user: AuthUser, token: string, rememberMe: boolean) => {
     setCurrentUser(user);
 
-    if (rememberMe) {
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    } else {
-      sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-      sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-      localStorage.removeItem(AUTH_TOKEN_KEY);
-      localStorage.removeItem(AUTH_USER_KEY);
-    }
+    if (!user.storeId) { toast.error("Tài khoản chưa được gán cửa hàng"); return; }
+    saveAuth({ ...user, storeId: user.storeId }, token, rememberMe);
 
     const resolvedRole = normalizeAppRole(user.role);
     setCurrentRole(resolvedRole);
@@ -209,10 +183,8 @@ export const App: React.FC = () => {
 
     const wasAdmin = currentRole === "SUPER_ADMIN";
     useUnsavedChangesStore.getState().clearAll();
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    sessionStorage.removeItem(AUTH_TOKEN_KEY);
-    sessionStorage.removeItem(AUTH_USER_KEY);
+    try { await requestApi("/auth/logout", { method: "POST" }); } catch { toast.warning("Đã đăng xuất trên thiết bị; chưa xác nhận thu hồi phiên trên máy chủ."); }
+    clearAuth();
     setCurrentUser(null);
     toast.info("Đã đăng xuất khỏi tài khoản quản trị.");
     if (wasAdmin) {
@@ -234,7 +206,7 @@ export const App: React.FC = () => {
   // Phân hệ Khách hàng quét mã QR gọi món tại bàn (/order)
   if (currentPath.startsWith("/order")) {
     if (typeof window !== "undefined") {
-      window.location.href = `http://localhost:3000${currentPath}${window.location.search}`;
+      window.location.href = `${(import.meta.env.VITE_ORDER_BASE_URL || window.location.origin).replace(/\/$/, "")}${currentPath}${window.location.search}`;
     }
     return (
       <LoadingScreen

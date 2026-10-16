@@ -1,3 +1,5 @@
+import { useResource } from "@a2order/shared/react";
+import { getAuthUser } from "@a2order/shared";
 import React, { useState, useMemo, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Pagination } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -21,27 +23,13 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
   const [searchQuery, setSearchQuery] = useState("");
 
   // Lấy storeId thực tế từ phiên đăng nhập
-  const userStr = typeof window !== "undefined" ? localStorage.getItem("auth_user") || localStorage.getItem("a2order_auth_user") : null;
-  const storeId = userStr ? JSON.parse(userStr).storeId || "store-a2-kitchen" : "store-a2-kitchen";
+  const storeId = getAuthUser()?.storeId || "";
 
-  const [dishes, setDishes] = usePersistentState<FnbDishItem[]>(
-    "menu_dishes_data",
-    []
-  );
+  const [dishes, refreshDishes] = useResource<FnbDishItem[]>(`/menu/${storeId}`, []);
+  const setDishes = (_update: React.SetStateAction<FnbDishItem[]>) => { void refreshDishes().catch(e => toast.error(e.message)); };
 
   // Đồng bộ thực đơn thực tế từ Database API theo cửa hàng đăng nhập
-  useEffect(() => {
-    menuApi
-      .getDishes(storeId)
-      .then((serverDishes) => {
-        if (Array.isArray(serverDishes)) {
-          setDishes(serverDishes);
-        }
-      })
-      .catch(() => {
-        // Nếu offline, giữ nguyên local state
-      });
-  }, [storeId]);
+
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -69,10 +57,9 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
   // Lưu chỉnh sửa món ăn
   const handleSaveEditDish = async (updatedDish: FnbDishItem) => {
     try {
-      await menuApi.updateDish(storeId, updatedDish.id, updatedDish);
-    } catch {
-      // Local fallback
-    }
+      const saved = await menuApi.updateDish(storeId, updatedDish.id, updatedDish);
+      Object.assign(updatedDish, saved);
+    } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
     setDishes((prev) => prev.map((d) => (d.id === updatedDish.id ? updatedDish : d)));
     toast.success(`Đã cập nhật thông tin món "${updatedDish.name}" thành công!`);
@@ -92,9 +79,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
 
     try {
       await menuApi.deleteDish(storeId, dish.id);
-    } catch {
-      // Local fallback
-    }
+    } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
     setDishes((prev) => prev.filter((d) => d.id !== dish.id));
     toast.info(`Đã xóa món "${dish.name}" khỏi thực đơn`);
@@ -113,13 +98,11 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       if (!ok) return;
 
       try {
-        await menuApi.updateStock(storeId, dish.id, 0, false);
-      } catch {
-        // Local fallback
-      }
+        await menuApi.updateStock(storeId, dish.id, undefined, false);
+      } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
       setDishes((prev) =>
-        prev.map((d) => (d.id === dish.id ? { ...d, isAvailable: false, stockCount: 0 } : d))
+        prev.map((d) => (d.id === dish.id ? { ...d, isAvailable: false } : d))
       );
       toast.warning(`Đã báo hết món "${dish.name}". Hệ thống POS & QR đã tạm ẩn món này.`);
     } else {
@@ -133,13 +116,12 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       if (!ok) return;
 
       try {
-        await menuApi.updateStock(storeId, dish.id, 50, true);
-      } catch {
-        // Local fallback
-      }
+        if (dish.stockCount === 0) { setStockEditDish(dish); return; }
+        await menuApi.updateStock(storeId, dish.id, undefined, true);
+      } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
       setDishes((prev) =>
-        prev.map((d) => (d.id === dish.id ? { ...d, isAvailable: true, stockCount: 50 } : d))
+        prev.map((d) => (d.id === dish.id ? { ...d, isAvailable: true } : d))
       );
       toast.success(`Đã mở bán lại món "${dish.name}" thành công!`);
     }
@@ -148,9 +130,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
   const handleSaveStockCount = async (dishId: string, newStock: number) => {
     try {
       await menuApi.updateStock(storeId, dishId, newStock, newStock > 0);
-    } catch {
-      // Local fallback
-    }
+    } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
     setDishes((prev) =>
       prev.map((d) =>
@@ -173,16 +153,15 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
       description: formData.description.trim() || undefined,
       isBestSeller: formData.isBestSeller,
       isAvailable: true,
-      stockCount: Number(formData.stockCount) || 50,
+      stockCount: formData.stockCount === "" ? undefined : Number(formData.stockCount),
       modifiers: formData.modifiers,
       variants: formData.variants,
     };
 
     try {
-      await menuApi.createDish(storeId, newDish);
-    } catch {
-      // Local fallback
-    }
+      const created = await menuApi.createDish(storeId, newDish);
+      Object.assign(newDish, created);
+    } catch (e: any) { toast.error(e.message || "Không thể lưu dữ liệu"); return; }
 
     setDishes((prev) => [newDish, ...prev]);
     setIsAddModalOpen(false);
@@ -298,7 +277,7 @@ export const CmsMenuManagement: React.FC<CmsMenuManagementProps> = ({ currentRol
                       toast.success("Đã đồng bộ thực đơn mới nhất từ máy chủ.");
                     })
                     .catch(() => {
-                      toast.info("Đã làm mới dữ liệu thực đơn bếp.");
+                      toast.error("Không thể đồng bộ thực đơn");
                     });
                 }}
                 className="inline-flex h-9 sm:h-10 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3.5 sm:px-4 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95 shrink-0"

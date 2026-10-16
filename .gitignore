@@ -9,10 +9,13 @@ build/
 .next/
 out/
 
-# Environment Variables (Tracked per user request: đẩy cả env)
-!**/.env
-!**/.env.*
-!.env
+# Local secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+.runtime/
 
 # Logs
 npm-debug.log*

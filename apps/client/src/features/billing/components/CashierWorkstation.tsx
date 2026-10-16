@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { formatCurrency } from "@/lib/formatters";
 import { Button, Badge, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 import { TableItem, CashierBillItem, CashierWorkstationProps } from "@/types";
-import { SAMPLE_BILLS } from "@/data";
+import { browserRequest, getAuthUser, type BillView, type OperationalTable } from "@a2order/shared";
+import { useResource, useAntiSpamAction } from "@a2order/shared/react";
 
 export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   tables,
@@ -15,28 +16,40 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   const [statusFilter, setStatusFilter] = useState<"ALL" | "PAYMENT_PENDING" | "OCCUPIED">("ALL");
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [includeVat, setIncludeVat] = useState<boolean>(false);
+  const [adjustmentEdited, setAdjustmentEdited] = useState(false);
+  const [discountEdited, setDiscountEdited] = useState(false);
+  const [canceledQuoteTable, setCanceledQuoteTable] = useState("");
+  const [quoteRevision, setQuoteRevision] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<"VIETQR" | "CASH">("VIETQR");
   const [cashTendered, setCashTendered] = useState<number>(0);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId) || activeTables[0] || null;
-  const items: CashierBillItem[] = selectedTable
-    ? SAMPLE_BILLS[selectedTable.id] || []
-    : [];
-
-  const subTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount = Math.round((subTotal * discountPercent) / 100);
-  const vatAmount = includeVat ? Math.round((subTotal - discountAmount) * 0.08) : 0;
-  const finalTotal = subTotal - discountAmount + vatAmount;
-  const changeDue = Math.max(0, cashTendered - finalTotal);
-
-  const billCode = selectedTable
-    ? `HD-${selectedTable.name.replace(/\s+/g, "")}-${new Date().getHours()}${new Date().getMinutes()}`
-    : "HD-001";
-  const vietQrUrl = `https://api.vietqr.io/image/970422-0912345678-qM0v76X.jpg?amount=${finalTotal}&addInfo=${encodeURIComponent(
-    billCode
-  )}&accountName=A2ORDER%20FNB`;
-
+  const storeId = getAuthUser()?.storeId || "";
+  const [snapshot] = useResource<OperationalTable[]>(`/orders/${storeId}/snapshot`, []);
+  const [bill, setBill] = useState<BillView | null>(null);
+  const payment = useAntiSpamAction("cash-payment", (payload: unknown, key) => browserRequest<any>("/billing/checkout", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
+  const selectedTable = activeTables.find((t) => t.id === selectedTableId) || null;
+  const items: CashierBillItem[] = bill && bill.tableId === selectedTable?.id ? bill.items : [];
+  const subTotal = bill?.totalAmount || 0;
+  const discountAmount = bill?.discountAmount || 0;
+  const vatAmount = bill?.taxAmount || 0;
+  const finalTotal = bill?.finalAmount || 0;
+  const changeDue = Math.max(0, cashTendered - finalTotal + (bill?.paidAmount || 0));
+  const billCode = bill?.billCode || "Chưa lập hóa đơn";
+  const vietQrUrl = bill?.qrUrl;
+  useEffect(() => {
+    if (!selectedTable?.id || canceledQuoteTable === selectedTable.id) { setBill(null); return; }
+    let active = true; setBill(null);
+    const stored = snapshot.find(row => row.tableId === selectedTable.id)?.adjustment;
+    const adjustment = { ...stored, includeVat, ...(discountEdited ? { fixedDiscount: 0, discountPercent, discountReason: discountPercent ? "Chiết khấu tại quầy" : undefined } : {}) };
+    browserRequest<BillView>("/billing/generate-vietqr", { method: "POST", body: JSON.stringify({ tableId: selectedTable.id, ...(adjustmentEdited && getAuthUser()?.role === "STORE_OWNER" ? { adjustment } : {}) }) }).then(value => { if (active) setBill(value); }, e => toast.error(e.message));
+    return () => { active = false; };
+  }, [selectedTable?.id, discountPercent, includeVat, adjustmentEdited, discountEdited, quoteRevision, canceledQuoteTable]);
+  useEffect(() => {
+    if (!bill || bill.paymentStatus === "PAID") return;
+    const timer = setInterval(() => browserRequest<BillView>(`/billing/bills/${bill.id}`).then(value => { setBill(value); if (value.paymentStatus === "PAID") { toast.success("Đã xác nhận thanh toán"); onFinishPayment(value.tableId); } }, () => undefined), 4000);
+    return () => clearInterval(timer);
+  }, [bill?.id, bill?.paymentStatus]);
   const filteredTables = activeTables.filter((t) => {
     if (statusFilter === "PAYMENT_PENDING") return t.status === "PAYMENT_PENDING";
     if (statusFilter === "OCCUPIED") return t.status !== "PAYMENT_PENDING";
@@ -44,24 +57,17 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   });
 
   const handleConfirmPaid = async () => {
-    if (!selectedTable) return;
-    const ok = await confirmDialog({
-      title: `Xác Nhận Thu ${formatCurrency(finalTotal)}?`,
-      message: `Bàn ${selectedTable.name} sẽ được chuyển về trạng thái Trống và giải phóng chỗ ngồi.`,
-      confirmText: "Xác Nhận & Đóng Bàn",
-      cancelText: "Hủy",
-      variant: "primary",
-    });
-    if (!ok) return;
+ if (!bill || bill.tableId !== selectedTable?.id) return toast.error("Chưa tải được hóa đơn");
+ if (paymentMethod === "VIETQR") { const updated = await browserRequest<BillView>(`/billing/bills/${bill.id}`).catch(e => { toast.error(e.message); return null; }); if (updated?.paymentStatus !== "PAID") return toast.info("Đang chờ ngân hàng xác nhận"); onFinishPayment(bill.tableId); return; }
+ if (!await confirmDialog({ title: "Xác nhận thu tiền mặt?", message: formatCurrency(bill.finalAmount - (bill.paidAmount || 0)), confirmText: "Đã nhận tiền", variant: "primary" })) return;
+ try { const result = await payment.execute({ billId: bill.id, method: "CASH", cashTendered }); if (!result) return; setBill(result.bill); sound.playPaymentChime(); toast.success("Đã ghi nhận thanh toán"); onFinishPayment(bill.tableId); } catch (e: any) { toast.error(e.message); }
+};
 
-    sound.playPaymentChime();
-    toast.success(`Đã thu tiền bàn ${selectedTable.name} thành công (${paymentMethod === "VIETQR" ? "VietQR" : "Tiền Mặt"})!`);
-    onFinishPayment(selectedTable.id);
-  };
-
-  const handlePrintPreCheck = () => {
-    sound.playKitchenChime();
-    toast.info(`Đang in phiếu tạm tính cho ${selectedTable?.name || "bàn"}...`);
+  const handlePrintPreCheck = () => { if (!bill) { setCanceledQuoteTable(""); setQuoteRevision(v => v + 1); return; } setIsReceiptModalOpen(true); };
+  const cancelQuote = async () => {
+    if (!bill || !await confirmDialog({ title: "Hủy tạm tính?", message: "Chỉ hủy khi khách chưa chuyển khoản. Mã QR hiện tại sẽ hết hiệu lực và bàn có thể gọi thêm món.", confirmText: "Hủy tạm tính", variant: "danger" })) return;
+    try { await browserRequest(`/billing/bills/${bill.id}/cancel`, { method: "POST", body: "{}" }); setCanceledQuoteTable(bill.tableId); setBill(null); setAdjustmentEdited(false); toast.success("Đã hủy tạm tính; bàn có thể gọi thêm món"); }
+    catch (error: any) { toast.error(error.message); }
   };
 
   return (
@@ -85,11 +91,11 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
             size="sm"
             variant="outline"
             className="rounded-full text-xs gap-1.5 bg-white"
-            onClick={() => setIsReceiptModalOpen(true)}
+            onClick={() => bill?.paymentStatus === "PENDING" && !bill.paidAmount ? void cancelQuote() : setIsReceiptModalOpen(true)}
             disabled={!selectedTable}
           >
             <Icon name="eye" className="w-3.5 h-3.5" />
-            <span>Xem Mẫu Hóa Đơn In</span>
+            <span>{bill?.paymentStatus === "PENDING" && !bill.paidAmount ? "Hủy Tạm Tính" : "Xem Hóa Đơn"}</span>
           </Button>
 
           <Button
@@ -146,7 +152,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
               filteredTables.map((t) => {
                 const isSelected = selectedTable?.id === t.id;
                 const isPending = t.status === "PAYMENT_PENDING";
-                const tItems = SAMPLE_BILLS[t.id] || [];
+                const tItems = snapshot.find(row => row.tableId === t.id)?.items || [];
                 const tSum = tItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
 
                 return (
@@ -154,6 +160,10 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     key={t.id}
                     onClick={() => {
                       setSelectedTableId(t.id);
+                      setAdjustmentEdited(false);
+                      setDiscountEdited(false); setCanceledQuoteTable("");
+                      const stored = snapshot.find(row => row.tableId === t.id)?.adjustment;
+                      setDiscountPercent(stored?.discountPercent || 0); setIncludeVat(!!stored?.includeVat);
                       setCashTendered(0);
                     }}
                     className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between ${
@@ -266,7 +276,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                         {[0, 5, 10, 15, 20].map((pct) => (
                           <button
                             key={pct}
-                            onClick={() => setDiscountPercent(pct)}
+                            onClick={() => { if (getAuthUser()?.role !== "STORE_OWNER") return toast.info("Điều chỉnh tiền cần quyền chủ quán"); setAdjustmentEdited(true); setDiscountEdited(true); setDiscountPercent(pct); }}
                             className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
                               discountPercent === pct
                                 ? "bg-brand-900 text-white shadow-sm"
@@ -282,7 +292,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-ink-secondary">VAT (Thuế 8%):</span>
                       <button
-                        onClick={() => setIncludeVat((v) => !v)}
+                        onClick={() => { if (getAuthUser()?.role !== "STORE_OWNER") return toast.info("Điều chỉnh tiền cần quyền chủ quán"); setAdjustmentEdited(true); setIncludeVat(v => !v); }}
                         className={`px-3 py-0.5 rounded-lg text-xs font-bold border transition-all ${
                           includeVat
                             ? "bg-brand-900 text-white border-brand-900"
@@ -414,7 +424,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           <div className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 border border-surface-border space-y-4 animate-scaleUp font-mono text-xs">
             <div className="flex items-center justify-between border-b border-dashed border-ink-subtle pb-3 text-center">
               <div className="w-full">
-                <h3 className="text-base font-black text-ink-primary">A2ORDER RESTAURANT</h3>
+                <h3 className="text-base font-black text-ink-primary">{getAuthUser()?.storeName || "Hóa đơn"}</h3>
                 <p className="text-[10px] text-ink-muted">Hệ Thống Quản Lý Gọi Món F&B</p>
                 <p className="text-[10px] text-ink-muted">Hỗ trợ / CSKH: 0908 889 999</p>
                 <div className="mt-2 text-xs font-black uppercase text-ink-primary tracking-wider">
@@ -474,8 +484,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                 size="sm"
                 className="w-1/2 rounded-xl bg-brand-900 text-white text-xs font-black"
                 onClick={() => {
-                  toast.success("Đã gửi lệnh in thành công!");
-                  setIsReceiptModalOpen(false);
+                  toast.info("Máy in chưa được kết nối. Vui lòng dùng bản xem hóa đơn để đối chiếu.");
                 }}
               >
                 In Ngay

@@ -1,9 +1,12 @@
+import type { BillView } from "@a2order/shared";
 import React from "react";
+import { useDialogAccessibility } from "@a2order/shared/react";
 import { Icon, Button, Portal } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
 import { WaiterTableOrder } from "@/types/cms.types";
 
 export interface OfflineEmergencyModalProps {
+  bill: BillView | null;
   isOpen: boolean;
   activeTable: WaiterTableOrder;
   finalPayableAmount: number;
@@ -14,6 +17,7 @@ export interface OfflineEmergencyModalProps {
 }
 
 export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
+  bill,
   isOpen,
   activeTable,
   finalPayableAmount,
@@ -22,11 +26,13 @@ export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
   onConfirmOfflinePaid,
   onClose,
 }) => {
-  if (!isOpen) return null;
+  const dialogRef = useDialogAccessibility(isOpen && !!bill, onClose);
+  if (!isOpen || !bill) return null;
+  finalPayableAmount = bill.finalAmount - (bill.paidAmount || 0);
 
   return (
     <Portal>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Thanh toán hóa đơn" tabIndex={-1} className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
         <div className="bg-[#081712] text-white w-full max-w-md rounded-3xl shadow-2xl p-5 sm:p-6 space-y-4 border border-emerald-500/40 animate-scaleUp">
           {/* Header Khẩn Cấp Chống Chói & Nổi Bật Trong Bóng Tối */}
           <div className="flex items-center justify-between border-b border-emerald-900/60 pb-3">
@@ -36,10 +42,10 @@ export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-black text-amber-300">
-                  Chế Độ Mất Điện / Rớt Mạng
+                  Thanh Toán Hóa Đơn
                 </h3>
                 <p className="text-[11px] text-emerald-300/80">
-                  Thanh toán VietQR tĩnh & Lưu bộ nhớ thiết bị POS
+                  Chuyển khoản được xác nhận từ ngân hàng
                 </p>
               </div>
             </div>
@@ -68,7 +74,7 @@ export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
           {/* VietQR Tĩnh Của Chủ Quán */}
           <div className="bg-white p-3.5 rounded-2xl text-center space-y-2.5 shadow-md">
             <img
-              src={`https://img.vietqr.io/image/970422-0903111222-compact2.png?amount=${finalPayableAmount}&addInfo=Ban${activeTable.tableName.replace(/\s+/g, "")}_Offline`}
+              src={bill.qrUrl}
               alt="VietQR Tĩnh Chủ Quán"
               className="w-48 h-48 mx-auto rounded-xl border border-slate-200"
             />
@@ -76,27 +82,26 @@ export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
             <div className="space-y-0.5 text-slate-800 text-xs text-left px-1">
               <div className="flex justify-between border-b border-slate-100 pb-1">
                 <span className="text-slate-500">Ngân hàng:</span>
-                <strong className="text-slate-900">MB BANK (Quân Đội)</strong>
+                <strong className="text-slate-900">{bill.bankBin || "Chưa cấu hình"}</strong>
               </div>
               <div className="flex justify-between border-b border-slate-100 py-1">
                 <span className="text-slate-500">Số tài khoản:</span>
-                <strong className="text-emerald-700 font-black">0903 111 222</strong>
+                <strong className="text-emerald-700 font-black">{bill.bankAccount || "Chưa cấu hình"}</strong>
               </div>
               <div className="flex justify-between border-b border-slate-100 py-1">
                 <span className="text-slate-500">Chủ tài khoản:</span>
-                <strong className="text-slate-900">NGUYEN VAN CHU QUAN</strong>
+                <strong className="text-slate-900">{bill.bankOwnerName || "Chưa cấu hình"}</strong>
               </div>
               <div className="flex justify-between pt-1">
                 <span className="text-slate-500">Nội dung CK:</span>
-                <strong className="text-brand-900 font-black">TT BAN {activeTable.tableName.toUpperCase()}</strong>
+                <strong className="text-brand-900 font-black">{bill.transferContent}</strong>
               </div>
             </div>
 
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard.writeText("0903111222");
-                toast.success("Đã sao chép số tài khoản MB Bank!");
+                void navigator.clipboard.writeText(bill.bankAccount || "").then(() => toast.success("Đã sao chép"), () => toast.error("Không thể sao chép"));
               }}
               className="w-full py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition flex items-center justify-center gap-1.5"
             >
@@ -154,7 +159,7 @@ export const OfflineEmergencyModal: React.FC<OfflineEmergencyModalProps> = ({
               onClick={onConfirmOfflinePaid}
             >
               <Icon name="check" size={14} />
-              <span>Xác Nhận Đã Thu (Lưu Sổ Offline)</span>
+              <span>Xác Nhận Thu Tiền Mặt</span>
             </Button>
           </div>
         </div>

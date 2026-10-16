@@ -1,3 +1,8 @@
+import { DishDetailModal } from "./components/DishDetailModal";
+import type { MenuDishItem, DishDetailModalPayload } from "@/types";
+import { saveCustomerToken, clearCustomerToken, customerStorageKey, getBrowserToken } from "@a2order/shared";
+import { requestApi } from "@/services/api/apiClient";
+import { useAntiSpamAction } from "@/hooks/useAntiSpamAction";
 import React, { useState, useEffect, useMemo } from "react";
 import { Icon, Portal } from "@/components/ui";
 import { toast } from "@/stores/notificationStore";
@@ -13,7 +18,7 @@ import {
   CustomerOrderedItem,
   VoucherItem as Voucher,
 } from "@/types";
-import { SAMPLE_VOUCHERS, SERVICE_OPTIONS } from "@/data/serviceConstants";
+import { SERVICE_OPTIONS } from "@/data/serviceConstants";
 import {
   CustomerPinUnlockModal,
   CustomerOrderConfirmModal,
@@ -44,6 +49,7 @@ export const CustomerTableOrderPage: React.FC = () => {
   } | null>(null);
   const [storeInfo, setStoreInfo] = useState<{ id: string; name: string; address?: string } | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [offers, setOffers] = useState<Voucher[]>([]);
 
   // Navigation tab states
   const [activeTab, setActiveTab] = useState<"MENU" | "ORDERED" | "OFFERS">("MENU");
@@ -128,29 +134,14 @@ export const CustomerTableOrderPage: React.FC = () => {
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
   // Ordered items history of this session
-  const [orderedItems, setOrderedItems] = useState<CustomerOrderedItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const saved = localStorage.getItem(`a2order_ordered_${storeId}_${tableCode}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Sync ordered items to localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(`a2order_ordered_${storeId}_${tableCode}`, JSON.stringify(orderedItems));
-    }
-  }, [orderedItems, storeId, tableCode]);
+  const [orderedItems, setOrderedItems] = useState<CustomerOrderedItem[]>([]);
 
   // Voucher & Loyalty states
   const [voucherInput, setVoucherInput] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState<Voucher | null>(null);
   const [customerPhone, setCustomerPhone] = useState<string>(() => {
     if (typeof window === "undefined") return "";
-    return localStorage.getItem("a2order_customer_phone") || "";
+    return sessionStorage.getItem(`a2order_customer_phone:${storeId}:${tableCode}`) || "";
   });
   const [isPhoneSaved, setIsPhoneSaved] = useState(Boolean(customerPhone));
 
@@ -161,23 +152,20 @@ export const CustomerTableOrderPage: React.FC = () => {
 
   // Tải dữ liệu ban đầu từ Server
   const fetchSessionData = async () => {
+    if (isInvalidUrl) return;
     try {
-      setLoading(true);
-      const res = await tableApi.checkTableSession(storeId, tableCode);
-      const payload = res && (res as any).data !== undefined ? (res as any).data : res;
-      if (payload && payload.table) {
-        setTableInfo(payload.table);
-        setStoreInfo(payload.store);
-        setCategories(payload.categories || []);
-        setIsSessionActive(Boolean(payload.isSessionActive));
-        setIsPendingApproval(Boolean(payload.isPendingApproval));
-      }
-    } catch (err: any) {
-      console.warn("Lỗi kiểm tra phiên bàn:", err);
-      toast.error("Không thể kết nối đến máy chủ quán. Vui lòng thử lại.");
-    } finally {
-      setLoading(false);
-    }
+      const payload = await tableApi.checkTableSession(storeId, tableCode);
+      if (!payload?.table) return;
+      setTableInfo(payload.table); setStoreInfo(payload.store); setCategories(payload.categories || []); setOffers(payload.offers || []);
+      if (payload.customerToken && !getBrowserToken()) saveCustomerToken(storeId, tableCode, payload.customerToken);
+      setIsSessionActive(Boolean(payload.isSessionActive)); setIsPendingApproval(Boolean(payload.isPendingApproval));
+      if (payload.sessionStartedAt) setSessionStartedAt(payload.sessionStartedAt);
+      if (payload.isSessionActive) {
+        const orders = await requestApi<any[]>("/orders/" + storeId + "/customer-snapshot");
+        setOrderedItems(orders.flatMap(order => order.items.map((item: any) => ({ id: item.id, dishId: item.dishId, name: item.name, price: item.price, quantity: item.quantity, notes: item.notes, orderId: order.orderId, orderedAt: new Date(order.submittedAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }), status: item.status === "QUEUED" ? "QUEUED" : item.status === "DONE" ? "READY" : item.status }))));
+      } else setOrderedItems([]);
+    } catch (error) { console.warn("Không thể đồng bộ phiên bàn", error instanceof Error ? error.message : "Lỗi kết nối"); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -190,15 +178,7 @@ export const CustomerTableOrderPage: React.FC = () => {
     // Nhân viên duyệt mở bàn
     const handleSessionApproved = (data: any) => {
       if (data.storeId === storeId && (data.tableId === tableInfo?.id || data.tableCode === tableCode)) {
-        const now = Date.now();
-        setIsSessionActive(true);
-        setIsPendingApproval(false);
-        setIsClosed(false);
-        setShowPinModal(false);
-        setSessionStartedAt(now);
-        sessionStorage.setItem(`session_started_${storeId}_${tableCode}`, String(now));
-        sound.playKitchenChime();
-        toast.success(`Nhân viên đã duyệt mở ${data.tableName || "bàn"}! Quý khách có thể bắt đầu gọi món.`);
+        void fetchSessionData(); setShowPinModal(false); setIsClosed(false);
       }
     };
 
@@ -214,6 +194,7 @@ export const CustomerTableOrderPage: React.FC = () => {
     // Đóng phiên bàn (thanh toán xong / thu hồi phiên)
     const handleSessionClosed = (data: any) => {
       if (data.storeId === storeId && data.tableId === tableInfo?.id) {
+        clearCustomerToken(storeId, tableCode);
         setIsSessionActive(false);
         setIsPendingApproval(false);
         setIsClosed(true);
@@ -228,26 +209,16 @@ export const CustomerTableOrderPage: React.FC = () => {
 
     // Nhân viên quán DUYỆT ĐƠN VÀO BẾP!
     const handleOrderApproved = (data: any) => {
-      const matchTable =
-        !data.tableCode ||
-        data.tableCode === tableCode ||
-        (tableInfo?.id && data.tableId === tableInfo.id);
-      if (data.storeId === storeId && matchTable) {
-        sound.playKitchenChime();
-        setOrderedItems((prev) =>
-          prev.map((it) => (it.status === "PENDING_APPROVAL" ? { ...it, status: "COOKING" } : it))
-        );
-        toast.success("Quán đã duyệt đơn của bạn! Bếp đang tiến hành chế biến.");
+      if (data.storeId === storeId && (data.tableId === tableInfo?.id || data.tableCode === tableCode)) {
+        void fetchSessionData(); sound.playKitchenChime(); toast.success("Quán đã duyệt đơn của bạn");
       }
     };
 
     // Nhân viên quán TỪ CHỐI ĐƠN
     const handleOrderRejected = (data: any) => {
       if (data.storeId === storeId && (data.tableId === tableInfo?.id || data.tableCode === tableCode)) {
-        setOrderedItems((prev) =>
-          prev.map((it) => (it.status === "PENDING_APPROVAL" ? { ...it, status: "CANCELLED" } : it))
-        );
-        toast.warning(data.reason || "Đơn hàng của bàn bị từ chối phục vụ.");
+        setOrderedItems(prev => prev.map(item => item.orderId === data.orderId ? { ...item, status: "CANCELLED" } : item));
+        void fetchSessionData(); toast.warning(data.reason || "Đơn hàng bị từ chối");
       }
     };
 
@@ -287,6 +258,7 @@ export const CustomerTableOrderPage: React.FC = () => {
         guestCount,
       });
 
+      if (res?.requestToken) sessionStorage.setItem(customerStorageKey("request", storeId, tableCode), res.requestToken);
       if (res && res.isSessionActive) {
         setIsSessionActive(true);
         setIsPendingApproval(false);
@@ -324,6 +296,7 @@ export const CustomerTableOrderPage: React.FC = () => {
         guestCount,
       });
 
+      if (res?.customerToken) saveCustomerToken(storeId, tableCode, res.customerToken);
       if (res && (res.success || res.sessionId || res.tableId || res.unlockedVia)) {
         const now = Date.now();
         setIsSessionActive(true);
@@ -359,8 +332,17 @@ export const CustomerTableOrderPage: React.FC = () => {
     }
   };
 
+  const [configuringDish, setConfiguringDish] = useState<MenuDishItem | null>(null);
+  const addConfiguredDish = (payload: DishDetailModalPayload) => {
+    const variantId = payload.dish.variants?.find(v => v.name === payload.selectedVariant)?.id;
+    const customizationIds = payload.selectedOptions || [];
+    const id = payload.dish.id + ":" + (variantId || "") + ":" + [...customizationIds].sort().join(",") + ":" + payload.notes;
+    const menuItem = { ...payload.dish, id, dishId: payload.dish.id, price: payload.priceWithExtras };
+    setCart(prev => { const match = prev.find(c => c.menuItem.id === id); return match ? prev.map(c => c.menuItem.id === id ? { ...c, quantity: c.quantity + payload.quantity } : c) : [...prev, { menuItem, quantity: payload.quantity, notes: payload.notes, variantId, customizationIds }]; });
+  };
   // Cart Helpers
   const addToCart = (item: MenuItem) => {
+    if (item.variants?.length || item.customizationGroups?.length) { setConfiguringDish({ ...item, isAvailable: true, category: "PHO_BUN", categoryLabel: "", optionGroups: item.customizationGroups }); return; }
     setCart((prev) => {
       const existing = prev.find((c) => c.menuItem.id === item.id);
       if (existing) {
@@ -393,7 +375,7 @@ export const CustomerTableOrderPage: React.FC = () => {
     if (!appliedVoucher) return 0;
     if (appliedVoucher.minOrder && totalCartRawAmount < appliedVoucher.minOrder) return 0;
     if (appliedVoucher.discountType === "PERCENT") {
-      return Math.round((totalCartRawAmount * appliedVoucher.value) / 100);
+      return Math.min(totalCartRawAmount, appliedVoucher.maxDiscount ?? totalCartRawAmount, Math.round((totalCartRawAmount * appliedVoucher.value) / 100));
     }
     return Math.min(totalCartRawAmount, appliedVoucher.value);
   }, [appliedVoucher, totalCartRawAmount]);
@@ -407,7 +389,7 @@ export const CustomerTableOrderPage: React.FC = () => {
       toast.warning("Vui lòng nhập mã voucher!");
       return;
     }
-    const found = SAMPLE_VOUCHERS.find((v) => v.code === code);
+    const found = offers.find((v) => v.code === code);
     if (!found) {
       toast.error(`Mã voucher "${code}" không hợp lệ hoặc đã hết hạn.`);
       return;
@@ -425,14 +407,14 @@ export const CustomerTableOrderPage: React.FC = () => {
   const handleSavePhone = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const clean = customerPhone.trim().replace(/[^0-9]/g, "");
-    if (!clean || clean.length < 10) {
-      toast.warning("Vui lòng nhập số điện thoại hợp lệ (10 số) để tích điểm!");
+    if (!/^\d{10,11}$/.test(clean)) {
+      toast.warning("Vui lòng nhập số điện thoại hợp lệ (10–11 số) để gắn với đơn!");
       return;
     }
-    localStorage.setItem("a2order_customer_phone", clean);
+    sessionStorage.setItem(`a2order_customer_phone:${storeId}:${tableCode}`, clean);
     setCustomerPhone(clean);
     setIsPhoneSaved(true);
-    toast.success(`Đã lưu SĐT ${clean}! Hệ thống sẽ tự động tích điểm cho mỗi đơn.`);
+    toast.success(`Đã lưu SĐT ${clean}! Số điện thoại sẽ được gắn với đơn hàng.`);
   };
 
   // Gửi yêu cầu hỗ trợ nhanh (đá, giấy, dọn bàn...)
@@ -443,7 +425,7 @@ export const CustomerTableOrderPage: React.FC = () => {
         tableId: tableInfo?.id,
         tableCode,
         tableName: tableInfo?.name,
-        type: service.label,
+        type: service.id,
         note: serviceNote.trim() || undefined,
       });
       sound.playAlertTone();
@@ -480,64 +462,26 @@ export const CustomerTableOrderPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const refresh = () => { void fetchSessionData(); };
+    const timer = setInterval(refresh, 4000);
+    window.addEventListener("a2order:data", refresh);
+    return () => { clearInterval(timer); window.removeEventListener("a2order:data", refresh); };
+  }, [storeId, tableCode, tableInfo?.id]);
+
+  const { execute: submitCustomerOrder } = useAntiSpamAction("CUSTOMER_ORDER", async (payload: unknown, key) => requestApi("/orders/submit", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify(payload) }));
+
   // Gửi Đơn Hàng vào POS quán (Chờ quán duyệt trước khi vào bếp)
   const handleConfirmAndSubmitOrder = async () => {
-    if (cart.length === 0) return;
+    if (!cart.length || !isSessionActive) return;
     setIsSubmittingOrder(true);
-
     try {
-      const formattedItems = cart.map((c, idx) => ({
-        id: `item-${Date.now()}-${idx}`,
-        dishId: c.menuItem.id,
-        name: c.menuItem.name,
-        price: c.menuItem.price,
-        quantity: c.quantity,
-        category: (c.menuItem as any).categoryName || "Món gọi",
-        notes: c.notes || orderNotes || "",
-      }));
-
-      const res = await orderApi.submitOrder({
-        storeId,
-        tableId: tableInfo?.id || "",
-        tableCode: tableInfo?.code || tableCode,
-        tableName: tableInfo?.name || "Bàn",
-        items: formattedItems,
-        voucherCode: appliedVoucher?.code,
-        discountAmount: voucherDiscount,
-        customerPhone: customerPhone.trim() || undefined,
-        totalAmount: totalCartRawAmount,
-        notes: orderNotes.trim() || undefined,
-      });
-
-      const orderId = (res as any)?.orderId || (res as any)?.data?.orderId || `ord-${Date.now()}`;
-      const timeNow = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-      const newOrderedItems: CustomerOrderedItem[] = formattedItems.map((f) => ({
-        id: f.id,
-        dishId: f.dishId,
-        name: f.name,
-        price: f.price,
-        quantity: f.quantity,
-        status: "PENDING_APPROVAL",
-        orderId,
-        orderedAt: timeNow,
-        notes: f.notes,
-      }));
-
-      setOrderedItems((prev) => [...newOrderedItems, ...prev]);
-      setCart([]);
-      setShowConfirmModal(false);
-      setIsCartOpen(false);
-      setOrderNotes("");
-      setActiveTab("ORDERED");
-
-      sound.playKitchenChime();
-      toast.info("Đã gửi đơn! Quán đang kiểm tra và duyệt đơn vào bếp ⏳");
-    } catch (err: any) {
-      toast.error("Lỗi khi gửi đơn: " + (err.message || "Vui lòng thử lại"));
-    } finally {
-      setIsSubmittingOrder(false);
-    }
+      const result = await submitCustomerOrder({ storeId, tableId: tableInfo?.id || "", items: cart.map(item => ({ dishId: item.menuItem.dishId || item.menuItem.id, variantId: item.variantId, customizationIds: item.customizationIds || [], quantity: item.quantity, notes: item.notes || orderNotes || undefined })), customerPhone: customerPhone.trim() || undefined, voucherCode: appliedVoucher?.code });
+      if (!result) return;
+      setCart([]); setShowConfirmModal(false); setIsCartOpen(false); setOrderNotes(""); setActiveTab("ORDERED");
+      await fetchSessionData(); sound.playKitchenChime(); toast.info("Đã lưu đơn, đang chờ quán duyệt");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể gửi đơn"); }
+    finally { setIsSubmittingOrder(false); }
   };
 
   // Filter menu items
@@ -942,7 +886,7 @@ export const CustomerTableOrderPage: React.FC = () => {
                   setAppliedVoucher(null);
                   toast.info("Đã bỏ áp dụng voucher");
                 }}
-                sampleVouchers={SAMPLE_VOUCHERS}
+                sampleVouchers={offers}
                 customerPhone={customerPhone}
                 setCustomerPhone={setCustomerPhone}
                 isPhoneSaved={isPhoneSaved}
@@ -985,6 +929,7 @@ export const CustomerTableOrderPage: React.FC = () => {
         )}
       </main>
 
+      <DishDetailModal isOpen={!!configuringDish} dish={configuringDish} onClose={() => setConfiguringDish(null)} onConfirm={addConfiguredDish} />
       {/* Floating Bottom Cart Bar (Khi phiên đang mở & có món trong giỏ) */}
       {isSessionActive && totalCartCount > 0 && activeTab === "MENU" && (
         <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto animate-slideUp">

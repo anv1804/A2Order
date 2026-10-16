@@ -4,6 +4,7 @@ import {
   CreateStoreInput,
   SoftwareInvoiceRecord,
 } from "@a2order/shared";
+import type { Transaction } from "../../types/security.js";
 
 // ==========================================
 // 1. STORE REPOSITORY INTERFACE
@@ -11,7 +12,7 @@ import {
 export interface IStoreRepository {
   getAll(): Promise<TenantStoreRecord[]>;
   getById(id: string): Promise<TenantStoreRecord | null>;
-  create(data: CreateStoreInput): Promise<TenantStoreRecord>;
+  create(data: CreateStoreInput, tx?: Transaction): Promise<TenantStoreRecord>;
   update(id: string, data: Partial<TenantStoreRecord>): Promise<TenantStoreRecord | null>;
   delete(id: string): Promise<boolean>;
 }
