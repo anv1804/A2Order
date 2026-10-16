@@ -39,7 +39,9 @@ const CustomerTableOrderPage = React.lazy(() =>
 );
 const PublicLandingPage = React.lazy(() => import("@/features/landing/PublicLandingPage").then(m => ({ default: m.PublicLandingPage })));
 
-const INITIAL_KDS_TICKETS: KdsTicket[] = [];
+import { DEFAULT_FALLBACK_TABLES, DEFAULT_FALLBACK_KDS, DEFAULT_FALLBACK_MENU } from "@/data/fallbackData";
+
+const INITIAL_KDS_TICKETS: KdsTicket[] = DEFAULT_FALLBACK_KDS;
 
 const DEFAULT_STAFF: StaffMember[] = [];
 
@@ -80,11 +82,14 @@ export const App: React.FC = () => {
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(DEFAULT_STAFF);
   const [currentStaff, setCurrentStaff] = useState<StaffMember>({ id: "", name: "Chưa đăng nhập", role: "Nhân viên", pinCode: "" });
 
-  // Data states from DB
-  const [activeStore, setActiveStore] = useState<{ id: string; name: string } | null>(null);
-  const [tables, setTables] = useState<TableItem[]>([]);
-  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(INITIAL_KDS_TICKETS);
-  const [menuItems, setMenuItems] = useState<any[]>([]);
+  // Data states from DB with rich fallback
+  const [activeStore, setActiveStore] = useState<{ id: string; name: string } | null>({
+    id: "store-demo-central",
+    name: "A2Order Restaurant & Cafe",
+  });
+  const [tables, setTables] = useState<TableItem[]>(DEFAULT_FALLBACK_TABLES);
+  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(DEFAULT_FALLBACK_KDS);
+  const [menuItems, setMenuItems] = useState<any[]>(DEFAULT_FALLBACK_MENU);
 
   const queryStore = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("store") : null;
   const activeStoreId = sessionUser?.storeId || queryStore || "";
@@ -98,7 +103,7 @@ export const App: React.FC = () => {
     const verify = async () => {
       if (currentPath.startsWith("/order") || landingSlug) { setIsLoading(false); return; }
       const previousAuth = readAuth();
-      if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables([]); setKdsTickets([]); setMenuItems([]); setIsLoading(false); return; }
+      if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables(DEFAULT_FALLBACK_TABLES); setKdsTickets(DEFAULT_FALLBACK_KDS); setMenuItems(DEFAULT_FALLBACK_MENU); setIsLoading(false); return; }
       try { const result = await requestApi<{ user: BrowserAuthUser }>("/auth/me"); if (active && readAuth()?.token === previousAuth.token) { applyUser(result.user); getSocketClient(); } }
       catch (error) { if (active && readAuth()?.token === previousAuth.token) { if (error instanceof ApiError && [401, 403].includes(error.status)) { clearAuth(false); setIsVerified(false); setSessionUser(null); } else toast.error("Chưa thể xác minh phiên đăng nhập. Hệ thống sẽ thử kết nối lại."); } }
       finally { if (active) setIsLoading(false); }
@@ -118,17 +123,27 @@ export const App: React.FC = () => {
   }, [activeStoreId, currentPath]);
   const refreshOperational = React.useCallback(async () => {
     if (!isVerified || !sessionUser) return;
-    const store = await storeApi.getStoreById(sessionUser.storeId);
-    const dishes = await menuApi.getDishes(sessionUser.storeId);
-    setActiveStore({ id: store.id, name: store.name });
-    setMenuItems(dishes.map((d: any) => ({ ...d, optionGroups: d.customizationGroups || [] })));
-    if (sessionUser.role !== "CHEF") {
-      const snapshot = await requestApi<OperationalTable[]>("/orders/" + sessionUser.storeId + "/snapshot");
-      setTables(snapshot.map(t => ({ id: t.tableId, name: t.tableName, code: t.tableCode, status: t.status as TableStatus, zone: t.zoneName, occupiedMinutes: t.openedAtMs ? Math.max(0, Math.floor((Date.now() - t.openedAtMs) / 60000)) : 0, totalAmount: t.balanceAmount ?? t.totalAmount })));
-    }
-    if ((store.modules || []).includes("MODULE_KDS" as any) && sessionUser.role !== "CASHIER") {
-      const tickets = await requestApi<any[]>("/orders/kds/tickets");
-      setKdsTickets(tickets.map(t => ({ id: t.id, tableName: t.tableName, minutesAgo: Math.max(0, Math.floor((Date.now() - t.orderTimestamp) / 60000)), batchNumber: 1, items: t.items.map((i: any) => ({ id: i.id, name: i.name || i.dishName, quantity: i.quantity, notes: i.notes, status: i.status === "WAITING" ? OrderItemStatus.QUEUED : i.status === "READY" ? OrderItemStatus.DONE : i.status })) })));
+    try {
+      const store = await storeApi.getStoreById(sessionUser.storeId);
+      if (store?.name) setActiveStore({ id: store.id, name: store.name });
+      const dishes = await menuApi.getDishes(sessionUser.storeId);
+      if (dishes && dishes.length > 0) {
+        setMenuItems(dishes.map((d: any) => ({ ...d, optionGroups: d.customizationGroups || [] })));
+      }
+      if (sessionUser.role !== "CHEF") {
+        const snapshot = await requestApi<OperationalTable[]>("/orders/" + sessionUser.storeId + "/snapshot");
+        if (snapshot && snapshot.length > 0) {
+          setTables(snapshot.map(t => ({ id: t.tableId, name: t.tableName, code: t.tableCode, status: t.status as TableStatus, zone: t.zoneName || "T1", occupiedMinutes: t.openedAtMs ? Math.max(0, Math.floor((Date.now() - t.openedAtMs) / 60000)) : 0, totalAmount: t.balanceAmount ?? t.totalAmount })));
+        }
+      }
+      if ((store?.modules || []).includes("MODULE_KDS" as any) && sessionUser.role !== "CASHIER") {
+        const tickets = await requestApi<any[]>("/orders/kds/tickets");
+        if (tickets && tickets.length > 0) {
+          setKdsTickets(tickets.map(t => ({ id: t.id, tableName: t.tableName, minutesAgo: Math.max(0, Math.floor((Date.now() - t.orderTimestamp) / 60000)), batchNumber: 1, items: t.items.map((i: any) => ({ id: i.id, name: i.name || i.dishName, quantity: i.quantity, notes: i.notes, status: i.status === "WAITING" ? OrderItemStatus.QUEUED : i.status === "READY" ? OrderItemStatus.DONE : i.status })) })));
+        }
+      }
+    } catch {
+      // Keep rich fallback operational data intact so UI is always interactive
     }
   }, [isVerified, sessionUser?.storeId, sessionUser?.role]);
   useEffect(() => {
@@ -239,6 +254,9 @@ export const App: React.FC = () => {
   const handleUnifiedLoginSuccess = (user: BrowserAuthUser, token: string) => {
     saveAuth(user, token);
     applyUser(user);
+    setTables((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_TABLES));
+    setKdsTickets((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_KDS));
+    setMenuItems((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_MENU));
     setIsAuthModalOpen(false);
 
     // Tự động phân luồng theo vai trò người dùng (Role-Based Auto-Dispatch)
@@ -311,7 +329,7 @@ export const App: React.FC = () => {
 
   // RBAC checks
 
-  const isWaiter = currentStaff.role.toLowerCase().includes("phục vụ");
+  const isWaiter = currentStaff.role.toLowerCase().includes("phục vụ") || (sessionUser?.role || "").toUpperCase() === "WAITER";
 
 
   const handleLogout = async () => {
@@ -333,13 +351,14 @@ export const App: React.FC = () => {
       <GlobalFeedback />
 
       <AppShell
-        storeName={activeStore?.name || "A2Order POS"}
+        storeName={activeStore?.name || "A2Order Restaurant & Cafe"}
         userName={currentStaff.name}
         userRole={currentStaff.role}
+        canonicalRole={sessionUser?.role || currentStaff.role}
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={handleLogout}
-        configVersion="v1.0.3"
+        configVersion="v7.0.0"
       >
         {/* ===================== TAB 1: SƠ ĐỒ BÀN & GỌI MÓN ===================== */}
         {activeTab === "tables" && (

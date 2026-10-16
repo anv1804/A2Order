@@ -74,6 +74,9 @@ export interface ExtendedAppShellProps extends AppShellProps {
   hasNewVersionNotice?: boolean;
   onSyncNewVersion?: () => void;
   enabledModules?: string[];
+  canonicalRole?: string;
+  deviceMode?: "desktop" | "tablet" | "mobile";
+  onDeviceModeChange?: (mode: "desktop" | "tablet" | "mobile") => void;
 }
 
 export interface LoadingScreenProps {
