@@ -70,6 +70,36 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
     catch (error: any) { toast.error(error.message); }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) {
+        if (e.key === "Escape") target.blur();
+        return;
+      }
+      if (e.key === "F2") {
+        e.preventDefault();
+        setPaymentMethod("CASH");
+      } else if (e.key === "F4") {
+        e.preventDefault();
+        setPaymentMethod("VIETQR");
+      } else if (e.key === "F8") {
+        e.preventDefault();
+        handlePrintPreCheck();
+      } else if (e.key === "F9") {
+        e.preventDefault();
+        if (selectedTable && bill) void handleConfirmPaid();
+      } else if (e.key === "Escape") {
+        if (isReceiptModalOpen) {
+          e.preventDefault();
+          setIsReceiptModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [bill, selectedTable, paymentMethod, cashTendered, isReceiptModalOpen]);
+
   return (
     <div className="space-y-4 animate-fadeIn">
       {/* Header */}
@@ -107,6 +137,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           >
             <Icon name="print" className="w-3.5 h-3.5" />
             <span>In Tạm Tính</span>
+            <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-surface-muted text-ink-muted border border-surface-border font-mono font-bold">F8</kbd>
           </Button>
         </div>
       </div>
@@ -227,6 +258,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     >
                       <Icon name="vietqr" className="w-3.5 h-3.5" />
                       <span>VietQR Động</span>
+                      <kbd className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${paymentMethod === "VIETQR" ? "bg-white/20 text-white" : "bg-surface-muted text-ink-muted border border-surface-border"}`}>F4</kbd>
                     </button>
                     <button
                       onClick={() => setPaymentMethod("CASH")}
@@ -236,6 +268,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     >
                       <Icon name="banknote" className="w-3.5 h-3.5" />
                       <span>Tiền Mặt</span>
+                      <kbd className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold ${paymentMethod === "CASH" ? "bg-white/20 text-white" : "bg-surface-muted text-ink-muted border border-surface-border"}`}>F2</kbd>
                     </button>
                   </div>
                 </div>
@@ -402,6 +435,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                   >
                     <Icon name="check" className="w-5 h-5 text-white" />
                     <span>XÁC NHẬN ĐÃ THU {formatCurrency(finalTotal)} & TRẢ BÀN</span>
+                    <kbd className="text-[10px] px-2 py-0.5 rounded bg-white/20 text-white font-mono font-bold border border-white/20 ml-1">F9</kbd>
                   </Button>
                 </div>
               </div>
@@ -421,7 +455,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
       {/* Modal Xem Trước Mẫu Bill Hóa Đơn In Nhiệt */}
       {isReceiptModalOpen && selectedTable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-primary/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 border border-surface-border space-y-4 animate-scaleUp font-mono text-xs">
+          <div id="thermal-receipt-printable" className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 border border-surface-border space-y-4 animate-scaleUp font-mono text-xs">
             <div className="flex items-center justify-between border-b border-dashed border-ink-subtle pb-3 text-center">
               <div className="w-full">
                 <h3 className="text-base font-black text-ink-primary">{getAuthUser()?.storeName || "Hóa đơn"}</h3>
@@ -471,7 +505,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
               <p className="font-sans font-bold text-brand-900">Powered by A2Order POS</p>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-2 no-print">
               <Button
                 size="sm"
                 variant="outline"
@@ -482,12 +516,13 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
               </Button>
               <Button
                 size="sm"
-                className="w-1/2 rounded-xl bg-brand-900 text-white text-xs font-black"
+                className="w-1/2 rounded-xl bg-brand-900 text-white text-xs font-black gap-1"
                 onClick={() => {
-                  toast.info("Máy in chưa được kết nối. Vui lòng dùng bản xem hóa đơn để đối chiếu.");
+                  window.print();
                 }}
               >
-                In Ngay
+                <Icon name="print" className="w-3.5 h-3.5" />
+                <span>In Ngay</span>
               </Button>
             </div>
           </div>

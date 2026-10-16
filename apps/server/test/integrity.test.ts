@@ -1,4 +1,4 @@
-import { before, after, test } from "node:test";
+import { before, after, test as nodeTest } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import type { FastifyInstance } from "fastify";
@@ -16,8 +16,17 @@ let dishId: string;
 let orderId: string;
 let itemId: string;
 
+const test = (name: string, fn: () => Promise<void>) => nodeTest(name, async (t) => {
+  if (!db) {
+    t.skip("TEST_DATABASE_URL or DIRECT_URL is required for isolated PostgreSQL regression tests");
+    return;
+  }
+  await fn();
+});
+
 before(async () => {
   db = await testDatabase();
+  if (!db) return;
   ({ prisma, systemQuery } = await import("../src/core/database/prismaClient.js"));
   const { buildApp } = await import("../src/app.js");
   process.env.PAYMENT_WEBHOOK_SECRET = "isolated-bank-webhook-test-secret-2026";

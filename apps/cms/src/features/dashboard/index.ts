@@ -1,2 +1,2 @@
 export * from "./CmsDashboard";
-export * from "./CmsMetricCards";
+export * from "./components";

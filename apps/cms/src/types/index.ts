@@ -12,4 +12,7 @@ export * from "./superAdmin.types.js";
 export * from "./chat.types.js";
 export * from "./commandPalette.types.js";
 export * from "./api.types.js";
+export * from "./dashboard.types.js";
+export * from "./staffOrder.types.js";
+export * from "./reservation.types.js";
 

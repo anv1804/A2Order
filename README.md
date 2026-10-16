@@ -59,6 +59,22 @@ npm run dev:admin
 npm run build
 ```
 
+### 4. Triển khai Nhanh với Docker & Docker Compose
+Toàn bộ hệ thống (PostgreSQL 16 + Fastify API + Nginx Gateway phục vụ POS & CMS) có thể khởi chạy chỉ bằng một lệnh:
+```bash
+# Build và chạy ngầm toàn bộ container
+npm run docker:up
+
+# Xem logs hoạt động
+npm run docker:logs
+
+# Dừng hệ thống
+npm run docker:down
+```
+Cổng dịch vụ:
+* **Web Gateway (POS + CMS + API Proxy)**: `http://localhost:80`
+* **PostgreSQL Database**: `localhost:5432`
+
 ---
 
 ## 🗄️ Cơ chế Dual-Database (Repository Pattern)

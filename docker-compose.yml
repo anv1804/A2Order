@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: a2order-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: a2order
+      POSTGRES_PASSWORD: a2order_secure_password
+      POSTGRES_DB: a2order_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a2order -d a2order_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: server
+    container_name: a2order-server
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://a2order:a2order_secure_password@postgres:5432/a2order_db?schema=public
+      DIRECT_URL: postgresql://a2order:a2order_secure_password@postgres:5432/a2order_db?schema=public
+      JWT_SECRET: a2order_production_super_secret_jwt_key_at_least_32_chars
+      APP_ORIGINS: http://localhost,http://localhost:80,http://127.0.0.1
+      USE_MOCK_DB: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gateway
+    container_name: a2order-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:

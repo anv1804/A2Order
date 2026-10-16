@@ -21,7 +21,11 @@
     "postinstall": "node scripts/harden-tooling.mjs",
     "db:check": "node scripts/database.mjs check",
     "db:deploy": "node scripts/database.mjs deploy",
-    "db:runtime": "node scripts/database.mjs runtime"
+    "db:runtime": "node scripts/database.mjs runtime",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "keywords": [
     "pos",

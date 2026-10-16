@@ -26,6 +26,10 @@ Hệ thống được tổ chức thành 3 ứng dụng chính (`apps/`) và 1 t
   * Kiểm soát phân quyền RBAC và cách ly đa thuê theo `storeId`.
 * **`packages/shared`**:
   * Hợp đồng giao tiếp chung: DTOs, Enums (`TableStatus`, `OrderItemStatus`, `SocketEvents`), Zod Schemas.
+* **`deploy/` & Containerization**:
+  * Multi-stage `Dockerfile` (Node 22 Alpine) đóng gói Server và Nginx Reverse Proxy Gateway.
+  * Cổng `80` điều hướng SPA, cache static assets 1 năm, proxy `/api/` và nâng cấp kết nối `/socket.io/`.
+  * `docker-compose.yml` tích hợp sẵn PostgreSQL 16 Alpine với healthcheck tự động.
 
 ---
 
