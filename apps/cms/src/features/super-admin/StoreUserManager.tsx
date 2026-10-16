@@ -9,6 +9,7 @@ import { staffApi } from "@/services/api/staffApi";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { useScrollHideKpi } from "@/hooks/useScrollHideKpi";
 import { useMobileInfiniteScroll, MobileInfiniteSentinel } from "@/hooks/useMobileInfiniteScroll";
+import { generateStaffPin } from "@a2order/shared";
 
 export type { StoreUserManagerProps };
 
@@ -76,7 +77,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
               id: st.id,
               name: st.name,
               email: st.email || "",
-              pinCode: "1111",
+              pinCode: generateStaffPin(st.role || "WAITER"),
               role: st.role,
               isActive: st.isActive,
               createdAt: s.activatedAt || new Date().toISOString(),
@@ -92,7 +93,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
             id: `owner-${s.id}`,
             name: s.owner,
             email: s.ownerEmail || "",
-            pinCode: "1111",
+            pinCode: generateStaffPin("STORE_OWNER"),
             role: "STORE_OWNER",
             isActive: s.status === "ACTIVE",
             createdAt: s.activatedAt || new Date().toISOString(),
@@ -279,7 +280,7 @@ export const StoreUserManager: React.FC<StoreUserManagerProps> = ({
           id: `staff-${Date.now()}`,
           name: userData.name!,
           email: userData.email || "",
-          pinCode: userData.pinCode || "1111",
+          pinCode: userData.pinCode || generateStaffPin(userData.role || "WAITER"),
           role: userData.role!,
           isActive: userData.isActive !== false,
           createdAt: new Date().toISOString(),

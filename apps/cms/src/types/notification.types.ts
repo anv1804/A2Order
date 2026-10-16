@@ -21,6 +21,14 @@ export interface ConfirmState extends ConfirmOptions {
   resolve?: (value: boolean) => void;
 }
 
+export interface PasswordResetRequest {
+  id: string;
+  staffId: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface NotificationItem {
   id: string | number;
   type: "payment" | "license" | "alert" | "kds" | "security" | "system" | "inventory";
@@ -33,7 +41,7 @@ export interface NotificationItem {
   bg: string;
   isRead?: boolean;
   actionText?: string;
-  actionType?: "tenants" | "invoices" | "licenses" | "kds" | "inventory";
+  actionType?: "tenants" | "invoices" | "licenses" | "kds" | "inventory" | "staff";
 }
 
 export interface NotificationModalProps {

@@ -90,6 +90,7 @@ import {
   LifeBuoy,
   Headphones,
   ChevronUp,
+  ChevronDown,
   LucideIcon,
 } from "lucide-react";
 import { IconProps, IconName } from "@/types";
@@ -187,6 +188,7 @@ const iconMap: Record<IconName, LucideIcon> = {
   support: LifeBuoy,
   headphones: Headphones,
   chevronUp: ChevronUp,
+  chevronDown: ChevronDown,
 };
 
 export const Icon: React.FC<IconProps> = ({ name, className = "w-5 h-5", size = 20 }) => {

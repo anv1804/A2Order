@@ -7,7 +7,7 @@ import {
   AppModule,
   PlatformStoreUserRecord,
 } from "@/types/cms.types";
-import { APP_MODULE_CATALOG } from "@a2order/shared";
+import { APP_MODULE_CATALOG, generateStaffPin } from "@a2order/shared";
 import { staffApi } from "@/services/api/staffApi";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { StoreUserModal } from "./StoreUserModal";
@@ -103,7 +103,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
                 email: st.email || "",
                 role: st.role,
                 isActive: st.isActive,
-                pinCode: "1111",
+                pinCode: generateStaffPin(st.role || "WAITER"),
                 createdAt: s.activatedAt || "",
                 storeId: s.id,
                 storeName: s.name,
@@ -117,7 +117,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
             email: s.ownerEmail || "",
             role: "STORE_OWNER",
             isActive: s.status === "ACTIVE",
-            pinCode: "1111",
+            pinCode: generateStaffPin("STORE_OWNER"),
             createdAt: s.activatedAt || "",
             storeId: s.id,
             storeName: s.name,
@@ -183,7 +183,7 @@ export const StoreDossierModal: React.FC<StoreDossierModalProps> = ({
           name: userData.name || "",
           email: userData.email,
           role: userData.role || "STORE_MANAGER",
-          pinCode: userData.pinCode || "1111",
+          pinCode: userData.pinCode || generateStaffPin(userData.role || "STORE_MANAGER"),
           password: password,
           isActive: userData.isActive !== false,
         });

@@ -1,4 +1,4 @@
-import { browserRequest } from "@a2order/shared";
+import { browserRequest, STAFF_PIN_PREFIX } from "@a2order/shared";
 import { getAuthUser } from "@a2order/shared";
 import React, { useState, useEffect } from "react";
 import { Panel, Button, Badge, Icon, Portal } from "@/components/ui";
@@ -8,6 +8,9 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { staffApi } from "@/services/api/staffApi";
 
 import { StaffRole, StaffUser, PermissionItem, AttendanceLogRecord } from "@/types/cms.types";
+import { PasswordResetRequest } from "@/types";
+
+const generateStaffPin = (role: StaffRole) => `${STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX] || "10"}${String(crypto.getRandomValues(new Uint32Array(1))[0] % 10000).padStart(4, "0")}`;
 
 const PERMISSIONS: PermissionItem[] = [
   {
@@ -77,9 +80,28 @@ const DEFAULT_ROLE_PERMISSIONS: Record<StaffRole, string[]> = {
 
 export const CmsStaffManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"STAFF_LIST" | "RBAC_MATRIX" | "SCHEDULE" | "ATTENDANCE">("STAFF_LIST");
+  const [passwordRequests, setPasswordRequests] = useState<PasswordResetRequest[]>([]);
+  const [resetTarget, setResetTarget] = useState<PasswordResetRequest | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
 
   // Lấy storeId thực tế từ phiên đăng nhập
   const storeId = getAuthUser()?.storeId || "";
+
+  useEffect(() => { void staffApi.getPasswordResetRequests().then(setPasswordRequests).catch(() => undefined); }, []);
+
+  const openPasswordReset = (request: PasswordResetRequest) => { setResetTarget(request); setNewPassword("A2@" + crypto.randomUUID().replace(/-/g, "").slice(0, 16)); };
+  const completePasswordReset = async () => {
+    if (!resetTarget || newPassword.length < 10 || resetBusy) return;
+    setResetBusy(true);
+    try {
+      await staffApi.resetCredentials(resetTarget.staffId, { password: newPassword });
+      setPasswordRequests(previous => previous.filter(request => request.staffId !== resetTarget.staffId));
+      toast.success("Đã đặt lại mật khẩu. Hãy chuyển mật khẩu mới cho nhân viên qua kênh riêng.");
+      setResetTarget(null); setNewPassword("");
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Không thể đặt lại mật khẩu"); }
+    finally { setResetBusy(false); }
+  };
 
   const [staffList, setStaffList] = usePersistentState<StaffUser[]>("staff_list", []);
 
@@ -96,7 +118,7 @@ export const CmsStaffManagement: React.FC = () => {
             role: (s.role as StaffRole) || "WAITER",
             phone: (s as any).phone || "",
             shift: (s as any).shift || "FULL_TIME",
-            pin: "••••",
+            pin: "••••••",
             email: s.email || undefined,
             ordersServedToday: 0,
             isActive: s.isActive,
@@ -181,14 +203,14 @@ export const CmsStaffManagement: React.FC = () => {
     setShowPins((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const handleResetPin = async (id: string, name: string) => { const pin = String(1000 + crypto.getRandomValues(new Uint32Array(1))[0] % 9000); try { await staffApi.resetCredentials(id, { pinCode: pin }); toast.success(name + " — PIN mới: " + pin); } catch (e: any) { toast.error(e.message); } };
+  const handleResetPin = async (id: string, name: string, role: StaffRole) => { const pin = generateStaffPin(role); try { await staffApi.resetCredentials(id, { pinCode: pin }); toast.success(name + " — PIN mới: " + pin); } catch (e: any) { toast.error(e.message); } };
 
   const handleToggleActive = async (id: string, name: string, active: boolean) => { try { await staffApi.toggleStaffStatus(id); setStaffList(prev => prev.map(s => s.id === id ? { ...s, isActive: !active } : s)); toast.success("Đã cập nhật trạng thái " + name); } catch (e: any) { toast.error(e.message); } };
 
   const handleTogglePermission = (_role: StaffRole, _permId: string) => { toast.info("Phân quyền được áp dụng theo vai trò trên máy chủ"); };
 
   const handleOpenAddModal = () => {
-    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    const randomPin = generateStaffPin("WAITER");
     setModalForm({
       name: "",
       role: "WAITER",
@@ -200,7 +222,7 @@ export const CmsStaffManagement: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCreateStaffSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!modalForm.name.trim() || !modalForm.pin) return toast.error("Vui lòng nhập tên và PIN riêng"); if (["STORE_OWNER", "ACCOUNTANT"].includes(modalForm.role)) return toast.info("Tài khoản quản lý cần được tạo với email và mật khẩu qua màn hình quản trị tài khoản"); try { const created = await staffApi.createStaff({ storeId, name: modalForm.name.trim(), role: modalForm.role, email: modalForm.email || undefined, pinCode: modalForm.pin, phone: modalForm.phone, shift: modalForm.shift, isActive: true } as any); if (!created.id) throw new Error("Máy chủ chưa xác nhận nhân viên"); setStaffList(prev => [{ id: created.id, code: "NV-" + (prev.length + 1), name: created.name, role: created.role as StaffRole, phone: modalForm.phone, shift: modalForm.shift, pin: "••••", email: modalForm.email || undefined, ordersServedToday: 0, isActive: true }, ...prev]); setIsModalOpen(false); toast.success("Đã thêm nhân viên. PIN: " + modalForm.pin); } catch (e: any) { toast.error(e.message); } };
+  const handleCreateStaffSubmit = async (e: React.FormEvent) => { e.preventDefault(); if (!modalForm.name.trim() || !modalForm.pin) return toast.error("Vui lòng nhập tên và PIN riêng"); if (!new RegExp(`^${STAFF_PIN_PREFIX[modalForm.role as keyof typeof STAFF_PIN_PREFIX]}\\d{4}$`).test(modalForm.pin)) return toast.error("PIN phải gồm 6 số và đúng mã nhóm vai trò"); if (["STORE_OWNER", "ACCOUNTANT"].includes(modalForm.role)) return toast.info("Tài khoản quản lý cần được tạo với email và mật khẩu qua màn hình quản trị tài khoản"); try { const created = await staffApi.createStaff({ storeId, name: modalForm.name.trim(), role: modalForm.role, email: modalForm.email || undefined, pinCode: modalForm.pin, phone: modalForm.phone, shift: modalForm.shift, isActive: true } as any); if (!created.id) throw new Error("Máy chủ chưa xác nhận nhân viên"); setStaffList(prev => [{ id: created.id, code: "NV-" + (prev.length + 1), name: created.name, role: created.role as StaffRole, phone: modalForm.phone, shift: modalForm.shift, pin: "••••••", email: modalForm.email || undefined, ordersServedToday: 0, isActive: true }, ...prev]); setIsModalOpen(false); toast.success("Đã thêm nhân viên. PIN: " + modalForm.pin); } catch (e: any) { toast.error(e.message); } };
 
   const totalStaff = staffList.length;
   const activeStaff = staffList.filter((s) => s.isActive).length;
@@ -216,6 +238,13 @@ export const CmsStaffManagement: React.FC = () => {
 
   return (
     <div className="space-y-3.5 sm:space-y-5 animate-fadeIn pb-24 lg:pb-0">
+      {passwordRequests.length > 0 && <section className="rounded-3xl border border-brand-200 bg-brand-100 p-4 sm:p-5 space-y-3">
+        <h2 className="text-base font-extrabold text-brand-900">Yêu cầu đặt lại mật khẩu ({passwordRequests.length})</h2>
+        {passwordRequests.map(request => <div key={request.id} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-surface-border bg-white p-3">
+          <div className="min-w-0 flex-1"><p className="font-bold text-ink-primary truncate">{request.name}</p><p className="text-sm text-ink-muted truncate">{request.email}</p></div>
+          <button type="button" onClick={() => openPasswordReset(request)} className="min-h-11 rounded-2xl bg-brand-900 px-4 text-sm font-bold text-white">Cấp mật khẩu mới</button>
+        </div>)}
+      </section>}
       {/* 1. Header Banner Chuẩn Sang Trọng Emerald PRO */}
       <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#061f17] via-[#0d2a21] to-[#133b2e] p-3.5 sm:p-5 lg:p-6 text-white shadow-lg border border-white/10">
         <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-emerald-400/15 blur-3xl pointer-events-none" />
@@ -251,7 +280,7 @@ export const CmsStaffManagement: React.FC = () => {
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                 <Icon name="shield" size={12} className="text-blue-300" />
-                <span>Bảo mật PIN 4 số</span>
+                <span>Bảo mật PIN 6 số</span>
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 border border-white/10 text-[10px] sm:text-[10.5px] font-bold text-emerald-100">
                 <Icon name="cart" size={12} className="text-amber-300" />
@@ -500,7 +529,7 @@ export const CmsStaffManagement: React.FC = () => {
                           <td className="py-3.5 px-3">
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono font-black text-xs bg-slate-100 border border-slate-200/80 px-2.5 py-1 rounded-lg text-slate-900 tracking-widest min-w-[54px] text-center shadow-2xs">
-                                {isPinVisible ? staff.pin : "••••"}
+                                {isPinVisible ? staff.pin : "••••••"}
                               </span>
                               <button
                                 type="button"
@@ -512,7 +541,7 @@ export const CmsStaffManagement: React.FC = () => {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleResetPin(staff.id, staff.name)}
+                                onClick={() => handleResetPin(staff.id, staff.name, staff.role)}
                                 className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 border border-transparent hover:border-emerald-200 transition"
                                 title="Tạo mã PIN mới ngẫu nhiên"
                               >
@@ -759,11 +788,11 @@ export const CmsStaffManagement: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Mã PIN 4 Số Vào Ca
+                      Mã PIN 6 Số Vào Ca
                     </label>
                     <input
                       type="text"
-                      maxLength={4}
+                      maxLength={6}
                       value={modalForm.pin}
                       onChange={(e) => setModalForm({ ...modalForm, pin: e.target.value })}
                       className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-mono font-black tracking-widest text-center text-slate-900 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition"
@@ -1121,6 +1150,12 @@ export const CmsStaffManagement: React.FC = () => {
         );
       })()}
 
+      {resetTarget && <Portal><div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center bg-ink-primary/60 sm:p-4"><div role="dialog" aria-modal="true" aria-label="Đặt lại mật khẩu" className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 pb-[calc(20px+env(safe-area-inset-bottom))] space-y-4">
+        <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-extrabold">Cấp mật khẩu mới</h2><p className="text-sm text-ink-muted">{resetTarget.name} · {resetTarget.email}</p></div><button type="button" onClick={() => setResetTarget(null)} className="size-11 rounded-2xl border border-surface-border" aria-label="Đóng"><Icon name="x" size={18} /></button></div>
+        <label className="block text-sm font-bold">Mật khẩu tạm thời<input type="text" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={10} className="mt-1 w-full min-h-12 rounded-2xl border border-surface-border px-4 font-mono text-base" /></label>
+        <p className="text-sm text-ink-muted">Sau khi cấp, chuyển mật khẩu cho đúng nhân viên qua kênh riêng. Phiên đăng nhập cũ sẽ hết hiệu lực.</p>
+        <Button type="button" size="lg" className="w-full" disabled={resetBusy || newPassword.length < 10} onClick={completePasswordReset}>{resetBusy ? "Đang cập nhật..." : "Xác nhận cấp mật khẩu"}</Button>
+      </div></div></Portal>}
     </div>
   );
 };

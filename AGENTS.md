@@ -44,8 +44,8 @@ A2Order là nền tảng quản trị và vận hành toàn diện cho nhà hàn
 
 | Thư mục | Vai trò | Công nghệ | Cổng Dev |
 | :--- | :--- | :--- | :--- |
-| **`apps/client`** | POS Thu ngân, Waiter PWA T9, Bếp KDS, Khách gọi món QR | React 18, Vite, TailwindCSS, Zustand, Socket.io | `http://localhost:3000` |
-| **`apps/cms`** | CMS Chủ quán (vận hành) & Super Admin (quản trị SaaS) | React 18, Vite, TailwindCSS, Zustand | `http://localhost:3001` (Store)<br>`http://localhost:3002` (Admin) |
+| **`apps/client`** | Vận hành Nhà Hàng: Chủ quán, POS Thu ngân, Waiter PWA, Bếp KDS, Khách QR (Trang đăng nhập hợp nhất cho Chủ quán & Nhân viên) | React 18, Vite, TailwindCSS, Zustand, Socket.io | `http://localhost:3000` |
+| **`apps/cms`** | Super Admin SaaS HQ Portal: Quản trị nền tảng SaaS A2Order toàn hệ thống | React 18, Vite, TailwindCSS, Zustand | `http://localhost:3001` (Super Admin) |
 | **`apps/server`** | API Backend, WebSocket realtime, Dual-DB Repository, Auth JWT | Fastify, Socket.io, Prisma, TypeScript | `http://localhost:4000` |
 | **`packages/shared`** | Hợp đồng dữ liệu chung: DTOs, Enums, Zod Schemas, Domain types | TypeScript | Đóng gói dùng chung |
 | **`docs/`** | Toàn bộ tài liệu đặc tả kiến trúc, bảng màu, bảo mật, specs chức năng | Markdown | Tra cứu trực tiếp |

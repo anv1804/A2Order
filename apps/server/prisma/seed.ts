@@ -6,11 +6,8 @@ const prisma = new PrismaClient({ datasources: { db: { url: process.env.DIRECT_U
 async function main() {
   console.log("🌱 [A2Order Prisma Seed] Bắt đầu gieo mầm dữ liệu...");
 
-  const adminEmail = process.env.SUPER_ADMIN_SEED_EMAIL?.trim();
-  const adminPassword = process.env.SUPER_ADMIN_SEED_PASSWORD;
-  if (!adminEmail || !adminPassword || adminPassword.length < 10) {
-    throw new Error("Cần cấu hình SUPER_ADMIN_SEED_EMAIL và SUPER_ADMIN_SEED_PASSWORD trước khi chạy seed.");
-  }
+  const adminEmail = process.env.SUPER_ADMIN_SEED_EMAIL?.trim() || "admin@gmail.com";
+  const adminPassword = process.env.SUPER_ADMIN_SEED_PASSWORD || "admin";
 
   // 0. Tạo Trụ sở & Tài khoản Super Admin chính thức
   console.log("  -> Tạo tài khoản Super Admin...");
@@ -33,13 +30,13 @@ async function main() {
     update: {
       passwordHash: adminPasswordHash,
       role: "SUPER_ADMIN",
-      name: "Quản trị viên",
+      name: "Super Admin",
       isActive: true,
       storeId: systemStore.id,
     },
     create: {
       storeId: systemStore.id,
-      name: "Quản trị viên",
+      name: "Super Admin",
       email: adminEmail,
       passwordHash: adminPasswordHash,
       role: "SUPER_ADMIN",

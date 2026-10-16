@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Icon, Portal } from "@/components/ui";
 import { BusinessType, BUSINESS_TYPE_CONFIG, AppModule, TenantStoreRecord } from "@/types/cms.types";
 import { IconName } from "@/types/icon.types";
-import { StoreScale, PlanConfig, PLAN_CONFIGS } from "@a2order/shared";
+import { StoreScale, PlanConfig, PLAN_CONFIGS, generateStaffPin } from "@a2order/shared";
 import { configApi } from "@/services/api/configApi";
 import { useUnsavedEditor } from "@/hooks/useUnsavedEditor";
 
@@ -42,7 +42,7 @@ const createInitialForm = (): StoreOnboardSubmitData => ({
   owner: "",
   ownerEmail: "",
   ownerPassword: "",
-  ownerPin: "",
+  ownerPin: generateStaffPin("STORE_OWNER"),
   phone: "",
   address: "",
   businessType: "COFFEE_SHOP" as BusinessType,
@@ -151,8 +151,8 @@ export const StoreOnboardingModal: React.FC<StoreOnboardingModalProps> = ({
       setErrorMessage("Mật khẩu tài khoản phải có ít nhất 10 ký tự.");
       return;
     }
-    if (!form.ownerPin || form.ownerPin.trim().length !== 4) {
-      setErrorMessage("Mã PIN POS phải bao gồm đúng 4 chữ số.");
+    if (!form.ownerPin || !/^90\d{4}$/.test(form.ownerPin.trim())) {
+      setErrorMessage("Mã PIN POS của Chủ quán phải gồm đúng 6 chữ số và bắt đầu bằng 90 (VD: 901234).");
       return;
     }
 
@@ -719,18 +719,27 @@ TÀI KHOẢN CHỦ QUÁN (QUẢN TRỊ CMS & POS):
                     </div>
 
                     <div>
-                      <label className="text-[11px] font-bold text-slate-600 mb-1 block">
-                        Mã PIN Đăng Nhập POS (4 số)
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[11px] font-bold text-slate-600 block">
+                          Mã PIN POS (6 số - tiền tố 90)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, ownerPin: generateStaffPin("STORE_OWNER") }))}
+                          className="text-[10px] text-brand-800 font-bold hover:underline cursor-pointer"
+                        >
+                          Tạo mã
+                        </button>
+                      </div>
                       <input
                         type="text"
-                        maxLength={4}
+                        maxLength={6}
                         value={form.ownerPin}
                         onChange={(e) =>
-                          setForm((f) => ({ ...f, ownerPin: e.target.value.replace(/\D/g, "") }))
+                          setForm((f) => ({ ...f, ownerPin: e.target.value.replace(/\D/g, "").slice(0, 6) }))
                         }
-                        placeholder="1234"
-                        className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-bold tracking-widest text-center focus:outline-none focus:border-brand-900 bg-white"
+                        placeholder="901234"
+                        className="w-full h-9 px-3 rounded-xl border border-slate-200 text-xs font-mono font-bold tracking-widest text-center focus:outline-none focus:border-brand-900 bg-white"
                       />
                     </div>
                   </div>

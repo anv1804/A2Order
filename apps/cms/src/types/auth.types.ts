@@ -20,21 +20,8 @@ export interface PinPadModalProps {
   onClose?: () => void;
 }
 
-export interface UnifiedAuthModalProps {
-  isOpen: boolean;
-  staffList?: StaffMember[];
-  onPinSubmit?: (staffId: string, pin: string) => void;
-  onAdminLogin?: (email: string, pass: string) => void;
-  onClose: () => void;
-}
-
 export interface AdminLoginPageProps {
   onLoginSuccess: (user: AuthUser, token: string, rememberMe: boolean) => void;
   onNavigateToOwner?: () => void;
-}
-
-export interface OwnerLoginPageProps {
-  onLoginSuccess: (user: AuthUser, token: string, rememberMe: boolean) => void;
-  onNavigateToAdmin?: () => void;
 }
 

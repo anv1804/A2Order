@@ -13,10 +13,10 @@ export const KdsDashboard: React.FC<KdsDashboardProps> = ({
 }) => {
   return (
     <div className="space-y-4 animate-fadeIn">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-ink-primary">Màn Hình Bếp Trưởng (KDS)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary">Màn Hình Bếp Trưởng (KDS)</h2>
             <Badge variant="success" className="animate-pulse">Live {kdsTickets.length} Vé</Badge>
           </div>
           <p className="text-xs text-ink-muted">Chạm vào từng món để đổi trạng thái Nấu Xong hoặc bấm Hoàn Tất Vé</p>
@@ -25,7 +25,7 @@ export const KdsDashboard: React.FC<KdsDashboardProps> = ({
         <Button
           size="sm"
           variant="outline"
-          className="rounded-full text-xs gap-1.5 bg-white"
+          className="min-h-11 rounded-full text-xs gap-1.5 bg-white"
           onClick={() => {
             sound.playKitchenChime();
             toast.info("Đã phát âm thanh kiểm tra loa bếp!");

@@ -7,72 +7,118 @@ export const CmsTopDishesSection: React.FC<CmsTopDishesSectionProps> = ({
   bills,
   onNavigateTab,
 }) => {
-  return (
-    <section className="lg:col-span-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-2xs space-y-3.5">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <Icon name="flame" size={15} />
-            </span>
-            <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">Top Món Bán Chạy Trong Ca</h4>
-          </div>
-          <p className="text-[11px] text-slate-400">Xếp hạng theo số lượng đã phục vụ</p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onNavigateTab?.("menu")}
-          className="text-xs font-black text-emerald-800 hover:underline"
-        >
-          Thực đơn →
-        </button>
-      </div>
+  const dishCount: Record<string, { name: string; sold: number; revenue: number }> = {};
+  let totalDishesSold = 0;
 
-      {bills.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <Icon name="flame" size={28} className="text-slate-200 mb-3" />
-          <p className="text-sm font-bold text-slate-500">Chưa có dữ liệu</p>
-          <p className="text-xs text-slate-400 mt-1">Top món sẽ hiện khi có đơn hàng</p>
+  bills.forEach((b: any) => {
+    (b.items || []).forEach((item: any) => {
+      const name = item.name || "Món chưa đặt tên";
+      const qty = item.quantity || 1;
+      const price = item.totalPrice || item.price * qty || 0;
+      if (!dishCount[name]) {
+        dishCount[name] = { name, sold: 0, revenue: 0 };
+      }
+      dishCount[name].sold += qty;
+      dishCount[name].revenue += price;
+      totalDishesSold += qty;
+    });
+  });
+
+  const sortedDishes = Object.values(dishCount)
+    .sort((a, b) => b.sold - a.sold)
+    .slice(0, 5);
+
+  return (
+    <section className="lg:col-span-5 rounded-3xl border border-surface-border bg-white p-5 sm:p-6 shadow-xs flex flex-col justify-between">
+      <div>
+        {/* Header (Coinest Watchlist Style) */}
+        <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-surface-border/60">
+          <div>
+            <h4 className="text-base font-black text-ink-primary tracking-tight">
+              Món Bán Chạy Nhất (Watchlist)
+            </h4>
+            <p className="text-xs text-ink-muted font-medium mt-0.5">
+              Xếp hạng theo lượt gọi trong ca hôm nay
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigateTab?.("menu")}
+            className="text-xs font-bold text-brand-800 hover:text-brand-900 hover:underline shrink-0"
+          >
+            Xem Thực Đơn →
+          </button>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {(() => {
-            const dishCount: Record<string, { name: string; sold: number; revenue: number }> = {};
-            bills.forEach((b: any) => {
-              (b.items || []).forEach((item: any) => {
-                if (!dishCount[item.name]) dishCount[item.name] = { name: item.name, sold: 0, revenue: 0 };
-                dishCount[item.name].sold += item.quantity || 1;
-                dishCount[item.name].revenue += item.totalPrice || 0;
-              });
-            });
-            return Object.values(dishCount)
-              .sort((a, b) => b.sold - a.sold)
-              .slice(0, 5)
-              .map((dish, idx) => (
-                <div key={dish.name} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="flex items-center gap-2.5 min-w-0">
+
+        {/* Dish List */}
+        {sortedDishes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-brand-50 text-brand-800 flex items-center justify-center mb-2.5">
+              <Icon name="flame" size={22} />
+            </div>
+            <p className="text-sm font-bold text-ink-primary">Chưa có món nào được gọi</p>
+            <p className="text-xs text-ink-muted mt-0.5 max-w-xs">
+              Khi khách gọi món hoặc thu ngân tạo đơn, các món bán chạy nhất sẽ tự động hiển thị ở đây.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sortedDishes.map((dish, idx) => {
+              const sharePct = totalDishesSold > 0 ? Math.round((dish.sold / totalDishesSold) * 100) : 0;
+              return (
+                <div
+                  key={dish.name}
+                  className="flex items-center justify-between p-2.5 sm:p-3 rounded-2xl bg-surface-canvas/60 hover:bg-surface-canvas border border-surface-border/60 transition-all"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Dish avatar */}
                     <span
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs shrink-0 ${
                         idx === 0
-                          ? "bg-amber-400 text-amber-950"
+                          ? "bg-amber-100 text-amber-900 border border-amber-200"
                           : idx === 1
-                          ? "bg-slate-200 text-slate-800"
-                          : "bg-slate-100 text-slate-500"
+                          ? "bg-brand-100 text-brand-900 border border-brand-200/50"
+                          : "bg-surface-canvas text-ink-primary border border-surface-border"
                       }`}
                     >
-                      {idx + 1}
+                      {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
                     </span>
+
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-900 truncate">{dish.name}</p>
-                      <p className="text-[10px] text-slate-400">Đã bán {dish.sold}</p>
+                      <p className="text-xs sm:text-sm font-bold text-ink-primary truncate">{dish.name}</p>
+                      <p className="text-[11px] text-ink-muted mt-0.5 font-medium">
+                        {dish.sold} phần • {sharePct}% tổng lượng gọi
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs font-black text-slate-900 shrink-0">{formatCurrency(dish.revenue)}</span>
+
+                  <div className="text-right shrink-0 pl-2">
+                    <p className="text-xs sm:text-sm font-black text-ink-primary">
+                      {formatCurrency(dish.revenue)}
+                    </p>
+                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 mt-0.5 rounded-md text-[10px] font-black bg-[#E8F5EE] text-brand-900">
+                      <span>Top {idx + 1}</span>
+                    </span>
+                  </div>
                 </div>
-              ));
-          })()}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Summary Footer */}
+      <div className="pt-3.5 mt-3.5 border-t border-surface-border/50 flex items-center justify-between text-xs font-semibold text-ink-muted">
+        <span>Tổng lượt phục vụ: <strong className="text-ink-primary font-black">{totalDishesSold} phần</strong></span>
+        <button
+          type="button"
+          onClick={() => onNavigateTab?.("analytics")}
+          className="text-brand-800 font-bold hover:underline"
+        >
+          Báo cáo món chi tiết →
+        </button>
+      </div>
     </section>
   );
 };

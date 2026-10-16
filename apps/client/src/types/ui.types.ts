@@ -1,5 +1,6 @@
 import React from "react";
 import { TableStatus } from "@a2order/shared";
+import { IconName } from "./icon.types.js";
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "ghost" | "outline";
@@ -51,6 +52,7 @@ export interface NumericKeypadProps {
   onDigitPress: (digit: string) => void;
   onDeletePress: () => void;
   onClearPress?: () => void;
+  variant?: "glass" | "classic";
 }
 
 export interface TableStatusBadgeProps {
@@ -58,12 +60,21 @@ export interface TableStatusBadgeProps {
   className?: string;
 }
 
+export type AppTab = "dashboard" | "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings";
+
+export interface ClientNavItem {
+  tab: AppTab;
+  label: string;
+  desktopLabel: string;
+  icon: IconName;
+}
+
 export interface AppShellProps {
   storeName: string;
   userName: string;
   userRole: string;
-  activeTab: "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings";
-  onTabChange: (tab: "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings") => void;
+  activeTab: AppTab;
+  onTabChange: (tab: AppTab) => void;
   onLogout: () => void;
   onBackToTables?: () => void;
   children: React.ReactNode;

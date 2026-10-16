@@ -17,7 +17,7 @@ import { Panel, Button, Badge, LoadingScreen, Icon } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
 import { sound } from "@/lib/sound";
 import { formatCurrency } from "@/lib/formatters";
-import { TableItem, KdsTicket, MenuItemData, StaffMember, CartItem } from "@/types";
+import { TableItem, KdsTicket, MenuItemData, StaffMember, CartItem, AppTab } from "@/types";
 import { tableApi } from "@/services/api/tableApi";
 import { menuApi } from "@/services/api/menuApi";
 import { storeApi } from "@/services/api/storeApi";
@@ -38,10 +38,9 @@ const CustomerTableOrderPage = React.lazy(() =>
   import("@/features/ordering/CustomerTableOrderPage").then((m) => ({ default: m.CustomerTableOrderPage }))
 );
 const PublicLandingPage = React.lazy(() => import("@/features/landing/PublicLandingPage").then(m => ({ default: m.PublicLandingPage })));
-
-import { DEFAULT_FALLBACK_TABLES, DEFAULT_FALLBACK_KDS, DEFAULT_FALLBACK_MENU } from "@/data/fallbackData";
-
-const INITIAL_KDS_TICKETS: KdsTicket[] = DEFAULT_FALLBACK_KDS;
+const CmsDashboard = React.lazy(() =>
+  import("@/features/dashboard/CmsDashboard").then((m) => ({ default: m.CmsDashboard }))
+);
 
 const DEFAULT_STAFF: StaffMember[] = [];
 
@@ -66,9 +65,10 @@ export const App: React.FC = () => {
   const attendanceAction = useAntiSpamAction("attendance", (action: string, key) => requestApi("/workforce/attendance", { method: "POST", headers: { "x-idempotency-key": key }, body: JSON.stringify({ action }) }));
   const recordAttendance = async (action: string) => { try { const result = await attendanceAction.execute(action); if (!result) return; await refreshAttendance(); toast.success(action === "IN" ? "Đã ghi nhận vào ca" : "Đã ghi nhận kết ca"); } catch (e: any) { toast.error(e.message); } };
 
-  const getInitialTab = (): "tables" | "kds" | "billing" | "menu" | "chat" | "schedule" | "settings" => {
+  const getInitialTab = (): AppTab => {
     if (typeof window === "undefined") return "tables";
     const path = window.location.pathname;
+    if (path.startsWith("/dashboard") || path.startsWith("/overview")) return "dashboard";
     if (path.startsWith("/kds")) return "kds";
     if (path.startsWith("/pos") || path.startsWith("/billing") || path.startsWith("/cashier")) return "billing";
     if (path.startsWith("/menu")) return "menu";
@@ -77,38 +77,33 @@ export const App: React.FC = () => {
     return "tables";
   };
 
-  const [activeTab, setActiveTab] = useState(getInitialTab);
+  const [activeTab, setActiveTab] = useState<AppTab>(getInitialTab);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(DEFAULT_STAFF);
   const [currentStaff, setCurrentStaff] = useState<StaffMember>({ id: "", name: "Chưa đăng nhập", role: "Nhân viên", pinCode: "" });
 
-  // Data states from DB with rich fallback
-  const [activeStore, setActiveStore] = useState<{ id: string; name: string } | null>({
-    id: "store-demo-central",
-    name: "A2Order Restaurant & Cafe",
-  });
-  const [tables, setTables] = useState<TableItem[]>(DEFAULT_FALLBACK_TABLES);
-  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(DEFAULT_FALLBACK_KDS);
-  const [menuItems, setMenuItems] = useState<any[]>(DEFAULT_FALLBACK_MENU);
+  const [activeStore, setActiveStore] = useState<{ id: string; name: string } | null>(null);
+  const [tables, setTables] = useState<TableItem[]>([]);
+  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>([]);
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const operationalLoadErrorShown = React.useRef(false);
 
   const queryStore = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("store") : null;
-  const activeStoreId = sessionUser?.storeId || queryStore || "";
+  const activeStoreId = sessionUser?.storeId || queryStore || activeStore?.id || "";
 
   const applyUser = (user: BrowserAuthUser) => {
     const roles: Record<string, string> = { WAITER: "Phục vụ", CASHIER: "Thu ngân", CHEF: "Đầu bếp", STORE_OWNER: "Chủ quán", ACCOUNTANT: "Kế toán", SUPER_ADMIN: "Quản trị viên" };
     setSessionUser(user); setCurrentStaff({ id: user.id, name: user.name, role: roles[user.role] || user.role, pinCode: "" }); setIsVerified(true);
+    if ((user.role === "STORE_OWNER" || user.role === "SUPER_ADMIN") && (window.location.pathname === "/" || window.location.pathname === "")) {
+      setActiveTab("dashboard");
+    }
   };
   useEffect(() => {
     let active = true;
     const verify = async () => {
       if (currentPath.startsWith("/order") || landingSlug) { setIsLoading(false); return; }
       const previousAuth = readAuth();
-      if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables(DEFAULT_FALLBACK_TABLES); setKdsTickets(DEFAULT_FALLBACK_KDS); setMenuItems(DEFAULT_FALLBACK_MENU); setIsLoading(false); return; }
-      if (previousAuth.token.startsWith("demo-token-") || previousAuth.token.startsWith("pin-token-")) {
-        applyUser(previousAuth.user);
-        setIsLoading(false);
-        return;
-      }
+      if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables([]); setKdsTickets([]); setMenuItems([]); setIsLoading(false); return; }
       try { const result = await requestApi<{ user: BrowserAuthUser }>("/auth/me"); if (active && readAuth()?.token === previousAuth.token) { applyUser(result.user); getSocketClient(); } }
       catch (error) { if (active && readAuth()?.token === previousAuth.token) { if (error instanceof ApiError && [401, 403].includes(error.status)) { clearAuth(false); setIsVerified(false); setSessionUser(null); } else toast.error("Chưa thể xác minh phiên đăng nhập. Hệ thống sẽ thử kết nối lại."); } }
       finally { if (active) setIsLoading(false); }
@@ -132,23 +127,19 @@ export const App: React.FC = () => {
       const store = await storeApi.getStoreById(sessionUser.storeId);
       if (store?.name) setActiveStore({ id: store.id, name: store.name });
       const dishes = await menuApi.getDishes(sessionUser.storeId);
-      if (dishes && dishes.length > 0) {
-        setMenuItems(dishes.map((d: any) => ({ ...d, optionGroups: d.customizationGroups || [] })));
-      }
+      setMenuItems(dishes.map((d: any) => ({ ...d, optionGroups: d.customizationGroups || [] })));
       if (sessionUser.role !== "CHEF") {
         const snapshot = await requestApi<OperationalTable[]>("/orders/" + sessionUser.storeId + "/snapshot");
-        if (snapshot && snapshot.length > 0) {
-          setTables(snapshot.map(t => ({ id: t.tableId, name: t.tableName, code: t.tableCode, status: t.status as TableStatus, zone: t.zoneName || "T1", occupiedMinutes: t.openedAtMs ? Math.max(0, Math.floor((Date.now() - t.openedAtMs) / 60000)) : 0, totalAmount: t.balanceAmount ?? t.totalAmount })));
-        }
+        setTables(snapshot.map(t => ({ id: t.tableId, name: t.tableName, code: t.tableCode, status: t.status as TableStatus, zone: t.zoneName || "", occupiedMinutes: t.openedAtMs ? Math.max(0, Math.floor((Date.now() - t.openedAtMs) / 60000)) : 0, totalAmount: t.balanceAmount ?? t.totalAmount })));
       }
       if ((store?.modules || []).includes("MODULE_KDS" as any) && sessionUser.role !== "CASHIER") {
         const tickets = await requestApi<any[]>("/orders/kds/tickets");
-        if (tickets && tickets.length > 0) {
-          setKdsTickets(tickets.map(t => ({ id: t.id, tableName: t.tableName, minutesAgo: Math.max(0, Math.floor((Date.now() - t.orderTimestamp) / 60000)), batchNumber: 1, items: t.items.map((i: any) => ({ id: i.id, name: i.name || i.dishName, quantity: i.quantity, notes: i.notes, status: i.status === "WAITING" ? OrderItemStatus.QUEUED : i.status === "READY" ? OrderItemStatus.DONE : i.status })) })));
-        }
+        setKdsTickets(tickets.map(t => ({ id: t.id, tableName: t.tableName, minutesAgo: Math.max(0, Math.floor((Date.now() - t.orderTimestamp) / 60000)), batchNumber: 1, items: t.items.map((i: any) => ({ id: i.id, name: i.name || i.dishName, quantity: i.quantity, notes: i.notes, status: i.status === "WAITING" ? OrderItemStatus.QUEUED : i.status === "READY" ? OrderItemStatus.DONE : i.status })) })));
       }
+      operationalLoadErrorShown.current = false;
     } catch {
-      // Keep rich fallback operational data intact so UI is always interactive
+      if (!operationalLoadErrorShown.current) toast.error("Không thể tải dữ liệu vận hành. Vui lòng kiểm tra kết nối.");
+      operationalLoadErrorShown.current = true;
     }
   }, [isVerified, sessionUser?.storeId, sessionUser?.role]);
   useEffect(() => {
@@ -256,17 +247,21 @@ export const App: React.FC = () => {
     );
   }
 
-  const handleUnifiedLoginSuccess = (user: BrowserAuthUser, token: string) => {
-    saveAuth(user, token);
+  const handleUnifiedLoginSuccess = (user: BrowserAuthUser, token: string, remember = false) => {
+    saveAuth(user, token, remember);
     applyUser(user);
-    setTables((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_TABLES));
-    setKdsTickets((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_KDS));
-    setMenuItems((prev) => (prev.length > 0 ? prev : DEFAULT_FALLBACK_MENU));
+    setActiveStore({ id: user.storeId, name: user.storeName || "A2Order" });
+    setTables([]);
+    setKdsTickets([]);
+    setMenuItems([]);
     setIsAuthModalOpen(false);
 
     // Tự động phân luồng theo vai trò người dùng (Role-Based Auto-Dispatch)
     const roleUpper = (user.role || "").toUpperCase();
-    if (roleUpper === "CHEF" || roleUpper.includes("BẾP")) {
+    if (roleUpper === "STORE_OWNER" || roleUpper.includes("CHỦ QUÁN")) {
+      setActiveTab("dashboard");
+      toast.success(`Chào mừng Chủ Quán ${user.name}! Đã mở Bảng điều khiển Tổng quan quán.`);
+    } else if (roleUpper === "CHEF" || roleUpper.includes("BẾP")) {
       setActiveTab("kds");
       toast.success(`Chào Bếp Trưởng ${user.name}! Đã mở màn hình điều phối Bếp KDS.`);
     } else if (roleUpper === "CASHIER" || roleUpper.includes("THU NGÂN")) {
@@ -276,10 +271,10 @@ export const App: React.FC = () => {
       setActiveTab("tables");
       toast.success(`Chào Phục Vụ ${user.name}! Đã mở sơ đồ bàn phục vụ.`);
     } else if (roleUpper === "SUPER_ADMIN") {
-      setActiveTab("tables");
+      setActiveTab("dashboard");
       toast.success(`Chào Quản trị viên SaaS ${user.name}! Đã mở phiên làm việc toàn quyền.`);
     } else {
-      setActiveTab("tables");
+      setActiveTab("dashboard");
       toast.success(`Chào mừng ${user.name} (${user.role})!`);
     }
   };
@@ -302,11 +297,11 @@ export const App: React.FC = () => {
     <UnifiedAuthModal
       isOpen={isAuthModalOpen}
       staffList={staffMembers}
-      onPinSubmit={async (staffId: string, enteredPin: string) => {
+      onPinSubmit={async (enteredPin: string) => {
         try {
           const result = await requestApi<{ user: BrowserAuthUser; token: string }>("/auth/login-pin", {
             method: "POST",
-            body: JSON.stringify({ storeId: activeStoreId, staffId, pinCode: enteredPin }),
+            body: JSON.stringify({ storeId: activeStoreId, pinCode: enteredPin }),
           });
           handleUnifiedLoginSuccess(result.user, result.token);
         } catch (error) {
@@ -347,7 +342,7 @@ export const App: React.FC = () => {
     });
     if (ok) {
       try { await requestApi("/auth/logout", { method: "POST" }); } catch { /* Local sign-out remains available. */ }
-      clearAuth(); setIsVerified(false); setSessionUser(null); setIsAuthModalOpen(true);
+      clearAuth(); setIsVerified(false); setSessionUser(null); setTables([]); setKdsTickets([]); setMenuItems([]); setIsAuthModalOpen(true);
     }
   };
 
@@ -356,7 +351,7 @@ export const App: React.FC = () => {
       <GlobalFeedback />
 
       <AppShell
-        storeName={activeStore?.name || "A2Order Restaurant & Cafe"}
+        storeName={activeStore?.name || "A2Order"}
         userName={currentStaff.name}
         userRole={currentStaff.role}
         canonicalRole={sessionUser?.role || currentStaff.role}
@@ -365,6 +360,24 @@ export const App: React.FC = () => {
         onLogout={handleLogout}
         configVersion="v7.0.0"
       >
+        {/* ===================== TAB 0: TỔNG QUAN CHỦ QUÁN (DASHBOARD) ===================== */}
+        {activeTab === "dashboard" && (
+          <React.Suspense fallback={<div className="p-8 text-center text-ink-muted">Đang tải bảng điều khiển tổng quan...</div>}>
+            <CmsDashboard
+              currentRole={sessionUser?.role || "STORE_OWNER"}
+              onNavigateTab={(tab) => {
+                if (tab === "tables") setActiveTab("tables");
+                else if (tab === "kds") setActiveTab("kds");
+                else if (tab === "billing" || tab === "staff_order") setActiveTab("billing");
+                else if (tab === "menu") setActiveTab("menu");
+                else if (tab === "chat") setActiveTab("chat");
+                else if (tab === "schedule" || tab === "team") setActiveTab("schedule");
+                else setActiveTab("tables");
+              }}
+            />
+          </React.Suspense>
+        )}
+
         {/* ===================== TAB 1: SƠ ĐỒ BÀN & GỌI MÓN ===================== */}
         {activeTab === "tables" && (
           <TablesOverviewTab
@@ -380,10 +393,10 @@ export const App: React.FC = () => {
         {/* ===================== TAB 2: MÀN HÌNH BẾP (KDS) ===================== */}
         {activeTab === "kds" && (
           <div className="space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-black text-ink-primary">Màn Hình Bếp Trưởng (KDS)</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl sm:text-2xl font-black text-ink-primary">Màn Hình Bếp Trưởng (KDS)</h2>
                   <Badge variant="success" className="animate-pulse">Live {kdsTickets.length} Vé</Badge>
                 </div>
                 <p className="text-xs text-ink-muted">Chạm vào từng món để đổi trạng thái Nấu Xong hoặc bấm Hoàn Tất Vé</p>
@@ -392,7 +405,7 @@ export const App: React.FC = () => {
               <Button
                 size="sm"
                 variant="outline"
-                className="rounded-full text-xs gap-1.5 bg-white"
+                className="min-h-11 rounded-full text-xs gap-1.5 bg-white"
                 onClick={() => {
                   sound.playKitchenChime();
                   toast.info("Đã phát âm thanh kiểm tra loa bếp!");

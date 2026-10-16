@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Portal, Icon } from "@/components/ui";
 import { PlatformStoreUserRecord, ResetUserCredentialsModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
+import { generateStaffPin, STAFF_PIN_PREFIX } from "@a2order/shared";
 
 export type { ResetUserCredentialsModalProps };
 
@@ -20,7 +21,7 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
   useEffect(() => {
     if (user) {
       setNewPassword("A2@" + crypto.randomUUID().replace(/-/g, "").slice(0, 16));
-      setNewPin((crypto.getRandomValues(new Uint32Array(1))[0] % 10000).toString().padStart(4, "0"));
+      setNewPin(generateStaffPin(user.role || "WAITER"));
       setResetType("BOTH");
       setCopied(false);
     }
@@ -30,7 +31,7 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
 
   const handleGenerateRandom = () => {
     setNewPassword("A2@" + crypto.randomUUID().replace(/-/g, "").slice(0, 16));
-    setNewPin((crypto.getRandomValues(new Uint32Array(1))[0] % 10000).toString().padStart(4, "0"));
+    setNewPin(generateStaffPin(user.role || "WAITER"));
     toast.info("Đã tạo mật khẩu và mã PIN ngẫu nhiên mới.");
   };
 
@@ -57,11 +58,17 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
       payload.password = newPassword.trim();
     }
     if (resetType === "BOTH" || resetType === "PIN_ONLY") {
-      if (!newPin.trim() || newPin.length < 4) {
-        toast.error("Mã PIN phải có ít nhất 4 số.");
+      const trimmedPin = newPin.trim();
+      if (!trimmedPin || trimmedPin.length !== 6 || !/^\d{6}$/.test(trimmedPin)) {
+        toast.error("Mã PIN phải bao gồm đúng 6 chữ số.");
         return;
       }
-      payload.pinCode = newPin.trim();
+      const expectedPrefix = STAFF_PIN_PREFIX[user.role as keyof typeof STAFF_PIN_PREFIX];
+      if (expectedPrefix && !trimmedPin.startsWith(expectedPrefix)) {
+        toast.error(`Mã PIN cho vai trò ${user.role} phải bắt đầu bằng "${expectedPrefix}" (VD: ${expectedPrefix}1234)`);
+        return;
+      }
+      payload.pinCode = trimmedPin;
     }
 
     try {
@@ -185,17 +192,20 @@ export const ResetUserCredentialsModal: React.FC<ResetUserCredentialsModalProps>
             {(resetType === "BOTH" || resetType === "PIN_ONLY") && (
               <div>
                 <label className="block text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5">
-                  Mã PIN Fast-Login Mới (POS/Tablet)
+                  Mã PIN Fast-Login Mới (6 số - Tiền tố {STAFF_PIN_PREFIX[user.role as keyof typeof STAFF_PIN_PREFIX] || "10"})
                 </label>
                 <input
                   type="text"
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="VD: 1234"
+                  placeholder={`VD: ${STAFF_PIN_PREFIX[user.role as keyof typeof STAFF_PIN_PREFIX] || "10"}1234`}
                   maxLength={6}
                   required
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
                 />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Mã PIN 6 số với 2 số đầu là mã vai trò: {STAFF_PIN_PREFIX[user.role as keyof typeof STAFF_PIN_PREFIX] || "10"} ({user.role})
+                </p>
               </div>
             )}
 

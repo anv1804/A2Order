@@ -278,8 +278,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 onClick={onNavigateToOwner}
                 className="text-slate-400 hover:text-emerald-400 font-semibold transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <span>← Quay lại</span>
-                <span className="text-emerald-400 underline underline-offset-2">Cổng Chủ Quán F&B</span>
+                <span>← Đến</span>
+                <span className="text-emerald-400 underline underline-offset-2">Cổng Vận Hành Nhà Hàng (Chủ Quán & Nhân Viên)</span>
               </button>
             )}
           </div>

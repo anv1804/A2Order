@@ -33,6 +33,7 @@ export async function buildApp(options: { logger?: boolean; secret?: string; soc
   await app.register(fastifyJwt, { secret });
   registerAccess(app);
   app.setErrorHandler((error, request, reply) => {
+    console.error("SERVER ERROR on", request.method, request.url, error);
     const result = safeError(error);
     if (result.status >= 500) request.log.error({ errorType: error instanceof Error ? error.name : "Unknown", requestId: request.id }, "Request failed");
     return reply.status(result.status).send({ success: false, code: result.code, error: result.message, requestId: request.id });

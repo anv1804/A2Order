@@ -25,11 +25,12 @@ import type { Transaction } from "../../../types/security.js";
 
 const getStoreAdminStatus = (
   storeStatus: string,
-  license: { status: string; endDate: Date } | null
+  license: { status: string; endDate?: Date | null } | null
 ): TenantStoreRecord["status"] => {
   if (storeStatus === "SUSPENDED" || license?.status === "SUSPENDED") return "SUSPENDED";
   if (!license || license.status === "REVOKED") return "EXPIRED";
-  const daysLeft = Math.ceil((license.endDate.getTime() - Date.now()) / 86400000);
+  if (!license.endDate) return "ACTIVE";
+  const daysLeft = Math.ceil((new Date(license.endDate).getTime() - Date.now()) / 86400000);
   if (daysLeft <= 0 || license.status === "EXPIRED") return "EXPIRED";
   if (daysLeft <= 7 || license.status === "EXPIRING_SOON") return "EXPIRING_SOON";
   return "ACTIVE";

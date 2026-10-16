@@ -23,6 +23,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<"VIETQR" | "CASH">("VIETQR");
   const [cashTendered, setCashTendered] = useState<number>(0);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"TABLES" | "CHECKOUT">("TABLES");
 
   const storeId = getAuthUser()?.storeId || "";
   const [snapshot] = useResource<OperationalTable[]>(`/orders/${storeId}/snapshot`, []);
@@ -105,8 +106,8 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-ink-primary tracking-tight">Quầy Thu Ngân (Cashier POS)</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-black text-ink-primary tracking-tight">Quầy Thu Ngân (Cashier POS)</h2>
             <Badge variant="success" className="font-extrabold text-[10px]">
               Tự Động Sinh VietQR
             </Badge>
@@ -116,7 +117,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -142,10 +143,40 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
         </div>
       </div>
 
+      {/* Mobile Tab Switcher */}
+      <div className="flex lg:hidden p-1 bg-surface-canvas rounded-2xl border border-surface-border text-xs font-bold gap-1 mb-2">
+        <button
+          type="button"
+          onClick={() => setMobileTab("TABLES")}
+          className={`flex-1 min-h-11 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+            mobileTab === "TABLES"
+              ? "bg-brand-900 text-white shadow-xs font-black"
+              : "text-ink-muted hover:text-ink-primary"
+          }`}
+        >
+          <Icon name="table" size={15} />
+          <span>Danh Sách Bàn ({activeTables.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMobileTab("CHECKOUT")}
+          disabled={!selectedTable}
+          className={`flex-1 min-h-11 rounded-xl flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 ${
+            mobileTab === "CHECKOUT"
+              ? "bg-brand-900 text-white shadow-xs font-black"
+              : "text-ink-muted hover:text-ink-primary"
+          }`}
+        >
+          <Icon name="cashier" size={15} />
+          <span>Thanh Toán ({selectedTable?.name || "Chưa chọn"})</span>
+        </button>
+      </div>
+
       {/* Main 2-Column Workstation */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* Left Col (4/12): List of Active Tables needing checkout */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className={`lg:col-span-4 space-y-3 ${mobileTab === "TABLES" ? "block" : "hidden lg:block"}`}>
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-black text-ink-primary uppercase tracking-wider">
               Bàn Đang Dùng Bữa ({activeTables.length})
@@ -153,7 +184,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-1.5 bg-surface-canvas p-1 rounded-2xl border border-surface-border text-xs">
+          <div className="flex items-center gap-1.5 bg-surface-canvas p-1 rounded-2xl border border-surface-border text-xs overflow-x-auto no-scrollbar">
             {[
               { id: "ALL", label: "Tất Cả", count: activeTables.length },
               { id: "PAYMENT_PENDING", label: "Chờ Tính Tiền", count: activeTables.filter((t) => t.status === "PAYMENT_PENDING").length },
@@ -162,7 +193,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id as any)}
-                className={`flex-1 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                className={`shrink-0 min-h-11 px-2 rounded-xl text-[11px] font-bold transition-all ${
                   statusFilter === f.id
                     ? "bg-white text-brand-900 shadow-sm"
                     : "text-ink-muted hover:text-ink-primary"
@@ -174,7 +205,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
           </div>
 
           {/* Table Cards List */}
-          <div className="space-y-2 max-h-[640px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[360px] lg:max-h-[640px] overflow-y-auto pr-1">
             {filteredTables.length === 0 ? (
               <div className="p-8 text-center bg-white rounded-2xl border border-surface-border text-xs text-ink-muted font-bold">
                 Không có bàn nào phù hợp bộ lọc
@@ -187,7 +218,8 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                 const tSum = tItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={t.id}
                     onClick={() => {
                       setSelectedTableId(t.id);
@@ -196,8 +228,9 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                       const stored = snapshot.find(row => row.tableId === t.id)?.adjustment;
                       setDiscountPercent(stored?.discountPercent || 0); setIncludeVat(!!stored?.includeVat);
                       setCashTendered(0);
+                      setMobileTab("CHECKOUT");
                     }}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between ${
+                    className={`w-full min-h-16 text-left p-3.5 rounded-2xl border transition-all cursor-pointer select-none flex items-center justify-between gap-2 ${
                       isSelected
                         ? "bg-brand-50/80 border-brand-900 shadow-sm ring-1 ring-brand-900"
                         : "bg-white border-surface-border hover:border-brand-300"
@@ -223,7 +256,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                       </div>
                       <span className="text-[10px] text-ink-subtle">Chạm để chọn</span>
                     </div>
-                  </div>
+                  </button>
                 );
               })
             )}
@@ -231,9 +264,19 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
         </div>
 
         {/* Right Col (8/12): Checkout Console */}
-        <div className="lg:col-span-8">
+        <div className={`lg:col-span-8 ${mobileTab === "CHECKOUT" ? "block" : "hidden lg:block"}`}>
           {selectedTable ? (
-            <div className="bg-white rounded-3xl border border-surface-border shadow-card p-5 space-y-5">
+            <div className="bg-white rounded-3xl border border-surface-border shadow-card p-4 sm:p-5 space-y-5 min-w-0">
+              {/* Mobile Back Button to Table List */}
+              <button
+                type="button"
+                onClick={() => setMobileTab("TABLES")}
+                className="inline-flex lg:hidden items-center gap-1.5 text-xs font-bold text-brand-800 hover:underline py-1"
+              >
+                <Icon name="arrowLeft" size={14} />
+                <span>Quay lại chọn bàn khác ({activeTables.length} bàn)</span>
+              </button>
+
               {/* Header Bill */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-surface-border pb-4 gap-2">
                 <div>
@@ -249,10 +292,10 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center bg-surface-canvas p-1 rounded-2xl border border-surface-border text-xs font-bold">
+                  <div className="flex items-center max-w-full overflow-x-auto no-scrollbar bg-surface-canvas p-1 rounded-2xl border border-surface-border text-xs font-bold">
                     <button
                       onClick={() => setPaymentMethod("VIETQR")}
-                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                      className={`shrink-0 min-h-11 px-3 rounded-xl transition-all flex items-center gap-1.5 ${
                         paymentMethod === "VIETQR" ? "bg-brand-900 text-white shadow-sm" : "text-ink-muted hover:text-ink-primary"
                       }`}
                     >
@@ -262,7 +305,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                     </button>
                     <button
                       onClick={() => setPaymentMethod("CASH")}
-                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
+                      className={`shrink-0 min-h-11 px-3 rounded-xl transition-all flex items-center gap-1.5 ${
                         paymentMethod === "CASH" ? "bg-brand-900 text-white shadow-sm" : "text-ink-muted hover:text-ink-primary"
                       }`}
                     >
@@ -303,14 +346,14 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
 
                   {/* Discount & Tax Options */}
                   <div className="p-3 bg-surface-canvas rounded-2xl border border-surface-border space-y-2.5">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <span className="text-xs font-bold text-ink-secondary">Chiết Khấu (Giảm Giá):</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                         {[0, 5, 10, 15, 20].map((pct) => (
                           <button
                             key={pct}
                             onClick={() => { if (getAuthUser()?.role !== "STORE_OWNER") return toast.info("Điều chỉnh tiền cần quyền chủ quán"); setAdjustmentEdited(true); setDiscountEdited(true); setDiscountPercent(pct); }}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all ${
+                            className={`shrink-0 min-h-11 px-2 rounded-lg text-xs font-black transition-all ${
                               discountPercent === pct
                                 ? "bg-brand-900 text-white shadow-sm"
                                 : "bg-white border border-surface-border text-ink-muted hover:text-ink-primary"
@@ -326,7 +369,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                       <span className="text-xs font-bold text-ink-secondary">VAT (Thuế 8%):</span>
                       <button
                         onClick={() => { if (getAuthUser()?.role !== "STORE_OWNER") return toast.info("Điều chỉnh tiền cần quyền chủ quán"); setAdjustmentEdited(true); setIncludeVat(v => !v); }}
-                        className={`px-3 py-0.5 rounded-lg text-xs font-bold border transition-all ${
+                        className={`min-h-11 px-3 rounded-lg text-xs font-bold border transition-all ${
                           includeVat
                             ? "bg-brand-900 text-white border-brand-900"
                             : "bg-white text-ink-muted border-surface-border"
@@ -371,11 +414,14 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                       </span>
 
                       <div className="w-48 h-48 bg-white p-2 rounded-2xl border border-surface-border shadow-sm flex items-center justify-center">
-                        <img
-                          src={vietQrUrl}
-                          alt="VietQR F&B"
-                          className="w-full h-full object-contain"
-                        />
+                        {vietQrUrl ? (
+                          <img src={vietQrUrl} alt="Mã VietQR của hóa đơn" className="w-full h-full object-contain" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-ink-muted text-xs font-semibold">
+                            <Icon name="vietqr" size={32} className="text-brand-800" />
+                            <span>Đang chờ mã thanh toán</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-xs space-y-0.5">
@@ -399,7 +445,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                             value={cashTendered || ""}
                             onChange={(e) => setCashTendered(Number(e.target.value))}
                             placeholder="Nhập số tiền..."
-                            className="w-full h-10 px-3 rounded-xl border border-surface-border font-black text-lg text-ink-primary bg-white focus:outline-none focus:border-brand-800"
+                            className="w-full h-12 px-3 rounded-xl border border-surface-border font-black text-lg text-ink-primary bg-white focus:outline-none focus:border-brand-800"
                           />
 
                           {/* Fast Cash Buttons */}
@@ -408,7 +454,7 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                               <button
                                 key={idx}
                                 onClick={() => setCashTendered(amt)}
-                                className="py-1.5 px-2 rounded-xl bg-white border border-surface-border text-xs font-extrabold text-ink-primary hover:border-brand-800 hover:text-brand-900 transition-all shadow-sm"
+                                className="min-h-11 px-2 rounded-xl bg-white border border-surface-border text-xs font-extrabold text-ink-primary hover:border-brand-800 hover:text-brand-900 transition-all shadow-sm"
                               >
                                 {idx === 0 ? "Vừa Đủ" : formatCurrency(amt)}
                               </button>
@@ -430,8 +476,9 @@ export const CashierWorkstation: React.FC<CashierWorkstationProps> = ({
                   {/* Big Checkout Button */}
                   <Button
                     size="lg"
-                    className="w-full rounded-2xl bg-brand-900 hover:bg-brand-950 text-white font-black text-sm py-3.5 shadow-md flex items-center justify-center gap-2"
+                    className="w-full min-h-[52px] h-auto rounded-2xl bg-brand-900 hover:bg-brand-950 text-white font-black text-sm py-3 shadow-md flex flex-wrap items-center justify-center gap-2 text-center"
                     onClick={handleConfirmPaid}
+                    disabled={!bill || !selectedTable || finalTotal <= 0}
                   >
                     <Icon name="check" className="w-5 h-5 text-white" />
                     <span>XÁC NHẬN ĐÃ THU {formatCurrency(finalTotal)} & TRẢ BÀN</span>

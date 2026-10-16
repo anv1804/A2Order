@@ -3,7 +3,7 @@ import { requestApi } from "@/services/api/apiClient";
 import React, { useState, useEffect, useRef } from "react";
 import { CmsLayout } from "@/components/layout/CmsLayout";
 import { CmsRouteRenderer } from "@/components/layout/CmsRouteRenderer";
-import { AdminLoginPage, OwnerLoginPage } from "@/features/auth";
+import { AdminLoginPage } from "@/features/auth";
 import { GlobalFeedback } from "@/components/feedback";
 import { LoadingScreen } from "@/components/ui";
 import { toast, confirmDialog } from "@/stores/notificationStore";
@@ -181,17 +181,12 @@ export const App: React.FC = () => {
     confirmingNavigation.current = false;
     if (!confirmed) return;
 
-    const wasAdmin = currentRole === "SUPER_ADMIN";
     useUnsavedChangesStore.getState().clearAll();
     try { await requestApi("/auth/logout", { method: "POST" }); } catch { toast.warning("Đã đăng xuất trên thiết bị; chưa xác nhận thu hồi phiên trên máy chủ."); }
     clearAuth();
     setCurrentUser(null);
     toast.info("Đã đăng xuất khỏi tài khoản quản trị.");
-    if (wasAdmin) {
-      navigateTo("/admin/login");
-    } else {
-      navigateTo("/login");
-    }
+    navigateTo("/");
   };
 
   if (isInitializing) {
@@ -216,23 +211,19 @@ export const App: React.FC = () => {
     );
   }
 
-  // Nếu chưa đăng nhập: Phân nhánh theo URL
+  // Cổng 3001: Dành riêng cho Super Admin quản trị nền tảng SaaS HQ
   if (!currentUser) {
-    const isAdminRoute = currentPath.startsWith("/admin") || currentPath.startsWith("/saas-admin");
     return (
       <>
         <GlobalFeedback />
-        {isAdminRoute ? (
-          <AdminLoginPage
-            onLoginSuccess={handleLoginSuccess}
-            onNavigateToOwner={() => navigateTo("/login")}
-          />
-        ) : (
-          <OwnerLoginPage
-            onLoginSuccess={handleLoginSuccess}
-            onNavigateToAdmin={() => navigateTo("/admin/login")}
-          />
-        )}
+        <AdminLoginPage
+          onLoginSuccess={handleLoginSuccess}
+          onNavigateToOwner={() => {
+            if (typeof window !== "undefined") {
+              window.location.href = (import.meta.env.VITE_CLIENT_URL || "http://localhost:3000").replace(/\/$/, "");
+            }
+          }}
+        />
       </>
     );
   }

@@ -3,6 +3,7 @@ import { Portal, Icon } from "@/components/ui";
 import { PlatformStoreUserRecord, TenantStoreRecord, StoreUserModalProps } from "@/types";
 import { toast } from "@/stores/notificationStore";
 import { STORE_ROLES } from "@/data/superAdminConstants";
+import { generateStaffPin, STAFF_PIN_PREFIX } from "@a2order/shared";
 
 export type { StoreUserModalProps };
 export { STORE_ROLES };
@@ -20,7 +21,7 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("STORE_OWNER");
-  const [pinCode, setPinCode] = useState("1111");
+  const [pinCode, setPinCode] = useState(() => generateStaffPin("STORE_OWNER"));
   const [password, setPassword] = useState("");
   const [changePassword, setChangePassword] = useState(false);
   const [isActive, setIsActive] = useState(true);
@@ -32,7 +33,7 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
       setName(editingUser.name || "");
       setEmail(editingUser.email || "");
       setRole(editingUser.role || "STORE_MANAGER");
-      setPinCode(editingUser.pinCode || "1111");
+      setPinCode(editingUser.pinCode || generateStaffPin(editingUser.role || "STORE_MANAGER"));
       setPassword("");
       setChangePassword(false);
       setIsActive(editingUser.isActive !== false);
@@ -41,7 +42,7 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
       setName("");
       setEmail("");
       setRole("STORE_OWNER");
-      setPinCode("1111");
+      setPinCode(generateStaffPin("STORE_OWNER"));
       setPassword("");
       setChangePassword(true);
       setIsActive(true);
@@ -61,8 +62,14 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
       toast.error("Vui lòng nhập Họ và tên nhân sự.");
       return;
     }
-    if (!pinCode.trim() || pinCode.length < 4) {
-      toast.error("Mã PIN đăng nhập nhanh phải có ít nhất 4 số.");
+    const trimmedPin = pinCode.trim();
+    if (!trimmedPin || trimmedPin.length !== 6 || !/^\d{6}$/.test(trimmedPin)) {
+      toast.error("Mã PIN đăng nhập nhanh phải bao gồm đúng 6 chữ số.");
+      return;
+    }
+    const expectedPrefix = STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX];
+    if (expectedPrefix && !trimmedPin.startsWith(expectedPrefix)) {
+      toast.error(`Mã PIN cho vai trò ${role} phải bắt đầu bằng "${expectedPrefix}" (VD: ${expectedPrefix}1234)`);
       return;
     }
     if (!editingUser && !password.trim() && role === "STORE_OWNER") {
@@ -188,7 +195,13 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
                 </label>
                 <select
                   value={role}
-                  onChange={(e) => setRole(e.target.value)}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setRole(newRole);
+                    if (!editingUser) {
+                      setPinCode(generateStaffPin(newRole));
+                    }
+                  }}
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
                 >
                   {STORE_ROLES.map((r) => (
@@ -200,15 +213,15 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
               </div>
             </div>
 
-            {/* Mã PIN 4 số đăng nhập POS & Tablet */}
+            {/* Mã PIN 6 số đăng nhập POS & Tablet */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-black uppercase tracking-wider text-slate-600">
-                  Mã PIN Fast-Login (POS/Tablet) <span className="text-rose-500">*</span>
+                  Mã PIN Fast-Login POS (6 số - Tiền tố {STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX] || "10"}) <span className="text-rose-500">*</span>
                 </label>
                 <button
                   type="button"
-                  onClick={() => setPinCode(Math.floor(1000 + Math.random() * 9000).toString())}
+                  onClick={() => setPinCode(generateStaffPin(role))}
                   className="text-[11px] text-emerald-700 font-bold hover:underline cursor-pointer"
                 >
                   Tạo mã ngẫu nhiên
@@ -218,13 +231,13 @@ export const StoreUserModal: React.FC<StoreUserModalProps> = ({
                 type="text"
                 value={pinCode}
                 onChange={(e) => setPinCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="4 số (VD: 1111, 2345)"
+                placeholder={`6 số (VD: ${STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX] || "10"}1234)`}
                 maxLength={6}
                 required
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white font-mono font-bold tracking-widest text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition"
               />
               <p className="text-[11px] text-slate-400 mt-1">
-                Dùng cho thu ngân và nhân viên order/bếp đăng nhập ca làm việc tức thì trên tablet/máy POS.
+                2 số đầu là mã vai trò: {STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX] || "10"} ({role}). Dùng cho nhân viên đăng nhập ca làm việc tức thì trên tablet/máy POS.
               </p>
             </div>
 

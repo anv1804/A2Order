@@ -40,14 +40,14 @@ export interface AttendanceRecord {
 export interface PinPadModalProps {
   isOpen: boolean;
   staffList: StaffMember[];
-  onPinSubmit: (staffId: string, pin: string) => void;
+  onPinSubmit: (pin: string) => void | Promise<void>;
   onClose?: () => void;
 }
 
 export interface UnifiedAuthModalProps {
   isOpen: boolean;
   staffList: StaffMember[];
-  onPinSubmit: (staffId: string, pin: string) => void | Promise<void>;
+  onPinSubmit: (pin: string) => void | Promise<void>;
   onAdminLogin?: (email: string, pass: string) => void | Promise<void>;
   onClockIn?: (staff: StaffMember) => void;
   onClockOut?: (staff: StaffMember) => void;
@@ -56,7 +56,7 @@ export interface UnifiedAuthModalProps {
 }
 
 export interface UnifiedLoginPageProps {
-  onLoginSuccess: (user: BrowserAuthUser, token: string) => void | Promise<void>;
+  onLoginSuccess: (user: BrowserAuthUser, token: string, remember?: boolean) => void | Promise<void>;
   staffList?: StaffMember[];
   storeId?: string;
   storeName?: string;

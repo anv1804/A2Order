@@ -46,7 +46,7 @@ export const MenuDashboard: React.FC<MenuDashboardProps> = ({ menuItems, onToggl
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Tìm kiếm món ăn..."
-              className="w-full h-10 pl-9 pr-3 rounded-xl bg-white border border-surface-border text-xs font-semibold text-ink-primary focus:outline-none focus:border-brand-500 transition-colors shadow-2xs"
+              className="w-full h-12 pl-9 pr-3 rounded-xl bg-white border border-surface-border text-base font-semibold text-ink-primary focus:outline-none focus:border-brand-500 transition-colors shadow-2xs"
             />
           </div>
 
@@ -55,7 +55,7 @@ export const MenuDashboard: React.FC<MenuDashboardProps> = ({ menuItems, onToggl
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all border shrink-0 ${
+                className={`min-h-11 px-3.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                   selectedCategory === cat
                     ? "bg-brand-900 text-white border-brand-900 shadow-sm"
                     : "bg-white text-ink-muted border-surface-border hover:text-ink-primary hover:bg-surface-hover"

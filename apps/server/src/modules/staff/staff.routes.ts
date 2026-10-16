@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync } from "fastify";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { UserRole } from "@a2order/shared";
+import { UserRole, STAFF_PIN_PREFIX } from "@a2order/shared";
 import { prisma } from "../../core/database/prismaClient.js";
 import { currentStore } from "../../core/security/access.js";
 import { command } from "../../core/security/commands.js";
@@ -16,11 +16,36 @@ const inputSchema = z.object({
   shift: z.enum(["MORNING", "EVENING", "FULL_TIME"]).optional(),
   email: z.string().trim().email().nullable().optional(),
   password: z.string().min(10).max(128).optional(),
-  pinCode: z.string().regex(/^\d{4,8}$/).optional(),
+  pinCode: z.string().regex(/^(10|20|30|40|80|90|99)\d{4}$/).optional(),
   role: z.nativeEnum(UserRole),
   isActive: z.boolean().optional(),
 });
+const staffPinRoles = Object.keys(STAFF_PIN_PREFIX);
+const assertPinRole = (pin: string | undefined, role: string) => {
+  if (pin && staffPinRoles.includes(role) && !pin.startsWith(STAFF_PIN_PREFIX[role as keyof typeof STAFF_PIN_PREFIX])) {
+    throw new AppError(400, "Hai số đầu mã PIN không khớp vai trò nhân viên");
+  }
+};
+const assertUniquePin = async (storeId: string, pin: string | undefined, excludeId?: string) => {
+  if (!pin) return;
+  const candidates = await prisma.staff.findMany({ where: { storeId, id: excludeId ? { not: excludeId } : undefined, pinCode: { not: null } }, select: { pinCode: true } });
+  if ((await Promise.all(candidates.map(staff => staff.pinCode?.startsWith("$2") ? bcrypt.compare(pin, staff.pinCode) : false))).some(Boolean)) {
+    throw new AppError(409, "Mã PIN đã được dùng trong quán; hãy cấp mã khác");
+  }
+};
 export const staffRoutes: FastifyPluginAsync = async app => {
+  app.get("/password-reset-requests", async request => {
+    const storeId = currentStore(request);
+    const events = await prisma.auditLog.findMany({ where: { storeId, action: { in: ["PASSWORD_RESET_REQUEST", "PASSWORD_RESET_RESOLVED"] }, createdAt: { gte: new Date(Date.now() - 30 * 86400000) } }, include: { staff: { select: { id: true, name: true, email: true } } }, orderBy: { createdAt: "desc" }, take: 200 });
+    const resolved = new Set<string>();
+    const pending = events.filter(event => {
+      if (event.action === "PASSWORD_RESET_RESOLVED") { if (event.staffId) resolved.add(event.staffId); return false; }
+      if (!event.staffId || resolved.has(event.staffId) || !event.staff?.email) return false;
+      resolved.add(event.staffId);
+      return true;
+    }).map(event => ({ id: event.id, staffId: event.staffId, name: event.staff!.name, email: event.staff!.email, createdAt: event.createdAt }));
+    return { success: true, data: pending };
+  });
   app.get("/", async request => {
     const query = z.object({ storeId: z.string().optional(), role: z.string().optional(), status: z.string().optional(), search: z.string().max(200).optional() }).parse(request.query);
     const admin = request.principal!.role === "SUPER_ADMIN";
@@ -35,6 +60,8 @@ export const staffRoutes: FastifyPluginAsync = async app => {
     if (["WAITER", "CASHIER", "CHEF"].includes(input.role) && !input.pinCode) throw new AppError(400, "Cần mã PIN riêng cho nhân viên");
     if (["SUPER_ADMIN", "STORE_OWNER", "ACCOUNTANT"].includes(input.role) && (!input.email || !input.password)) throw new AppError(400, "Cần email và mật khẩu cho tài khoản quản lý");
     const storeId = admin ? input.storeId : currentStore(request);
+    assertPinRole(input.pinCode, input.role);
+    await assertUniquePin(storeId, input.pinCode);
     const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : null;
     const pinHash = input.pinCode ? await bcrypt.hash(input.pinCode, 12) : null;
     const result = await command(request, storeId, "STAFF_CREATE", async tx => {
@@ -51,6 +78,9 @@ export const staffRoutes: FastifyPluginAsync = async app => {
     const admin = request.principal!.role === "SUPER_ADMIN";
     const target = requireValue(await prisma.staff.findFirst({ where: { id, ...(!admin ? { storeId: currentStore(request) } : {}) } }));
     if (!admin && (input.role === "SUPER_ADMIN" || target.role === "SUPER_ADMIN" || (input.storeId && input.storeId !== target.storeId))) throw new AppError(403, "Không có quyền đổi vai trò hoặc cửa hàng");
+    assertPinRole(input.pinCode, input.role || target.role);
+    if (input.role && input.role !== target.role && !input.pinCode && staffPinRoles.includes(input.role)) throw new AppError(400, "Đổi vai trò cần cấp PIN 6 số theo nhóm mới");
+    await assertUniquePin(target.storeId, input.pinCode, id);
     const pinHash = input.pinCode ? await bcrypt.hash(input.pinCode, 12) : undefined;
     const row = await command(request, target.storeId, "STAFF_UPDATE", async tx => {
       const current = requireValue(await tx.staff.findFirst({ where: { id, storeId: target.storeId } }));
@@ -83,9 +113,11 @@ export const staffRoutes: FastifyPluginAsync = async app => {
     const { id } = request.params as { id: string };
     const input = inputSchema.pick({ password: true, pinCode: true }).refine(data => !!data.password || !!data.pinCode, "Cần mật khẩu hoặc PIN mới").parse(request.body);
     const target = requireValue(await prisma.staff.findFirst({ where: { id, ...(request.principal!.role !== "SUPER_ADMIN" ? { storeId: currentStore(request) } : {}) } }));
+    assertPinRole(input.pinCode, target.role);
+    await assertUniquePin(target.storeId, input.pinCode, id);
     const passwordHash = input.password ? await bcrypt.hash(input.password, 12) : undefined;
     const pinCode = input.pinCode ? await bcrypt.hash(input.pinCode, 12) : undefined;
-    await command(request, target.storeId, "STAFF_RESET", async tx => { await tx.staff.update({ where: { id_storeId: { id, storeId: target.storeId } }, data: { passwordHash, pinCode, sessionVersion: { increment: 1 } } }); return { success: true }; });
+    await command(request, target.storeId, "STAFF_RESET", async tx => { await tx.staff.update({ where: { id_storeId: { id, storeId: target.storeId } }, data: { passwordHash, pinCode, sessionVersion: { increment: 1 } } }); if (passwordHash) await tx.auditLog.create({ data: { storeId: target.storeId, staffId: id, action: "PASSWORD_RESET_RESOLVED" } }); return { success: true }; });
     disconnectStaff(id);
     return { success: true };
   });

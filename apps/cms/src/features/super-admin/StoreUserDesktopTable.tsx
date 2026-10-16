@@ -165,7 +165,7 @@ export const StoreUserDesktopTable: React.FC<StoreUserDesktopTableProps> = ({
                   {/* Mã PIN POS */}
                   <td className="py-3.5 px-3">
                     <div className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-lg border border-slate-200">
-                      <span>{isPinRevealed ? (user.pinCode || "Chưa cấp") : "••••"}</span>
+                      <span>{isPinRevealed ? (user.pinCode || "Chưa cấp") : "••••••"}</span>
                       <button
                         type="button"
                         onClick={() => toggleRevealPin(user.id)}

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Panel, Button, Badge, Icon } from "@/components/ui";
-import { formatCurrency } from "@/lib/formatters";
 import { sound } from "@/lib/sound";
 import { toast } from "@/stores/notificationStore";
 import { StaffMember, AttendanceRecord, StaffScheduleProfileProps } from "@/types";
@@ -23,9 +22,11 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
 
   const handlePrevMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    setSelectedDayNum(1);
   };
   const handleNextMonth = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    setSelectedDayNum(1);
   };
 
   const currentYear = currentDate.getFullYear();
@@ -52,6 +53,11 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
 
   // Lọc nhật ký chấm công của nhân viên này
   const myLogs = attendanceRecords.filter((r) => r.staffId === currentStaff?.id);
+  const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
+  const monthLogs = myLogs.filter((record) => record.date.startsWith(monthKey));
+  const workedDays = new Set(monthLogs.map((record) => record.date)).size;
+  const selectedDateKey = `${monthKey}-${String(selectedDayNum).padStart(2, "0")}`;
+  const selectedDayLogs = myLogs.filter((record) => record.date === selectedDateKey);
 
   return (
     <div className="space-y-4 sm:space-y-5 max-w-4xl mx-auto animate-fadeIn pb-12">
@@ -78,8 +84,8 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
               <strong className="text-brand-800">{currentStaff?.role || "Phục vụ"}</strong>
             </p>
             {isClockedIn && (
-              <p className="text-[11px] text-blue-700 font-bold mt-1 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping inline-block" />
+              <p className="text-[11px] text-brand-800 font-bold mt-1 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-brand-800 animate-ping inline-block" />
                 <span>Đã vào ca lúc {currentRecord.clockInTime} ({currentRecord.shiftName})</span>
               </p>
             )}
@@ -121,56 +127,26 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
         </div>
       </div>
 
-      {/* KPI Performance Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
         <Panel variant="featured" padding="sm" className="p-3 sm:p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] sm:text-[11px] font-bold text-brand-200">Đơn Phục Vụ Hôm Nay</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-brand-200">Ngày Có Chấm Công</span>
           <div className="my-1 sm:my-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-white">18</span>
-            <span className="text-xs text-brand-200 ml-1">đơn</span>
+            <span className="text-2xl sm:text-3xl font-black text-white">{workedDays}</span>
+            <span className="text-xs text-brand-200 ml-1">ngày</span>
           </div>
-          <span className="text-[10px] font-bold text-brand-200">Đạt chỉ tiêu ca</span>
+          <span className="text-[10px] font-bold text-brand-200">Tháng {currentMonth + 1}/{currentYear}</span>
         </Panel>
 
         <Panel variant="default" padding="sm" className="p-3 sm:p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">Doanh Số Đóng Góp</span>
+          <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">Ca Đã Chốt</span>
           <div className="my-1 sm:my-1.5">
-            <span className="text-base sm:text-xl font-black text-brand-900">
-              {formatCurrency(2450000)}
-            </span>
+            <span className="text-2xl sm:text-3xl font-black text-brand-900">{monthLogs.filter((record) => record.status === "COMPLETED").length}</span>
+            <span className="text-xs text-ink-muted ml-1">ca</span>
           </div>
-          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full w-fit">
-            Đạt 112%
-          </span>
-        </Panel>
-
-        <Panel variant="default" padding="sm" className="p-3 sm:p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">Giờ Làm Tích Lũy</span>
-          <div className="my-1 sm:my-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-ink-primary">42.5</span>
-            <span className="text-xs text-ink-muted ml-1">giờ</span>
-          </div>
-          <span className="text-[10px] font-bold text-ink-muted">Chỉ tiêu 48h/tuần</span>
-        </Panel>
-
-        <Panel variant="default" padding="sm" className="p-3 sm:p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted">Đánh Giá Phục Vụ</span>
-          <div className="my-1 sm:my-1.5 flex items-baseline gap-1">
-            <span className="text-2xl sm:text-3xl font-black text-amber-600">4.9</span>
-            <Icon name="sparkles" size={16} className="text-amber-500" />
-          </div>
-          <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full w-fit">
-            Top nhân viên
-          </span>
+          <span className="text-[10px] font-bold text-ink-muted">Theo bản ghi chấm công</span>
         </Panel>
       </div>
 
-      {/* GIAO DIỆN LỊCH CHẤM CÔNG DẠNG GRID THEO MÀU YÊU CẦU:
-          - ĐỎ: NGHỈ (OFF)
-          - XANH LÁ: ĐÃ LÀM XONG
-          - XANH DƯƠNG: ĐANG LÀM
-          - XÁM/TRẮNG: LỊCH SẮP TỚI
-      */}
       <div className="bg-white rounded-2xl sm:rounded-3xl border border-surface-border p-4 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-3">
           <div className="flex items-center gap-2">
@@ -185,27 +161,28 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
 
           {/* Color Legend (Chú thích màu) */}
           <div className="flex items-center gap-3 flex-wrap text-[11px] font-black uppercase tracking-wider">
-            <span className="text-rose-600">Nghỉ (OFF)</span>
+            <span className="text-ink-muted">Chưa ghi nhận</span>
             <span className="text-emerald-600">Đã làm</span>
-            <span className="text-blue-600">Đang trực</span>
+            <span className="text-brand-800">Đang trực</span>
           </div>
         </div>
 
         {/* Calendar Header Controls */}
         <div className="flex items-center justify-between mb-2 mt-2">
-          <button onClick={handlePrevMonth} className="p-2 sm:p-2.5 -ml-2 rounded-full hover:bg-surface-hover text-ink-muted transition-colors">
+          <button onClick={handlePrevMonth} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface-hover text-ink-muted transition-colors" aria-label="Tháng trước">
             <Icon name="chevronLeft" className="w-5 h-5" />
           </button>
           <h3 className="font-black text-ink-primary text-sm sm:text-base tracking-tight">
             Tháng {currentMonth + 1}, {currentYear}
           </h3>
-          <button onClick={handleNextMonth} className="p-2 sm:p-2.5 -mr-2 rounded-full hover:bg-surface-hover text-ink-muted transition-colors">
+          <button onClick={handleNextMonth} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface-hover text-ink-muted transition-colors" aria-label="Tháng sau">
             <Icon name="chevronRight" className="w-5 h-5" />
           </button>
         </div>
 
         {/* Calendar Grid (7 days) */}
-        <div className="grid grid-cols-7 gap-y-1 sm:gap-y-2 text-center pb-2">
+        <div className="overflow-x-auto no-scrollbar">
+        <div className="grid grid-cols-7 min-w-[308px] gap-y-1 sm:gap-y-2 text-center pb-2">
           {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
             <div key={d} className="text-[10px] sm:text-xs font-black text-ink-muted mb-2 opacity-70">{d}</div>
           ))}
@@ -216,9 +193,8 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
             let cellClass = "bg-transparent hover:bg-surface-hover";
             let textColor = "text-ink-primary";
 
-            if (cal.status === "OFF") textColor = "text-rose-600";
-            else if (cal.status === "WORKED") textColor = "text-emerald-600";
-            else if (cal.status === "WORKING") textColor = "text-blue-600";
+            if (cal.status === "WORKED") textColor = "text-emerald-600";
+            else if (cal.status === "WORKING") textColor = "text-brand-800";
 
             if (isSelected) {
               cellClass = "bg-brand-900 shadow-md ring-2 ring-brand-200 ring-offset-1";
@@ -231,7 +207,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
               <div key={idx} className="flex justify-center">
                 <button
                   onClick={() => setSelectedDayNum(cal.dayNum)}
-                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all ${cellClass}`}
+                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${cellClass}`}
                 >
                   <span className={`text-[13px] sm:text-sm font-bold ${textColor} ${cal.isFuture && !isSelected ? "opacity-30" : ""}`}>
                     {cal.dayNum}
@@ -241,6 +217,7 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
             );
           })}
         </div>
+        </div>
 
         {/* Selected Date Details */}
         <div className="mt-2 border-t border-surface-border pt-4">
@@ -249,49 +226,23 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
            </h4>
 
            <div className="space-y-2.5">
-             {calendarGrid.find(c => c?.dayNum === selectedDayNum)?.status === "OFF" ? (
-               <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center">
-                 <span className="text-sm font-bold text-rose-700">Hôm nay nghỉ ca (OFF)</span>
+             {selectedDayLogs.length === 0 ? (
+               <div className="p-4 rounded-2xl bg-surface-canvas border border-surface-border text-sm text-ink-muted font-semibold">
+                 Chưa có bản ghi chấm công cho ngày này.
                </div>
-             ) : (
-               <>
-                 <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border flex flex-col gap-2.5">
-                   <div className="flex items-center justify-between">
-                     <span className="font-black text-ink-primary text-sm">Ca Sáng</span>
-                     <Badge variant={calendarGrid.find(c => c?.dayNum === selectedDayNum)?.status === "WORKING" ? "brand" : "success"}>
-                       {calendarGrid.find(c => c?.dayNum === selectedDayNum)?.status === "WORKING" ? "Đang trực" : "Đã làm"}
-                     </Badge>
-                   </div>
-                   <div className="flex items-center justify-between text-xs text-ink-muted">
-                     <div className="flex items-center gap-1.5">
-                       <Icon name="clock" className="w-3.5 h-3.5" />
-                       <span className="font-medium">06:30 - 14:30</span>
-                     </div>
-                     <span className="font-bold text-ink-primary bg-white px-2 py-0.5 rounded-md border border-surface-border shadow-sm">
-                       8.0h
-                     </span>
-                   </div>
+             ) : selectedDayLogs.map((record) => (
+               <div key={record.id} className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border flex flex-col gap-2.5">
+                 <div className="flex items-center justify-between gap-2">
+                   <span className="font-black text-ink-primary text-sm">{record.shiftName}</span>
+                   <Badge variant={record.status === "ACTIVE" ? "brand" : "success"}>
+                     {record.status === "ACTIVE" ? "Đang trực" : "Đã chốt ca"}
+                   </Badge>
                  </div>
-                 {/* Mock multiple shift on day 29 */}
-                 {selectedDayNum === 29 && currentMonth === 8 && (
-                   <div className="p-3.5 rounded-2xl bg-surface-canvas border border-surface-border flex flex-col gap-2.5">
-                     <div className="flex items-center justify-between">
-                       <span className="font-black text-ink-primary text-sm">Ca Tối (Tăng cường)</span>
-                       <Badge variant="default">Sắp tới</Badge>
-                     </div>
-                     <div className="flex items-center justify-between text-xs text-ink-muted">
-                       <div className="flex items-center gap-1.5">
-                         <Icon name="clock" className="w-3.5 h-3.5" />
-                         <span className="font-medium">18:00 - 22:30</span>
-                       </div>
-                       <span className="font-bold text-ink-primary bg-white px-2 py-0.5 rounded-md border border-surface-border shadow-sm">
-                         4.5h
-                       </span>
-                     </div>
-                   </div>
-                 )}
-               </>
-             )}
+                 <span className="text-xs text-ink-muted font-medium">
+                   Vào: {record.clockInTime}{record.clockOutTime ? ` • Ra: ${record.clockOutTime}` : ""}
+                 </span>
+               </div>
+             ))}
            </div>
         </div>
       </div>
@@ -304,23 +255,23 @@ export const StaffScheduleProfile: React.FC<StaffScheduleProfileProps> = ({
               <Icon name="history" className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm sm:text-base font-black text-ink-primary">Nhật Ký Chấm Công Hôm Nay</h3>
+              <h3 className="text-sm sm:text-base font-black text-ink-primary">Nhật Ký Chấm Công</h3>
               <p className="text-xs text-ink-muted">Lưu vết giờ vào/ra thời gian thực tế</p>
             </div>
           </div>
         </div>
 
         {myLogs.length === 0 ? (
-          <p className="text-xs text-ink-muted text-center py-6">Chưa có bản ghi chấm công nào hôm nay</p>
+          <p className="text-xs text-ink-muted text-center py-6">Chưa có bản ghi chấm công.</p>
         ) : (
           <div className="space-y-2">
             {myLogs.map((log) => (
               <div
                 key={log.id}
-                className="p-3 rounded-2xl bg-surface-canvas border border-surface-border flex items-center justify-between text-xs"
+                className="p-3 rounded-2xl bg-surface-canvas border border-surface-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-800 animate-pulse" />
                   <div>
                     <span className="font-black text-ink-primary">{log.shiftName}</span>
                     <span className="text-ink-muted text-[11px] ml-2 font-mono">Ngày: {log.date}</span>

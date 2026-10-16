@@ -13,6 +13,18 @@ body {
   overscroll-behavior-y: none;
 }
 
+/* Tự động điền (autofill) giữ nguyên màu nền kính trầm Donezo Forest Green */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(10, 36, 26, 0.95) inset !important;
+  box-shadow: 0 0 0px 1000px rgba(10, 36, 26, 0.95) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
+  caret-color: #ffffff;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -26,6 +38,37 @@ body {
 
 .animate-fadeIn {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dotWave {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-9px) scale(1.25);
+    opacity: 1;
+  }
+}
+
+.animate-dotWave {
+  animation: dotWave 0.7s ease-in-out infinite;
+}
+
+@keyframes dotShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-7px);
+  }
+  40%, 80% {
+    transform: translateX(7px);
+  }
+}
+
+.animate-dotShake {
+  animation: dotShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 /* Custom minimal scrollbar for CMS content area */

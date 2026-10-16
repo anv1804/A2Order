@@ -500,51 +500,51 @@ export const CustomerTableOrderPage: React.FC = () => {
   // Màn hình lỗi URL không hợp lệ (thiếu ?store= hoặc ?table=)
   if (isInvalidUrl) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-3xl bg-rose-900 text-rose-300 flex items-center justify-center mb-4">
+      <div className="min-h-[100dvh] bg-surface-canvas text-ink-primary flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-3xl bg-brand-100 text-brand-800 flex items-center justify-center mb-4">
           <Icon name="alert" size={28} />
         </div>
-        <h1 className="text-lg font-black text-white mb-2">Link Không Hợp Lệ</h1>
-        <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
+        <h1 className="text-lg font-black text-ink-primary mb-2">Link Không Hợp Lệ</h1>
+        <p className="text-sm text-ink-muted leading-relaxed max-w-xs">
           Đường dẫn này không chứa thông tin bàn hoặc cửa hàng. Vui lòng quét lại mã QR trên thẻ bàn.
         </p>
-        <div className="mt-5 px-4 py-3 bg-slate-800 rounded-2xl text-xs text-slate-400 font-mono max-w-xs text-left break-all">
-          <span className="text-slate-500">URL cần có dạng:</span><br />
-          <span className="text-emerald-400">/order?store=ID_QUAN&table=MA_BAN</span>
+        <div className="mt-5 px-4 py-3 bg-surface-card border border-surface-border rounded-2xl text-xs text-ink-muted font-mono max-w-xs text-left break-all">
+          <span>URL cần có dạng:</span><br />
+          <span className="text-brand-800">/order?store=ID_QUAN&table=MA_BAN</span>
         </div>
-        <p className="mt-4 text-xs text-slate-600 font-bold">A2Order • Hệ thống gọi món thông minh</p>
+        <p className="mt-4 text-xs text-ink-subtle font-bold">A2Order • Hệ thống gọi món thông minh</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-4">
-        <div className="w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-semibold text-slate-300">Đang kiểm tra bảo mật bàn...</p>
-        <span className="text-xs text-slate-500 mt-1">A2Order Session Protection</span>
+      <div className="min-h-[100dvh] bg-surface-canvas text-ink-primary flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 border-3 border-brand-800 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-semibold text-ink-primary">Đang kiểm tra bảo mật bàn...</p>
+        <span className="text-xs text-ink-muted mt-1">A2Order Session Protection</span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] flex flex-col font-sans select-none antialiased">
+    <div className="min-h-[100dvh] bg-surface-canvas flex flex-col font-sans select-none antialiased">
       {/* 1. Header Quán & Bàn */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3 shadow-sm">
+      <header className="sticky top-0 z-40 bg-surface-card border-b border-surface-border px-4 py-3 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
+            <div className="w-11 h-11 rounded-2xl bg-brand-900 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md">
               A2
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-sm font-extrabold text-gray-900 truncate leading-tight">
-                {storeInfo?.name || "A2 Roastery & Kitchen"}
+              <h1 className="text-sm font-extrabold text-ink-primary truncate leading-tight">
+                {storeInfo?.name || "A2Order"}
               </h1>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[11px] font-black font-mono px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100">
+                <span className="text-[11px] font-black font-mono px-2 py-0.5 rounded-lg bg-brand-100 text-brand-800 border border-brand-200">
                   {tableInfo?.name || "Bàn"} · {tableInfo?.code || tableCode}
                 </span>
-                <span className="text-[10px] text-gray-400 truncate">{tableInfo?.zoneName || ""}</span>
+                <span className="text-[10px] text-ink-muted truncate">{tableInfo?.zoneName || ""}</span>
               </div>
             </div>
           </div>
@@ -554,7 +554,7 @@ export const CustomerTableOrderPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowServiceModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-sm active:scale-95 transition"
+                className="min-h-11 flex items-center gap-1.5 px-3 rounded-xl bg-brand-800 hover:bg-brand-900 text-white text-xs font-black shadow-sm active:scale-95 transition"
               >
                 <Icon name="bell" size={13} />
                 <span>Hỗ Trợ</span>
@@ -570,12 +570,12 @@ export const CustomerTableOrderPage: React.FC = () => {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-md w-full mx-auto px-3 py-4 flex flex-col justify-start">
+      <main className="flex-1 max-w-md w-full mx-auto px-3 pt-4 pb-[calc(112px+env(safe-area-inset-bottom))] flex flex-col justify-start">
         {/* TRƯỜNG HỢP 1: BÀN CHƯA MỞ PHIÊN */}
         {!isSessionActive && !isPendingApproval && !isClosed && (
           <div className="animate-fadeIn space-y-4">
             {/* Hero card */}
-            <div className="rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-800 text-white p-6 text-center shadow-xl relative overflow-hidden">
+            <div className="rounded-3xl bg-brand-900 text-white p-6 text-center shadow-card relative overflow-hidden">
               <div className="absolute inset-0 opacity-10" style={{backgroundImage: "radial-gradient(circle at 20% 80%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "30px 30px"}} />
               <div className="relative z-10">
                 <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-4 shadow-lg">
@@ -932,14 +932,14 @@ export const CustomerTableOrderPage: React.FC = () => {
       <DishDetailModal isOpen={!!configuringDish} dish={configuringDish} onClose={() => setConfiguringDish(null)} onConfirm={addConfiguredDish} />
       {/* Floating Bottom Cart Bar (Khi phiên đang mở & có món trong giỏ) */}
       {isSessionActive && totalCartCount > 0 && activeTab === "MENU" && (
-        <div className="fixed bottom-20 left-4 right-4 z-40 max-w-md mx-auto animate-slideUp">
-          <div className="bg-slate-900/95 backdrop-blur-md text-white p-3 sm:p-3.5 rounded-3xl shadow-2xl border border-slate-800 flex items-center justify-between gap-3">
+        <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] left-4 right-4 z-40 max-w-md mx-auto animate-slideUp">
+          <div className="bg-brand-900/95 backdrop-blur-md text-white p-3 sm:p-3.5 rounded-3xl shadow-card border border-brand-800 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setShowConfirmModal(true)}
-              className="flex items-center gap-2.5 text-left"
+              className="min-h-11 flex items-center gap-2.5 text-left"
             >
-              <div className="relative w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <div className="relative w-11 h-11 rounded-2xl bg-brand-800 text-white flex items-center justify-center shrink-0 shadow-sm">
                 <Icon name="cart" size={18} />
                 <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-slate-900">
                   {totalCartCount}
@@ -948,7 +948,7 @@ export const CustomerTableOrderPage: React.FC = () => {
               <div>
                 <p className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Giỏ Hàng</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-black text-emerald-400">
+                  <span className="text-sm font-black text-white whitespace-nowrap">
                     {finalCartTotal.toLocaleString("vi-VN")} đ
                   </span>
                   {voucherDiscount > 0 && (
@@ -963,7 +963,7 @@ export const CustomerTableOrderPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowConfirmModal(true)}
-              className="py-2.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-emerald-900/30 transition active:scale-95"
+              className="min-h-11 px-4 rounded-2xl bg-brand-800 hover:bg-brand-700 text-white font-black text-xs flex items-center justify-center gap-1.5 transition active:scale-95"
             >
               <span>Xem Giỏ</span>
               <Icon name="chevronRight" size={14} />
@@ -974,14 +974,14 @@ export const CustomerTableOrderPage: React.FC = () => {
 
       {/* Fixed Bottom Navigation Tabs (Khi phiên mở) */}
       {isSessionActive && (
-        <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-lg py-2 px-4">
+        <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-md border-t border-surface-border shadow-lg pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] px-4">
           <div className="max-w-md mx-auto grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => setActiveTab("MENU")}
-              className={`py-2 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
+              className={`min-h-[52px] px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
                 activeTab === "MENU"
-                  ? "bg-emerald-50 text-emerald-700 font-black shadow-2xs"
+                  ? "bg-brand-100 text-brand-800 font-black shadow-2xs"
                   : "text-slate-400 hover:text-slate-600 font-bold"
               }`}
             >
@@ -999,9 +999,9 @@ export const CustomerTableOrderPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab("ORDERED")}
-              className={`py-2 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
+              className={`min-h-[52px] px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
                 activeTab === "ORDERED"
-                  ? "bg-emerald-50 text-emerald-700 font-black shadow-2xs"
+                  ? "bg-brand-100 text-brand-800 font-black shadow-2xs"
                   : "text-slate-400 hover:text-slate-600 font-bold"
               }`}
             >
@@ -1017,9 +1017,9 @@ export const CustomerTableOrderPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveTab("OFFERS")}
-              className={`py-2 px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
+              className={`min-h-[52px] px-2 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all ${
                 activeTab === "OFFERS"
-                  ? "bg-emerald-50 text-emerald-700 font-black shadow-2xs"
+                  ? "bg-brand-100 text-brand-800 font-black shadow-2xs"
                   : "text-slate-400 hover:text-slate-600 font-bold"
               }`}
             >

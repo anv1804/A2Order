@@ -10,4 +10,6 @@ export * from "./icon.types.js";
 export * from "./cms.types.js";
 export * from "./chat.types.js";
 export * from "./api.types.js";
+export * from "./dashboard.types.js";
+export * from "./persistence.types.js";
 

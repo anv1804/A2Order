@@ -142,7 +142,7 @@ export const StoreUserMobileCards: React.FC<StoreUserMobileCardsProps> = ({
                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 pl-6 text-xs gap-1.5">
                   <div className="flex items-center gap-1 font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200/60 shrink-0">
                     <span className="text-slate-400 font-sans text-[9px]">PIN:</span>
-                    <span className="font-bold text-slate-700">{isPinRevealed ? (user.pinCode || "Chưa cấp") : "••••"}</span>
+                    <span className="font-bold text-slate-700">{isPinRevealed ? (user.pinCode || "Chưa cấp") : "••••••"}</span>
                     <button
                       type="button"
                       onClick={() => toggleRevealPin(user.id)}

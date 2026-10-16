@@ -189,7 +189,7 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
   }, [currentRole]);
 
   return (
-    <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-white sm:bg-[#f6f8f7] font-sans text-ink-primary">
+    <div className="cms-workspace flex h-[100dvh] w-full overflow-hidden bg-surface-canvas font-sans text-ink-primary">
       <CommandPalette
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
@@ -224,7 +224,9 @@ export const CmsLayout: React.FC<CmsLayoutProps> = ({
 
       {/* 3. Mobile Slide-Over Drawer Sidebar */}
       <div
-        className={`fixed top-0 bottom-0 left-0 w-[340px] max-w-[calc(100vw-1rem)] bg-[#102d25] z-50 lg:hidden shadow-2xl transition-transform duration-300 ease-in-out flex flex-col rounded-r-3xl overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${
+        className={`fixed top-0 bottom-0 left-0 w-[340px] max-w-[calc(100vw-1rem)] ${
+          currentRole === "SUPER_ADMIN" ? "bg-[#102d25]" : "bg-white"
+        } z-50 lg:hidden shadow-2xl transition-transform duration-300 ease-in-out flex flex-col rounded-r-3xl overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] ${
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

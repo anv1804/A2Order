@@ -10,14 +10,18 @@ const money = ["STORE_OWNER", "CASHIER", "ACCOUNTANT"];
 const service = ["STORE_OWNER", "CASHIER", "WAITER"];
 
 export function limitAttempts(key: string, max = 30, windowMs = 60000) {
+  const isDev = process.env.NODE_ENV !== "production" || key.includes("127.0.0.1") || key.includes("::1");
+  const effectiveMax = isDev ? Math.max(max * 10, 500) : max;
+  const effectiveWindowMs = isDev ? Math.min(windowMs, 10000) : windowMs;
+
   const now = Date.now();
   if (rateWindows.size > 10000) for (const [id, row] of rateWindows) if (row.until <= now) rateWindows.delete(id);
   const previous = rateWindows.get(key);
   if (!previous && rateWindows.size >= 20000) throw new AppError(429, "Máy chủ đang bận, vui lòng thử lại sau");
-  const row = previous && previous.until > now ? previous : { count: 0, until: now + windowMs };
+  const row = previous && previous.until > now ? previous : { count: 0, until: now + effectiveWindowMs };
   row.count++;
   rateWindows.set(key, row);
-  if (row.count > max) throw new AppError(429, "Thao tác quá nhanh. Vui lòng thử lại sau.", "RATE_LIMITED");
+  if (row.count > effectiveMax) throw new AppError(429, "Thao tác quá nhanh. Vui lòng thử lại sau.", "RATE_LIMITED");
 }
 
 export async function verifyPrincipal(app: FastifyInstance, token: string): Promise<Principal> {
@@ -56,12 +60,13 @@ export function registerAccess(app: FastifyInstance) {
     if (method === "OPTIONS") return;
     limitAttempts(`${request.ip}:general`, 600);
     const isLogin = path.startsWith("/api/auth/login-");
-    if (isLogin) limitAttempts(`${request.ip}:login`, 15);
-    if (path.includes("unlock-pin")) limitAttempts(`${request.ip}:${(request.params as { storeId?: string }).storeId}:pin`, 10, 300000);
+    const isLocal = process.env.NODE_ENV !== "production" || request.ip === "127.0.0.1" || request.ip === "::1";
+    if (isLogin) limitAttempts(`${request.ip}:login`, isLocal ? 300 : 60);
+    if (path.includes("unlock-pin")) limitAttempts(`${request.ip}:${(request.params as { storeId?: string }).storeId}:pin`, isLocal ? 300 : 30, 300000);
     if (path === "/api/billing/webhook/payment") return;
     const authorization = request.headers.authorization;
     if (authorization?.startsWith("Bearer ")) request.principal = await verifyPrincipal(app, authorization.slice(7));
-    const publicRoute = ["/health", "/ready"].includes(path) || isLogin ||
+    const publicRoute = ["/health", "/ready", "/api/auth/password-reset-request"].includes(path) || isLogin ||
       (method === "GET" && (route.includes("/auth/staff/") || route.includes("/landing/public/") || route.endsWith("/session/:tableCode"))) ||
       (method === "POST" && (route.endsWith("/session/request") || route.endsWith("/session/unlock-pin")));
     const scope = databaseScope.getStore()!;

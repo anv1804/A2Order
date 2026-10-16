@@ -12,6 +12,7 @@ Preserve existing visual classes, colors and layouts. Replace local-only busines
 - Opening a table, approving orders, changing items and settling a bill are transactional. An active table has at most one active session. Paid bills and historical items are retained.
 - Public API DTOs never contain PIN hashes, QR secrets, account credentials or unrelated table data.
 - Auxiliary editing documents are tenant-scoped, versioned and protected by role; external actions remain unavailable until a real provider is configured.
+- POS, KDS and menu views start empty and render only authenticated server snapshots. An empty response clears the prior view; a failed refresh retains the last confirmed snapshot and reports the connection problem once instead of showing demo tables, tickets or prices as live data.
 
 ## Verification
 

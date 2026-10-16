@@ -1,8 +1,11 @@
 import { requestApi } from "./apiClient";
-import { PlatformStoreUserRecord, CreateStaffPayload, UpdateStaffPayload } from "@/types";
+import { PlatformStoreUserRecord, CreateStaffPayload, UpdateStaffPayload, PasswordResetRequest } from "@/types";
 
 
 export const staffApi = {
+  async getPasswordResetRequests(): Promise<PasswordResetRequest[]> {
+    return requestApi<PasswordResetRequest[]>("/staff/password-reset-requests");
+  },
   /**
    * Lấy danh sách toàn bộ tài khoản user quán
    */

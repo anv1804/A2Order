@@ -12,12 +12,12 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    "inline-flex items-center justify-center font-bold rounded-2xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none select-none";
+    "inline-flex items-center justify-center font-bold rounded-2xl transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 disabled:opacity-50 disabled:pointer-events-none select-none";
 
   const sizeClasses = {
-    sm: "h-9 px-3.5 text-xs rounded-xl",
-    md: "h-11 px-5 text-sm rounded-2xl",
-    lg: "h-13 px-6 text-base rounded-2xl",
+    sm: "min-h-11 px-3.5 text-sm rounded-xl",
+    md: "min-h-11 px-5 text-sm rounded-2xl",
+    lg: "min-h-13 px-6 text-base rounded-2xl",
     xl: "h-14 px-8 text-lg font-extrabold rounded-3xl",
   };
 

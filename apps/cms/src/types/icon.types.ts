@@ -89,6 +89,7 @@ export type IconName =
   | "support"
   | "headphones"
   | "chevronUp"
+  | "chevronDown"
   | "messageSquare";
 
 export interface IconProps {

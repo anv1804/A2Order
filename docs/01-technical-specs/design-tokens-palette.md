@@ -65,3 +65,17 @@
    * Chiều cao chuẩn: `h-11` (44px) đến `h-12` (48px).
 3. **Thẻ chỉ số nổi bật (Featured Metric Card)**:
    * Giống card `Total Projects` trong mẫu tham khảo: Nền màu xanh trầm `#12372A`, chữ số màu trắng cực lớn `text-4xl font-extrabold text-white`, icon mũi tên trong vòng tròn trắng mờ.
+
+## 4. Bố cục client trên mobile và tablet
+
+* Form đăng nhập co giãn theo nội dung và chiều cao màn hình; không khóa chiều cao form. Ô nhập dùng cỡ chữ tối thiểu 16px để tránh iOS tự phóng to khi lấy nét.
+* Nút và bộ lọc thao tác bằng tay có vùng chạm tối thiểu 44px; hành động thanh toán chính tối thiểu 52px. Danh sách cuộn giữ khoảng trống cho bottom navigation và `safe-area-inset-bottom`.
+* Thanh điều hướng tablet và mobile cho phép cuộn ngang khi số tab theo role vượt bề ngang. Tên quán và nhân viên được rút gọn trong header, không ép nội dung chính rộng hơn viewport.
+* KPI vận hành chỉ hiển thị số liệu từ trạng thái hiện có; khu vực lọc bàn lấy từ các bàn của cửa hàng đang mở.
+* Vé KDS dùng card sáng, header xanh rừng và vùng chạm món tối thiểu 60px. Cảnh báo quá SLA chỉ nhấn vào viền và badge thời gian để giữ tên món, số lượng và ghi chú dễ đọc.
+* Hồ sơ ca làm lấy KPI và chi tiết lịch từ bản ghi chấm công; ngày chưa có dữ liệu hiển thị empty state, không dựng ca làm hoặc doanh số mẫu.
+* Trang gọi món QR dùng cùng nền canvas, header/card và màu brand; thanh giỏ hàng và điều hướng đáy tôn trọng vùng an toàn của thiết bị.
+
+### Màn đăng nhập client
+
+Dùng cùng một khung cho PIN và tài khoản. Ở 320 × 568 và 390 × 844, trang không cuộn ngang hoặc dọc. Nút bàn phím số cao tối thiểu 44px; biểu mẫu có cỡ chữ input 16px để tránh iOS tự phóng to. Bố cục mobile xếp thương hiệu trên khung nhập, tablet chia hai cột. Không hiển thị mã phân vùng PIN trên màn hình công khai.

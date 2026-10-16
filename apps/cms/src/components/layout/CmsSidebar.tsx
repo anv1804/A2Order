@@ -180,50 +180,119 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
   };
   const activeRoleMeta = roleMeta[currentRole] || roleMeta.STORE_OWNER;
 
+  const isSuperAdmin = currentRole === "SUPER_ADMIN";
+
   return (
-    <aside className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden bg-[#102d25] text-white transition-[width] duration-300 lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] p-3" : "lg:w-[280px] p-4"}`}>
+    <aside
+      className={`flex h-full min-h-0 w-full select-none flex-col overflow-hidden transition-[width] duration-300 ${
+        isSuperAdmin
+          ? `bg-[#102d25] text-white lg:border-r lg:border-[#0c241d] ${collapsed ? "lg:w-[76px] p-3" : "lg:w-[280px] p-4"}`
+          : `bg-white text-ink-primary lg:border-r lg:border-surface-border ${collapsed ? "lg:w-[76px] p-3" : "lg:w-[270px] p-4"}`
+      }`}
+    >
+      {/* Brand Header */}
       <div className={`mb-5 flex shrink-0 items-center ${collapsed ? "justify-center" : "justify-between gap-3 px-1"} pt-1`}>
         <div className="flex min-w-0 items-center gap-3">
           {collapsed && onToggleCollapse ? (
-            <button type="button" onClick={onToggleCollapse} aria-label="Mở rộng sidebar" title="Mở rộng sidebar" className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300">
-              <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 rounded-2xl object-cover ring-1 ring-white/20" />
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="Mở rộng sidebar"
+              title="Mở rộng sidebar"
+              className="rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 rounded-2xl object-cover ring-1 ring-black/5" />
             </button>
-          ) : <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 shrink-0 rounded-2xl object-cover ring-1 ring-white/20" />}
-          {!collapsed && <div className="min-w-0">
-            <span className="block truncate text-lg font-black tracking-tight">A2Order</span>
-            <span className="block text-[10px] font-semibold tracking-[.14em] text-emerald-200/70">WORKSPACE</span>
-          </div>}
+          ) : (
+            <img src="/logo-symbol.jpg" alt="A2Order" className="h-10 w-10 shrink-0 rounded-2xl object-cover ring-1 ring-black/5" />
+          )}
+          {!collapsed && (
+            <div className="min-w-0">
+              <span className={`block truncate text-lg font-black tracking-tight ${isSuperAdmin ? "text-white" : "text-ink-primary"}`}>
+                A2Order
+              </span>
+              <span className={`block text-[10px] font-bold tracking-[.14em] ${isSuperAdmin ? "text-emerald-200/70" : "text-brand-800"}`}>
+                {isSuperAdmin ? "SAAS HQ" : "RESTAURANT OS"}
+              </span>
+            </div>
+          )}
         </div>
-        {onToggleCollapse && !collapsed && <button type="button" onClick={onToggleCollapse} aria-label="Thu gọn sidebar" title="Thu gọn sidebar" className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 text-emerald-100 transition hover:bg-white/20 lg:flex"><Icon name="chevronLeft" size={17} /></button>}
+
+        {onToggleCollapse && !collapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="Thu gọn sidebar"
+            title="Thu gọn sidebar"
+            className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-xl transition lg:flex ${
+              isSuperAdmin ? "bg-white/10 text-emerald-100 hover:bg-white/20" : "bg-surface-canvas text-ink-muted hover:text-ink-primary hover:bg-surface-border/60"
+            }`}
+          >
+            <Icon name="chevronLeft" size={17} />
+          </button>
+        )}
+
         {onCloseMobileDrawer && (
-          <button type="button" onClick={onCloseMobileDrawer} aria-label="Đóng menu" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white/80 transition hover:bg-white/20 hover:text-white lg:hidden">
+          <button
+            type="button"
+            onClick={onCloseMobileDrawer}
+            aria-label="Đóng menu"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition lg:hidden ${
+              isSuperAdmin ? "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white" : "bg-surface-canvas text-ink-muted hover:bg-surface-border/60"
+            }`}
+          >
             <Icon name="x" size={17} />
           </button>
         )}
       </div>
 
+      {/* Role / Workspace Status Pill */}
       <div
-        className={`mb-5 flex shrink-0 items-center ${
+        className={`mb-4 flex shrink-0 items-center ${
           collapsed
             ? "justify-center"
-            : "gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-3"
+            : isSuperAdmin
+            ? "gap-3 rounded-2xl border border-white/10 bg-white/10 px-3 py-2.5"
+            : "gap-3 rounded-2xl border border-surface-border bg-surface-canvas/60 px-3 py-2.5"
         }`}
         title={collapsed ? activeRoleMeta.label : undefined}
       >
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${collapsed ? "bg-white/10 border border-white/10 text-emerald-200" : "bg-emerald-300/20 text-emerald-200"}`}>
-          <Icon name={activeRoleMeta.icon} size={18} />
+        <span
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            isSuperAdmin
+              ? collapsed ? "bg-white/10 text-emerald-200" : "bg-emerald-300/20 text-emerald-200"
+              : "bg-brand-100 text-brand-900 border border-brand-200/50"
+          }`}
+        >
+          <Icon name={activeRoleMeta.icon} size={17} />
         </span>
-        {!collapsed && <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-bold">{activeRoleMeta.label}</span>
-          <span className="mt-0.5 block truncate text-[10px] text-white/50">{activeRoleMeta.desc}</span>
-        </span>}
-        {!collapsed && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_0_4px_rgba(110,231,183,.1)]" />}
+        {!collapsed && (
+          <span className="min-w-0 flex-1">
+            <span className={`block truncate text-xs font-bold ${isSuperAdmin ? "text-white" : "text-ink-primary"}`}>
+              {activeRoleMeta.label}
+            </span>
+            <span className={`mt-0.5 block truncate text-[10px] ${isSuperAdmin ? "text-white/50" : "text-ink-muted"}`}>
+              {activeRoleMeta.desc}
+            </span>
+          </span>
+        )}
+        {!collapsed && (
+          <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,.2)] animate-pulse" />
+        )}
       </div>
 
+      {/* Navigation Menu List */}
       <nav aria-label="Danh mục quản trị" className={`min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden overscroll-contain sidebar-scroll ${collapsed ? "pr-0" : "pr-1"}`}>
         {currentGroups.map((group) => (
           <div key={group.title}>
-            {collapsed ? <div className="w-8 mx-auto my-2 border-t border-white/10" /> : <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-100/40">{group.title}</p>}
+            {collapsed ? (
+              <div className={`w-8 mx-auto my-2 border-t ${isSuperAdmin ? "border-white/10" : "border-surface-border"}`} />
+            ) : (
+              <p className={`mb-2 px-3 text-[10px] font-bold uppercase tracking-[.14em] ${isSuperAdmin ? "text-emerald-100/40" : "text-ink-subtle"}`}>
+                {group.title}
+              </p>
+            )}
+
             <div className="space-y-1">
               {group.items.map((item) => {
                 const isActive = activeMenu === item.id;
@@ -238,17 +307,43 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
                     className={`group flex items-center transition-all duration-200 active:scale-[.98] ${
                       collapsed
                         ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0"
-                        : "min-h-11 w-full gap-3 rounded-xl px-3 text-left text-xs font-semibold"
+                        : "min-h-11 w-full gap-3 rounded-2xl px-3 text-left text-xs font-bold relative"
                     } ${
-                      isActive
-                        ? "bg-white text-[#12372a] shadow-[0_8px_24px_rgba(0,0,0,.16)]"
-                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                      isSuperAdmin
+                        ? isActive
+                          ? "bg-white text-[#12372a] shadow-[0_8px_24px_rgba(0,0,0,.16)]"
+                          : "text-white/70 hover:bg-white/10 hover:text-white"
+                        : isActive
+                        ? "bg-[#E8F5EE] text-brand-950 font-black shadow-xs"
+                        : "text-ink-muted hover:bg-surface-canvas hover:text-ink-primary font-semibold"
                     }`}
                   >
-                    <Icon name={item.icon} size={17} className={`shrink-0 ${isActive ? "text-emerald-800" : "text-emerald-100/60 group-hover:text-emerald-200"}`} />
+                    {/* Coinest Vertical Accent Bar for active item */}
+                    {!isSuperAdmin && !collapsed && isActive && (
+                      <span className="absolute left-1.5 top-2.5 bottom-2.5 w-1 rounded-full bg-brand-900" />
+                    )}
+
+                    <Icon
+                      name={item.icon}
+                      size={17}
+                      className={`shrink-0 ${
+                        isSuperAdmin
+                          ? isActive ? "text-emerald-800" : "text-emerald-100/60 group-hover:text-emerald-200"
+                          : isActive ? "text-brand-900" : "text-ink-subtle group-hover:text-ink-primary"
+                      }`}
+                    />
                     {!collapsed && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
-                    {!collapsed && item.badge && <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black ${isActive ? "bg-emerald-100 text-emerald-900" : "bg-white/10 text-emerald-100"}`}>{item.badge}</span>}
-                    {!collapsed && isActive && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-600" />}
+                    {!collapsed && item.badge && (
+                      <span
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-black ${
+                          isSuperAdmin
+                            ? isActive ? "bg-emerald-100 text-emerald-900" : "bg-white/10 text-emerald-100"
+                            : isActive ? "bg-brand-900 text-white" : "bg-surface-canvas text-ink-muted"
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -257,7 +352,32 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
         ))}
       </nav>
 
-      <div className="mt-4 shrink-0 border-t border-white/10 pt-3">
+      {/* Bottom Pro Card for Store Owner (Coinest Hallmark Widget) */}
+      {!isSuperAdmin && !collapsed && (
+        <div className="mt-3 mb-2 p-3.5 rounded-2xl bg-gradient-to-br from-brand-950 via-brand-900 to-brand-950 text-white shadow-sm relative overflow-hidden shrink-0">
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-brand-100">
+                <Icon name="cart" size={13} />
+              </span>
+              <span className="text-xs font-black">Trạm Thu Ngân POS</span>
+            </div>
+            <p className="text-[10px] text-white/70 leading-relaxed mb-2">
+              Gọi món cầm tay & màn hình bếp KDS thời gian thực.
+            </p>
+            <button
+              type="button"
+              onClick={() => onSelectMenu("staff_order")}
+              className="w-full py-1.5 px-3 rounded-xl bg-[#E8F5EE] text-brand-950 font-black text-xs hover:bg-white transition-all text-center block shadow-2xs"
+            >
+              Mở POS Bán Hàng →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile & Logout Strip */}
+      <div className={`shrink-0 border-t pt-3 ${isSuperAdmin ? "border-white/10" : "border-surface-border"} ${!isSuperAdmin && !collapsed ? "mt-1" : "mt-3"}`}>
         <button
           type="button"
           onClick={() => onSelectMenu("profile")}
@@ -268,26 +388,51 @@ export const CmsSidebar: React.FC<CmsSidebarProps> = ({
             collapsed
               ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0"
               : "w-full gap-3 rounded-2xl p-2 text-left"
-          } ${activeMenu === "profile" ? "bg-white text-[#12372a]" : "text-white hover:bg-white/10"}`}
+          } ${
+            isSuperAdmin
+              ? activeMenu === "profile" ? "bg-white text-[#12372a]" : "text-white hover:bg-white/10"
+              : activeMenu === "profile" ? "bg-brand-100 text-brand-900 font-bold" : "text-ink-primary hover:bg-surface-canvas"
+          }`}
         >
-          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${activeMenu === "profile" ? "bg-emerald-100 text-emerald-900" : "bg-emerald-300/20 text-emerald-100"}`}>
+          <span
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-black ${
+              isSuperAdmin
+                ? activeMenu === "profile" ? "bg-emerald-100 text-emerald-900" : "bg-emerald-300/20 text-emerald-100"
+                : "bg-brand-900 text-white shadow-xs"
+            }`}
+          >
             {(currentUser?.name || "A").charAt(0).toUpperCase()}
           </span>
-          {!collapsed && <span className="min-w-0 flex-1">
-            <span className="block truncate text-xs font-bold">{currentUser?.name || "Tài khoản quản trị"}</span>
-            <span className={`mt-0.5 block truncate text-[10px] ${activeMenu === "profile" ? "text-emerald-900/60" : "text-white/50"}`}>{currentUser?.email || "Xem hồ sơ"}</span>
-          </span>}
-          {!collapsed && <Icon name="arrowRight" size={15} className={activeMenu === "profile" ? "text-emerald-800" : "text-white/40"} />}
+          {!collapsed && (
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-bold">{currentUser?.name || "Tài khoản quản trị"}</span>
+              <span className={`mt-0.5 block truncate text-[10px] ${isSuperAdmin ? "text-white/50" : "text-ink-muted"}`}>
+                {currentUser?.email || "Xem hồ sơ"}
+              </span>
+            </span>
+          )}
+          {!collapsed && (
+            <Icon
+              name="arrowRight"
+              size={15}
+              className={isSuperAdmin ? "text-white/40" : "text-ink-subtle"}
+            />
+          )}
         </button>
+
         <button
           type="button"
           onClick={onLogout}
           aria-label="Đăng xuất"
           title={collapsed ? "Đăng xuất" : undefined}
-          className={`mt-1 flex items-center transition hover:bg-white/10 hover:text-white ${
+          className={`mt-1 flex items-center transition ${
             collapsed
-              ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0 text-white/60"
-              : "min-h-10 w-full gap-3 rounded-xl px-3 text-xs font-semibold text-white/60"
+              ? "w-11 h-11 mx-auto justify-center rounded-2xl p-0"
+              : "min-h-10 w-full gap-3 rounded-xl px-3 text-xs font-semibold"
+          } ${
+            isSuperAdmin
+              ? "text-white/60 hover:bg-white/10 hover:text-white"
+              : "text-ink-muted hover:bg-red-50 hover:text-red-600"
           }`}
         >
           <Icon name="logout" size={16} /> {!collapsed && "Đăng xuất"}
