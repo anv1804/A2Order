@@ -143,7 +143,7 @@ export const TablesOverviewTab: React.FC<TablesOverviewTabProps> = ({
       </div>
 
       {/* Zone, Status, and Search Filters */}
-      <div className="flex flex-col gap-1.5 sticky top-16 z-30 bg-surface-canvas/95 backdrop-blur-md pt-2 pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b border-surface-border">
+      <div className="flex flex-col gap-1.5 sticky top-14 md:top-16 z-30 bg-surface-canvas/95 backdrop-blur-md pt-2 pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 border-b border-surface-border">
         {/* Zone Filter */}
         <div className="flex items-center gap-1.5">
           <button

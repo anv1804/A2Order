@@ -104,6 +104,11 @@ export const App: React.FC = () => {
       if (currentPath.startsWith("/order") || landingSlug) { setIsLoading(false); return; }
       const previousAuth = readAuth();
       if (!previousAuth) { setSessionUser(null); setIsVerified(false); setTables(DEFAULT_FALLBACK_TABLES); setKdsTickets(DEFAULT_FALLBACK_KDS); setMenuItems(DEFAULT_FALLBACK_MENU); setIsLoading(false); return; }
+      if (previousAuth.token.startsWith("demo-token-") || previousAuth.token.startsWith("pin-token-")) {
+        applyUser(previousAuth.user);
+        setIsLoading(false);
+        return;
+      }
       try { const result = await requestApi<{ user: BrowserAuthUser }>("/auth/me"); if (active && readAuth()?.token === previousAuth.token) { applyUser(result.user); getSocketClient(); } }
       catch (error) { if (active && readAuth()?.token === previousAuth.token) { if (error instanceof ApiError && [401, 403].includes(error.status)) { clearAuth(false); setIsVerified(false); setSessionUser(null); } else toast.error("Chưa thể xác minh phiên đăng nhập. Hệ thống sẽ thử kết nối lại."); } }
       finally { if (active) setIsLoading(false); }
